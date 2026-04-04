@@ -94,6 +94,27 @@ export type Database = {
           },
         ]
       }
+      categorias_produtos: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cotacao_fornecedores: {
         Row: {
           cotacao_id: string
@@ -816,6 +837,41 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          categoria_id: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          unidade: string | null
+          user_id: string
+        }
+        Insert: {
+          categoria_id?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          unidade?: string | null
+          user_id?: string
+        }
+        Update: {
+          categoria_id?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          unidade?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_produtos"
             referencedColumns: ["id"]
           },
         ]

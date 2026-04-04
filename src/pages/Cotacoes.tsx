@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy,
   PackagePlus, Brain, Mail, Send, Eye, Clock, CheckCircle2, AlertTriangle,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +46,8 @@ const Cotacoes = () => {
   const [newItemName, setNewItemName] = useState("");
   const [newItemQtd, setNewItemQtd] = useState("1");
   const [newItemUnit, setNewItemUnit] = useState("un");
+  const [prodSearch, setProdSearch] = useState("");
+  const [selectedProds, setSelectedProds] = useState<Record<string, { nome: string; unidade: string; qtd: string }>>({});
   const [emailDialog, setEmailDialog] = useState<string | null>(null);
   const [emailList, setEmailList] = useState("");
   const [prazoDias, setPrazoDias] = useState("7");
@@ -126,6 +130,41 @@ const Cotacoes = () => {
       return data;
     },
   });
+
+  // Products catalog for multi-select
+  const { data: produtosCatalog } = useQuery({
+    queryKey: ["produtos-catalog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("produtos")
+        .select("*, categorias_produtos(nome)")
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const filteredProducts = useMemo(() => {
+    if (!produtosCatalog) return [];
+    if (!prodSearch) return produtosCatalog;
+    const s = prodSearch.toLowerCase();
+    return produtosCatalog.filter(
+      (p: any) =>
+        p.nome.toLowerCase().includes(s) ||
+        p.categorias_produtos?.nome?.toLowerCase().includes(s)
+    );
+  }, [produtosCatalog, prodSearch]);
+
+  // Group products by category
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filteredProducts.forEach((p: any) => {
+      const cat = p.categorias_produtos?.nome || "Sem categoria";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
+    });
+    return groups;
+  }, [filteredProducts]);
 
   const createCotacao = useMutation({
     mutationFn: async (values: any) => {
@@ -247,6 +286,49 @@ const Cotacoes = () => {
       quantidade: Number(newItemQtd) || 1,
       unidade: newItemUnit || "un",
     });
+  };
+
+  const toggleProd = (p: any) => {
+    setSelectedProds((prev) => {
+      const next = { ...prev };
+      if (next[p.id]) {
+        delete next[p.id];
+      } else {
+        next[p.id] = { nome: p.nome, unidade: p.unidade || "un", qtd: "1" };
+      }
+      return next;
+    });
+  };
+
+  const updateProdQtd = (id: string, qtd: string) => {
+    setSelectedProds((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], qtd },
+    }));
+  };
+
+  const handleAddSelectedProducts = async () => {
+    if (!itemDialog) return;
+    const entries = Object.values(selectedProds);
+    if (!entries.length) {
+      toast.error("Selecione pelo menos um produto");
+      return;
+    }
+    const items = entries.map((e) => ({
+      cotacao_id: itemDialog,
+      nome: e.nome,
+      quantidade: Number(e.qtd) || 1,
+      unidade: e.unidade,
+    }));
+    const { error } = await supabase.from("itens_cotacao").insert(items);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["itens-cotacao", itemDialog] });
+    setSelectedProds({});
+    setProdSearch("");
+    toast.success(`${items.length} item(ns) adicionado(s)!`);
   };
 
   const handleEnviarEmails = () => {
@@ -657,20 +739,86 @@ ObraControl`;
       </Dialog>
 
       {/* Items Management Dialog */}
-      <Dialog open={!!itemDialog} onOpenChange={(v) => !v && setItemDialog(null)}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={!!itemDialog} onOpenChange={(v) => { if (!v) { setItemDialog(null); setSelectedProds({}); setProdSearch(""); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Itens da Cotação</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <Input placeholder="Nome do item" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} className="flex-1" />
-              <Input placeholder="Qtd" type="number" value={newItemQtd} onChange={(e) => setNewItemQtd(e.target.value)} className="w-20" />
-              <Input placeholder="Un" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} className="w-16" />
-              <Button size="icon" onClick={handleAddItem} disabled={addItem.isPending}>
-                <Plus className="h-4 w-4" />
-              </Button>
+            {/* Multi-select from catalog */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Selecionar do catálogo</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar produto ou categoria..."
+                  value={prodSearch}
+                  onChange={(e) => setProdSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border p-2 space-y-2">
+                {Object.keys(groupedProducts).length ? (
+                  Object.entries(groupedProducts).map(([cat, prods]) => (
+                    <div key={cat}>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-2">{cat}</p>
+                      {prods.map((p: any) => (
+                        <label
+                          key={p.id}
+                          className={cn(
+                            "flex items-center gap-3 rounded-md p-2 cursor-pointer transition-colors",
+                            selectedProds[p.id] ? "bg-primary/10" : "hover:bg-muted"
+                          )}
+                        >
+                          <Checkbox
+                            checked={!!selectedProds[p.id]}
+                            onCheckedChange={() => toggleProd(p)}
+                          />
+                          <span className="flex-1 text-sm">{p.nome}</span>
+                          <span className="text-xs text-muted-foreground">{p.unidade}</span>
+                          {selectedProds[p.id] && (
+                            <Input
+                              type="number"
+                              min="1"
+                              value={selectedProds[p.id].qtd}
+                              onChange={(e) => { e.stopPropagation(); updateProdQtd(p.id, e.target.value); }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-16 h-7 text-xs"
+                              placeholder="Qtd"
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-3">
+                    {produtosCatalog?.length ? "Nenhum produto encontrado" : "Cadastre produtos na página Produtos"}
+                  </p>
+                )}
+              </div>
+              {Object.keys(selectedProds).length > 0 && (
+                <Button onClick={handleAddSelectedProducts} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar {Object.keys(selectedProds).length} produto(s)
+                </Button>
+              )}
             </div>
+
+            {/* Manual add fallback */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Ou adicionar manualmente</Label>
+              <div className="flex gap-2">
+                <Input placeholder="Nome do item" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} className="flex-1" />
+                <Input placeholder="Qtd" type="number" value={newItemQtd} onChange={(e) => setNewItemQtd(e.target.value)} className="w-20" />
+                <Input placeholder="Un" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} className="w-16" />
+                <Button size="icon" onClick={handleAddItem} disabled={addItem.isPending}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Current items */}
             {itens?.length ? (
               <Table>
                 <TableHeader>
