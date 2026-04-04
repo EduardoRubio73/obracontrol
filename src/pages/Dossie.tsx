@@ -106,6 +106,18 @@ const Dossie = () => {
         </Card>
       )}
 
+      {/* Quick actions */}
+      <div className="flex gap-3" style={stagger(2)}>
+        <Button
+          variant="outline"
+          className="flex-1 rounded-xl gap-2"
+          onClick={() => navigate(`/obras/${id}/alteracoes`)}
+        >
+          <AlertTriangle className="h-4 w-4" />
+          Alterações
+        </Button>
+      </div>
+
       {/* Timeline */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Carregando...</div>
