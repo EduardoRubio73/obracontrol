@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertas_sistema: {
+        Row: {
+          created_at: string | null
+          entidade: string | null
+          entidade_id: string | null
+          id: string
+          mensagem: string | null
+          resolvido: boolean | null
+          tenant_id: string
+          tipo: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entidade?: string | null
+          entidade_id?: string | null
+          id?: string
+          mensagem?: string | null
+          resolvido?: boolean | null
+          tenant_id: string
+          tipo?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entidade?: string | null
+          entidade_id?: string | null
+          id?: string
+          mensagem?: string | null
+          resolvido?: boolean | null
+          tenant_id?: string
+          tipo?: string | null
+        }
+        Relationships: []
+      }
       auditoria: {
         Row: {
           acao: string | null
@@ -308,6 +341,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fase_itens_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sugestao_compra"
+            referencedColumns: ["fase_id"]
+          },
+          {
             foreignKeyName: "fase_itens_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -389,6 +429,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_fases_previsao"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sugestao_compra"
+            referencedColumns: ["fase_id"]
           },
           {
             foreignKeyName: "financeiro_fornecedor_id_fkey"
@@ -949,8 +996,6 @@ export type Database = {
           atrasado: boolean | null
           data_fim: string | null
           data_inicio: string | null
-          dias_decorridos: number | null
-          dias_planejados: number | null
           diferenca_progresso: number | null
           id: string | null
           nome: string | null
@@ -958,37 +1003,30 @@ export type Database = {
           progresso: number | null
           progresso_esperado: number | null
           status: string | null
-          tenant_id: string | null
         }
         Insert: {
           atrasado?: never
           data_fim?: string | null
           data_inicio?: string | null
-          dias_decorridos?: never
-          dias_planejados?: never
           diferenca_progresso?: never
           id?: string | null
           nome?: string | null
           obra_id?: string | null
-          progresso?: number | null
+          progresso?: never
           progresso_esperado?: never
           status?: string | null
-          tenant_id?: string | null
         }
         Update: {
           atrasado?: never
           data_fim?: string | null
           data_inicio?: string | null
-          dias_decorridos?: never
-          dias_planejados?: never
           diferenca_progresso?: never
           id?: string | null
           nome?: string | null
           obra_id?: string | null
-          progresso?: number | null
+          progresso?: never
           progresso_esperado?: never
           status?: string | null
-          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -1003,13 +1041,6 @@ export type Database = {
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "vw_resumo_financeiro"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "obra_fases_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1043,6 +1074,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_sugestao_compra: {
+        Row: {
+          acao: string | null
+          diferenca: number | null
+          fase: string | null
+          fase_id: string | null
+          item: string | null
+          obra_id: string | null
+          tenant_id: string | null
+          valor_previsto: number | null
+          valor_real: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       atualizar_progresso_fase: { Args: { f_id: string }; Returns: undefined }
@@ -1053,15 +1120,26 @@ export type Database = {
       avaliar_fornecedor: { Args: { f_id: string }; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       expirar_cotacoes: { Args: never; Returns: undefined }
-      gerar_alertas_fase: {
-        Args: never
-        Returns: {
-          fase_id: string
-          mensagem: string
-          nome: string
-          tipo: string
-        }[]
-      }
+      gerar_alertas_fase:
+        | {
+            Args: never
+            Returns: {
+              fase_id: string
+              mensagem: string
+              nome: string
+              tipo: string
+            }[]
+          }
+        | {
+            Args: { p_obra_id: string }
+            Returns: {
+              fase_id: string
+              mensagem: string
+              nome: string
+              tipo: string
+            }[]
+          }
+      processar_alertas: { Args: never; Returns: undefined }
     }
     Enums: {
       status_cotacao:
