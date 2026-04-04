@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus } from "lucide-react";
+import { FasePhotos } from "@/components/FasePhotos";
 
 export default function EtapaDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -28,13 +29,15 @@ export default function EtapaDetalhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obra_fases")
-        .select("*")
+        .select("*, obras(id)")
         .eq("id", id!)
         .single();
       if (error) throw error;
       return data;
     },
   });
+
+  const obraId = (fase as any)?.obras?.id ?? (fase as any)?.obra_id;
 
   const { data: itens } = useQuery({
     queryKey: ["fase-itens", id],
@@ -187,6 +190,11 @@ export default function EtapaDetalhe() {
           </Card>
         )}
       </div>
+
+      {/* Photos */}
+      {obraId && id && (
+        <FasePhotos faseId={id} obraId={obraId} />
+      )}
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

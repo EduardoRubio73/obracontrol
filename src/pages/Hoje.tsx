@@ -154,7 +154,7 @@ const Hoje = () => {
             {firstName ? `, ${firstName}` : ""} 👋
           </h1>
           <p className="text-lg text-muted-foreground mt-1">
-            Vamos cuidar da sua obra hoje
+            {hasAlerts ? "Existem pendências que precisam de atenção." : "Sem pendências. Obra no caminho certo."}
           </p>
         </div>
       </div>

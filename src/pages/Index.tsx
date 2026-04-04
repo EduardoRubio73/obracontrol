@@ -18,53 +18,9 @@ import {
   Plus,
 } from "lucide-react";
 
-/* ── theme config by tipo_obra ── */
-const obraThemes: Record<
-  string,
-  {
-    emoji: string;
-    subtitle: string;
-    highlightGradient: string;
-    highlightBorder: string;
-    okGradient: string;
-    okBorder: string;
-  }
-> = {
-  casa: {
-    emoji: "🏠",
-    subtitle: "Vamos cuidar da sua casa hoje",
-    highlightGradient: "from-orange-400/20 to-amber-300/15",
-    highlightBorder: "border-orange-200/60",
-    okGradient: "from-orange-300/10 to-amber-200/10",
-    okBorder: "border-orange-200/40",
-  },
-  reforma: {
-    emoji: "🔧",
-    subtitle: "Hora de avançar na reforma",
-    highlightGradient: "from-yellow-400/20 to-amber-300/15",
-    highlightBorder: "border-yellow-200/60",
-    okGradient: "from-yellow-300/10 to-amber-200/10",
-    okBorder: "border-yellow-200/40",
-  },
-  comercial: {
-    emoji: "🏢",
-    subtitle: "Gestão da obra em foco",
-    highlightGradient: "from-blue-400/20 to-slate-300/15",
-    highlightBorder: "border-blue-200/60",
-    okGradient: "from-blue-300/10 to-slate-200/10",
-    okBorder: "border-blue-200/40",
-  },
-  apartamento: {
-    emoji: "🏢",
-    subtitle: "Sua obra organizada e no prazo",
-    highlightGradient: "from-emerald-400/20 to-teal-300/15",
-    highlightBorder: "border-emerald-200/60",
-    okGradient: "from-emerald-300/10 to-teal-200/10",
-    okBorder: "border-emerald-200/40",
-  },
-};
-
-const defaultTheme = obraThemes.casa;
+/* ── status messages (professional tone) ── */
+const statusOk = "Tudo em dia. Obra evoluindo conforme o planejado.";
+const statusAlert = "Atenção: existem etapas em atraso.";
 
 /* ── gradient menu items ── */
 const menuItems = [
@@ -205,8 +161,8 @@ const MenuPrincipal = () => {
   const firstName = profile?.nome?.split(" ")[0] ?? "";
   const hasAlerts = (alertas?.length ?? 0) > 0;
 
-  const tipoObra = (obra as any)?.tipo_obra ?? "casa";
-  const theme = obraThemes[tipoObra] ?? defaultTheme;
+
+
 
   // Dynamic order: alerts → Hoje first, else Etapas first
   const orderedMenu = hasAlerts
@@ -271,27 +227,22 @@ const MenuPrincipal = () => {
         }
       `}</style>
 
-      {/* ── BLOCO 1: Header inteligente ── */}
+      {/* ── BLOCO 1: Header unificado ── */}
       <div className="pt-6 pb-1" style={stagger(0)}>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           {greeting}
-          {firstName ? `, ${firstName}` : ""} {theme.emoji}
+          {firstName ? `, ${firstName}` : ""} 👋
         </h1>
         <p className="text-lg text-muted-foreground mt-2">
-          {hasAlerts ? "⚠️ Você tem algo importante hoje" : theme.subtitle}
+          {hasAlerts ? statusAlert : statusOk}
         </p>
       </div>
 
-      {/* ── BLOCO 2: Destaque do dia ── */}
-      <div className="mt-5" style={stagger(1)}>
-        {hasAlerts ? (
-          <div
-            className={`rounded-3xl bg-gradient-to-r ${theme.highlightGradient} border ${theme.highlightBorder} p-6`}
-          >
-            <p className="text-xl font-bold text-foreground">
-              🚨 Você tem etapas atrasadas
-            </p>
-            <p className="text-base text-muted-foreground mt-1">
+      {/* ── BLOCO 2: Alerta (só se houver) ── */}
+      {hasAlerts && (
+        <div className="mt-5" style={stagger(1)}>
+          <div className="rounded-3xl bg-destructive/10 border border-destructive/30 p-6">
+            <p className="text-base text-foreground font-semibold">
               {alertas![0]?.mensagem}
             </p>
             <Button
@@ -301,19 +252,8 @@ const MenuPrincipal = () => {
               Resolver agora
             </Button>
           </div>
-        ) : (
-          <div
-            className={`rounded-3xl bg-gradient-to-r ${theme.okGradient} border ${theme.okBorder} p-6 text-center`}
-          >
-            <p className="text-2xl font-bold text-foreground">
-              Tudo em dia 🎉
-            </p>
-            <p className="text-base text-muted-foreground mt-1">
-              Sua obra está no caminho certo
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── BLOCO 3: Nova Obra CTA ── */}
       <div className="mt-6" style={stagger(2)}>
