@@ -25,6 +25,7 @@ const Produtos = () => {
   const [prodCatId, setProdCatId] = useState("");
 
   const [filterCat, setFilterCat] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "cat" | "prod"; id: string; nome: string } | null>(null);
 
   const { data: categorias } = useQuery({
     queryKey: ["categorias_produtos"],
