@@ -1,115 +1,274 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingDown, TrendingUp, Building2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import {
+  Bell,
+  CheckCircle2,
+  AlertTriangle,
+  ShoppingCart,
+  Sun,
+  Clock,
+} from "lucide-react";
 
-const Dashboard = () => {
-  const { data: resumo } = useQuery({
-    queryKey: ["resumo-financeiro"],
+const fmt = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const Hoje = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Generate system alerts on load
+  useEffect(() => {
+    if (user?.id) {
+      supabase.rpc("gerar_alertas_sistema", { p_user_id: user.id });
+    }
+  }, [user?.id]);
+
+  // System alerts (unresolved)
+  const { data: alertas } = useQuery({
+    queryKey: ["alertas-sistema"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vw_resumo_financeiro").select("*");
+      const { data, error } = await supabase
+        .from("alertas_sistema" as any)
+        .select("*")
+        .eq("resolvido", false)
+        .order("created_at", { ascending: false }) as any;
+      if (error) throw error;
+      return data as { id: string; entidade: string; tipo: string; mensagem: string; created_at: string }[];
+    },
+  });
+
+  // Pending fase_itens (not completed)
+  const { data: tarefas } = useQuery({
+    queryKey: ["tarefas-pendentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fase_itens")
+        .select("id, nome, status, fase_id")
+        .neq("status", "concluido")
+        .limit(20);
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: financeiro } = useQuery({
-    queryKey: ["financeiro-chart"],
+  // Delayed phases
+  const { data: atrasadas } = useQuery({
+    queryKey: ["fases-atrasadas"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("financeiro").select("tipo, valor, data_transacao");
+      const { data, error } = await supabase
+        .from("vw_fases_previsao" as any)
+        .select("*")
+        .eq("atrasado", true) as any;
       if (error) throw error;
-      return data;
+      return data as { id: string; nome: string; progresso: number; status: string }[];
     },
   });
 
-  const totais = resumo?.reduce(
-    (acc, r) => ({
-      previsto: acc.previsto + (Number(r.valor_previsto) || 0),
-      gasto: acc.gasto + (Number(r.total_gasto) || 0),
-    }),
-    { previsto: 0, gasto: 0 }
-  ) ?? { previsto: 0, gasto: 0 };
+  // Purchase suggestions
+  const { data: compras } = useQuery({
+    queryKey: ["sugestao-compra-hoje"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vw_sugestao_compra" as any)
+        .select("*")
+        .neq("acao", "ok") as any;
+      if (error) throw error;
+      return data as { id: string; fase: string; item: string; acao: string }[];
+    },
+  });
 
-  const economia = totais.previsto - totais.gasto;
+  // Resolve alert
+  const resolveAlert = useMutation({
+    mutationFn: async (alertId: string) => {
+      const { error } = await (supabase.from("alertas_sistema" as any) as any)
+        .update({ resolvido: true })
+        .eq("id", alertId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alertas-sistema"] });
+      toast.success("Alerta resolvido!");
+    },
+  });
 
-  // Group financeiro by month
-  const chartData = financeiro?.reduce((acc: Record<string, { mes: string; receita: number; despesa: number }>, f) => {
-    const mes = f.data_transacao ? f.data_transacao.slice(0, 7) : "Sem data";
-    if (!acc[mes]) acc[mes] = { mes, receita: 0, despesa: 0 };
-    if (f.tipo === "receita") acc[mes].receita += Number(f.valor);
-    else acc[mes].despesa += Number(f.valor);
-    return acc;
-  }, {});
+  // Toggle task done
+  const toggleTask = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase
+        .from("fase_itens")
+        .update({ status: "concluido" })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tarefas-pendentes"] });
+      toast.success("Tarefa concluída!");
+    },
+  });
 
-  const chartArray = chartData ? Object.values(chartData).sort((a, b) => a.mes.localeCompare(b.mes)) : [];
+  // Greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
 
-  const fmt = (v: number) =>
-    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const alertColors: Record<string, { bg: string; border: string; text: string }> = {
+    atraso: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700" },
+    orcamento: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
+    parada: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
+  };
+
+  const acaoLabels: Record<string, { label: string; color: string }> = {
+    comprar: { label: "Comprar", color: "bg-sky-100 text-sky-800 border-sky-200" },
+    revisar: { label: "Revisar", color: "bg-amber-100 text-amber-800 border-amber-200" },
+    renegociar: { label: "Renegociar", color: "bg-rose-100 text-rose-800 border-rose-200" },
+  };
+
+  const hasContent = (alertas?.length ?? 0) > 0 || (tarefas?.length ?? 0) > 0 || (atrasadas?.length ?? 0) > 0 || (compras?.length ?? 0) > 0;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard icon={Building2} label="Obras" value={resumo?.length ?? 0} />
-        <SummaryCard icon={DollarSign} label="Valor Previsto" value={fmt(totais.previsto)} />
-        <SummaryCard icon={TrendingDown} label="Valor Gasto" value={fmt(totais.gasto)} color="destructive" />
-        <SummaryCard icon={TrendingUp} label="Economia" value={fmt(economia)} color="success" />
+    <div className="space-y-8 max-w-2xl mx-auto">
+      {/* Hero greeting */}
+      <div className="text-center space-y-2 pt-4">
+        <div className="flex justify-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 border-2 border-amber-200">
+            <Sun className="h-8 w-8 text-amber-600" />
+          </div>
+        </div>
+        <h1 className="text-3xl font-black">{greeting}!</h1>
+        <p className="text-lg text-muted-foreground">Vamos cuidar da sua obra hoje</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Receitas vs Despesas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartArray}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip formatter={(v: number) => fmt(v)} />
-                <Legend />
-                <Bar dataKey="receita" name="Receita" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="despesa" name="Despesa" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {!hasContent && (
+        <Card className="border-dashed border-2">
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-emerald-400" />
+            <p className="text-lg font-semibold">Tudo em dia! 🎉</p>
+            <p className="text-sm mt-1">Nenhuma pendência encontrada.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== ALERTAS DO DIA ===== */}
+      {(alertas?.length ?? 0) > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Bell className="h-5 w-5 text-rose-500" />
+            🔔 Alertas do Dia
+            <Badge variant="destructive" className="ml-1">{alertas!.length}</Badge>
+          </h2>
+          {alertas!.map((a) => {
+            const cfg = alertColors[a.tipo] ?? { bg: "bg-sky-50", border: "border-sky-200", text: "text-sky-700" };
+            return (
+              <Card key={a.id} className={`${cfg.bg} ${cfg.border} border-2`}>
+                <CardContent className="p-5 flex items-center gap-4">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 ${cfg.border} ${cfg.bg}`}>
+                    <AlertTriangle className={`h-6 w-6 ${cfg.text}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-base font-semibold ${cfg.text}`}>{a.mensagem}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(a.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={`shrink-0 ${cfg.text} ${cfg.border}`}
+                    onClick={() => resolveAlert.mutate(a.id)}
+                  >
+                    <CheckCircle2 className="mr-1 h-4 w-4" />
+                    Resolver
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ===== TAREFAS PARA FAZER ===== */}
+      {(tarefas?.length ?? 0) > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold">📋 Tarefas para fazer</h2>
+          {tarefas!.map((t) => (
+            <Card key={t.id} className="border-2">
+              <CardContent className="p-5 flex items-center gap-4">
+                <Checkbox
+                  checked={false}
+                  onCheckedChange={() => toggleTask.mutate(t.id)}
+                  className="h-7 w-7 rounded-lg border-2"
+                />
+                <p className="text-base font-semibold flex-1">{t.nome}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ===== FASES COM ATRASO ===== */}
+      {(atrasadas?.length ?? 0) > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Clock className="h-5 w-5 text-rose-500" />
+            ⏳ Fases com atraso
+          </h2>
+          {atrasadas!.map((f) => (
+            <Card key={f.id} className="bg-rose-50 border-rose-200 border-2">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 border border-rose-200">
+                      <AlertTriangle className="h-5 w-5 text-rose-600" />
+                    </div>
+                    <p className="text-base font-bold text-rose-800">{f.nome}</p>
+                  </div>
+                  <span className="text-2xl font-black tabular-nums text-rose-700">{f.progresso ?? 0}%</span>
+                </div>
+                <Progress
+                  value={f.progresso ?? 0}
+                  className="h-4 rounded-full bg-rose-200/60 [&>div]:bg-rose-500 [&>div]:rounded-full"
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ===== PRECISA COMPRAR ===== */}
+      {(compras?.length ?? 0) > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-sky-500" />
+            🛒 Precisa comprar
+          </h2>
+          {compras!.map((c) => {
+            const acaoCfg = acaoLabels[c.acao] ?? { label: c.acao, color: "bg-slate-100 text-slate-700 border-slate-200" };
+            return (
+              <Card key={c.id} className="border-2">
+                <CardContent className="p-5 flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-100 border-2 border-sky-200">
+                    <ShoppingCart className="h-6 w-6 text-sky-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold">{c.item}</p>
+                    <p className="text-sm text-muted-foreground">{c.fase}</p>
+                  </div>
+                  <Badge className={`${acaoCfg.color} text-xs font-bold border`}>{acaoCfg.label}</Badge>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
 
-function SummaryCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: any;
-  label: string;
-  value: string | number;
-  color?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-6">
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-          color === "destructive" ? "bg-destructive/10 text-destructive" :
-          color === "success" ? "bg-success/10 text-success" :
-          "bg-primary/10 text-primary"
-        }`}>
-          <Icon className="h-6 w-6" />
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export default Dashboard;
+export default Hoje;
