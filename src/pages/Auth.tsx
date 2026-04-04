@@ -44,7 +44,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <img src={logoImg} alt="ObraControl Logo" className="mx-auto mb-4 h-32 w-32 rounded-xl object-contain" />
-          <CardTitle className="text-2xl font-bold">ObraControl</CardTitle>
+          
           <CardDescription>
             {isLogin ? "Acesse sua conta" : "Crie sua conta"}
           </CardDescription>
