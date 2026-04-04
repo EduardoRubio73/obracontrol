@@ -1,71 +1,83 @@
 
 
-# Plano: Dashboard Avançado + Perfil Admin
+# Plano: Contexto Global de Obra Ativa
 
-## Visao Geral
+## Problema
+Telas como Etapas, Financeiro, Compras e Cotações não têm contexto de obra. Etapas usa "primeira obra" hardcoded, Financeiro lista tudo sem filtro, Compras usa uma view sem filtro. Risco de lançar dados na obra errada.
 
-Evoluir o Dashboard existente para incluir: filtro global por obra, novos cards (documentos, alterações, fornecedores, cotações detalhadas, evolução mensal), seção admin com auditoria/logs, e botão de geração de dossiê. Mobile mantém visão resumida.
+## Solução
 
-## O que ja existe
+### 1. Criar Context React: `ObraAtivaProvider`
 
-- `Dashboard.tsx`: cards resumo, obras recentes, financeiro, cotações, timeline de fases, gráfico previsto vs gasto, tabela de obras (desktop only)
-- `Auditoria.tsx`: página separada com filtro por tabela
-- `Dossie.tsx`: página de dossiê por obra com timeline de eventos
-- Tabelas DB: `financeiro` (com `data_transacao`), `documentos`, `obra_alteracoes`, `fornecedores`, `cotacoes`, `propostas`, `auditoria`, `voz_comandos_log`
+Novo arquivo `src/hooks/useObraAtiva.tsx`:
+- React Context com `obraAtivaId` e `setObraAtivaId`
+- Persiste seleção em `localStorage`
+- Query para buscar lista de obras (`id, nome`) do usuário
+- Expõe `obras`, `obraAtiva` (objeto com id+nome), `obraAtivaId`, `setObraAtivaId`
 
-## O que muda
+### 2. Integrar Provider no App
 
-### 1. Filtro Global por Obra (Dashboard.tsx)
+Em `App.tsx`, wrappear as rotas protegidas com `<ObraAtivaProvider>` (dentro de `AuthProvider` e `QueryClientProvider`).
 
-- Adicionar `useState<string | null>` para `obraFiltro` no topo
-- Select com todas as obras + opção "Todas as obras"
-- Quando selecionada, todas as queries filtram por `obra_id`
-- Queries afetadas: financeiro, fases, cotações, alertas + novas queries
+### 3. Seletor de Obra no Header (AppLayout)
 
-### 2. Novos Cards Desktop
+Em `AppLayout.tsx`:
+- Adicionar `Select` no header (ao lado do botão Voltar)
+- Mostra nome da obra ativa
+- Dropdown com todas as obras do usuário
+- Visível em mobile e desktop
 
-**Evolução Mensal (LineChart)**: Query financeiro agrupado por mês (`data_transacao`), filtrado por obra selecionada. Usa `recharts` LineChart.
+### 4. Breadcrumb contextual
 
-**Comparativo**: Card com previsto vs real vs saldo da obra selecionada (já existe parcialmente, refinar para obra individual).
+Abaixo do header ou dentro dele, exibir:
+`Obras > Nome da Obra > [Tela Atual]`
+Usando os componentes Breadcrumb já existentes em `src/components/ui/breadcrumb.tsx`.
 
-**Documentos**: Query `documentos` filtrada por obra. Lista com nome, tipo, data, botão visualizar.
+### 5. Bloqueio sem obra selecionada
 
-**Alterações (Auditoria de Obra)**: Query `obra_alteracoes` filtrada por obra. Exibe tipo, descrição, impacto financeiro.
+Criar componente `RequireObra` que verifica se há obra ativa. Se não:
+- Exibe mensagem "Selecione uma obra para continuar"
+- Bloqueia o conteúdo da página
 
-**Fornecedores**: Query `cotacao_fornecedores` + `fornecedores` para obra selecionada. Exibe nome, score, status.
+### 6. Atualizar telas para usar contexto
 
-**Cotações Detalhadas**: Query `cotacoes` + `propostas` para obra. Exibe status, propostas recebidas, fornecedor vencedor.
+**Etapas** (`src/pages/Etapas.tsx`):
+- Remover query "primeira-obra"
+- Usar `obraAtivaId` do context
+- Mutations usam `obraAtivaId` automaticamente
 
-### 3. Seção Admin (Desktop only)
+**Financeiro** (`src/pages/Financeiro.tsx`):
+- Filtrar transações por `obra_id = obraAtivaId`
+- Remover seletor de obra do formulário de criação (usar automaticamente)
 
-- Verificar admin via `is_admin_global()` — chamar como RPC ou checar no frontend se o user tem permissão (simplificado: mostrar para todos autenticados, dados já filtrados por RLS)
-- Card Auditoria: últimos 20 logs da tabela `auditoria`
-- Card Logs Voz: últimos registros de `voz_comandos_log`
-- Visão multi-obras: tabela comparativa já existe, manter
+**Cotações** (`src/pages/Cotacoes.tsx`):
+- Filtrar por `obra_id = obraAtivaId`
+- Criar cotação com `obra_id` automático
 
-### 4. Botão "Gerar Dossiê"
+**Compras** (`src/pages/Compras.tsx`):
+- Filtrar view por obra (se possível) ou filtrar client-side
 
-- Quando obra selecionada, mostrar botão "Gerar Dossiê da Obra"
-- Navega para `/obras/{id}/dossie` (página já existente)
+**Fornecedores**: Mantém sem filtro (exceção documentada).
 
-### 5. Mobile
+**Dashboard**: Sincronizar o filtro de obra do dashboard com o contexto global.
 
-- Manter apenas: resumo cards, obras recentes, progresso, ações rápidas
-- Esconder: gráficos, auditoria, documentos, tabelas (usar `hidden md:block`)
+### 7. Sidebar + Mobile Nav
 
-## Detalhes Tecnicos
+Adicionar indicador visual da obra ativa na sidebar (desktop) e no bottom nav (mobile).
 
-- **Sem migration necessária** — todas as tabelas já existem
-- **Dashboard.tsx**: reescrever com estado de filtro, ~8 queries condicionais, layout responsivo com `hidden md:block` para seções pesadas
-- **Recharts**: adicionar `LineChart, Line` import (já pinned v2.12.7)
-- **Queries condicionais**: quando `obraFiltro` muda, queries usam `.eq("obra_id", obraFiltro)` se não for "todas"
+## Arquivos afetados
 
-## Ordem
+| Arquivo | Ação |
+|---|---|
+| `src/hooks/useObraAtiva.tsx` | Criar (context + provider) |
+| `src/App.tsx` | Adicionar provider |
+| `src/components/AppLayout.tsx` | Seletor de obra + breadcrumb no header |
+| `src/pages/Etapas.tsx` | Usar context, remover query primeira-obra |
+| `src/pages/Financeiro.tsx` | Filtrar por obraAtivaId |
+| `src/pages/Cotacoes.tsx` | Filtrar por obraAtivaId |
+| `src/pages/Compras.tsx` | Filtrar por obraAtivaId |
+| `src/pages/Dashboard.tsx` | Sincronizar com context |
 
-1. Adicionar filtro global por obra no header
-2. Refatorar queries existentes para respeitar filtro
-3. Adicionar novos cards desktop (evolução mensal, documentos, alterações, fornecedores, cotações)
-4. Adicionar seção admin (auditoria + logs)
-5. Adicionar botão "Gerar Dossiê"
-6. Garantir mobile mostra apenas resumo
+## Sem migrations
+Todas as tabelas já têm `obra_id`. Apenas filtros no frontend.
 
