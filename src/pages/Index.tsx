@@ -147,6 +147,41 @@ const MenuPrincipal = () => {
     },
   });
 
+  const { data: comprasCount } = useQuery({
+    queryKey: ["compras-count"],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("vw_sugestao_compra" as any)
+        .select("id")
+        .neq("acao", "ok")) as any;
+      if (error) throw error;
+      return (data as any[])?.length ?? 0;
+    },
+  });
+
+  const { data: etapasEmAndamento } = useQuery({
+    queryKey: ["etapas-andamento-count"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("obra_fases")
+        .select("id")
+        .eq("status", "em_andamento");
+      if (error) throw error;
+      return data?.length ?? 0;
+    },
+  });
+
+  const { data: fornecedoresCount } = useQuery({
+    queryKey: ["fornecedores-count"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fornecedores")
+        .select("id");
+      if (error) throw error;
+      return data?.length ?? 0;
+    },
+  });
+
   const toggleTask = useMutation({
     mutationFn: async (itemId: string) => {
       const { error } = await supabase
