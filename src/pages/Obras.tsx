@@ -152,8 +152,8 @@ const Obras = () => {
             </TableHeader>
             <TableBody>
               {obras?.map((obra) => (
-                <TableRow key={obra.id}>
-                  <TableCell className="font-medium">{obra.nome}</TableCell>
+                <TableRow key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}`)}>
+                  <TableCell className="font-medium text-primary hover:underline">{obra.nome}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>
                       {obra.status}
