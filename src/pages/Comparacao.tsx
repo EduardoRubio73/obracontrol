@@ -213,6 +213,45 @@ const Comparacao = () => {
             </Card>
           </div>
 
+          {/* AI Suggestion */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => pedirSugestaoIA.mutate()}
+              disabled={pedirSugestaoIA.isPending}
+              className="gap-2"
+            >
+              {pedirSugestaoIA.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Sugestão IA
+            </Button>
+          </div>
+
+          {iaRecomendacao && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="font-bold text-primary">Recomendação IA</span>
+                </div>
+                <p className="text-sm text-foreground">{iaRecomendacao.justificativa}</p>
+                {iaRecomendacao.pontos_atencao.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Pontos de atenção:</p>
+                    <ul className="space-y-1">
+                      {iaRecomendacao.pontos_atencao.map((p, i) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Desktop: Excel-style table */}
           <div className="hidden md:block">
             <Card>
