@@ -70,6 +70,7 @@ export type Database = {
           id: string
           prazo_limite: string | null
           status: string | null
+          tenant_id: string | null
         }
         Insert: {
           cotacao_id: string
@@ -82,6 +83,7 @@ export type Database = {
           id?: string
           prazo_limite?: string | null
           status?: string | null
+          tenant_id?: string | null
         }
         Update: {
           cotacao_id?: string
@@ -94,6 +96,7 @@ export type Database = {
           id?: string
           prazo_limite?: string | null
           status?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -115,6 +118,13 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotacao_fornecedores_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -193,6 +203,7 @@ export type Database = {
           nome: string
           obra_id: string
           tamanho_bytes: number | null
+          tenant_id: string | null
           tipo: string | null
           updated_at: string | null
           url: string
@@ -203,6 +214,7 @@ export type Database = {
           nome: string
           obra_id: string
           tamanho_bytes?: number | null
+          tenant_id?: string | null
           tipo?: string | null
           updated_at?: string | null
           url: string
@@ -213,6 +225,7 @@ export type Database = {
           nome?: string
           obra_id?: string
           tamanho_bytes?: number | null
+          tenant_id?: string | null
           tipo?: string | null
           updated_at?: string | null
           url?: string
@@ -232,6 +245,61 @@ export type Database = {
             referencedRelation: "vw_resumo_financeiro"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documentos_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fase_itens: {
+        Row: {
+          created_at: string | null
+          fase_id: string
+          id: string
+          nome: string
+          status: string | null
+          tenant_id: string
+          valor_previsto: number | null
+          valor_real: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          fase_id: string
+          id?: string
+          nome: string
+          status?: string | null
+          tenant_id: string
+          valor_previsto?: number | null
+          valor_real?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          fase_id?: string
+          id?: string
+          nome?: string
+          status?: string | null
+          tenant_id?: string
+          valor_previsto?: number | null
+          valor_real?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fase_itens_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "obra_fases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fase_itens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       financeiro: {
@@ -241,6 +309,7 @@ export type Database = {
           created_at: string | null
           data_transacao: string | null
           descricao: string | null
+          fase_id: string | null
           fornecedor_id: string | null
           id: string
           obra_id: string
@@ -257,6 +326,7 @@ export type Database = {
           created_at?: string | null
           data_transacao?: string | null
           descricao?: string | null
+          fase_id?: string | null
           fornecedor_id?: string | null
           id?: string
           obra_id: string
@@ -273,6 +343,7 @@ export type Database = {
           created_at?: string | null
           data_transacao?: string | null
           descricao?: string | null
+          fase_id?: string | null
           fornecedor_id?: string | null
           id?: string
           obra_id?: string
@@ -284,6 +355,13 @@ export type Database = {
           valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "financeiro_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "obra_fases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "financeiro_fornecedor_id_fkey"
             columns: ["fornecedor_id"]
@@ -326,6 +404,7 @@ export type Database = {
           fornecedor_id: string
           score: number | null
           tempo_medio_resposta: number | null
+          tenant_id: string | null
           total_convites: number | null
           total_respostas: number | null
           total_vitorias: number | null
@@ -335,6 +414,7 @@ export type Database = {
           fornecedor_id: string
           score?: number | null
           tempo_medio_resposta?: number | null
+          tenant_id?: string | null
           total_convites?: number | null
           total_respostas?: number | null
           total_vitorias?: number | null
@@ -344,6 +424,7 @@ export type Database = {
           fornecedor_id?: string
           score?: number | null
           tempo_medio_resposta?: number | null
+          tenant_id?: string | null
           total_convites?: number | null
           total_respostas?: number | null
           total_vitorias?: number | null
@@ -355,6 +436,13 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: true
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fornecedor_metricas_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -422,6 +510,7 @@ export type Database = {
           data_envio: string | null
           fornecedor_id: string
           id: string
+          tenant_id: string | null
         }
         Insert: {
           cotacao_id: string
@@ -429,6 +518,7 @@ export type Database = {
           data_envio?: string | null
           fornecedor_id: string
           id?: string
+          tenant_id?: string | null
         }
         Update: {
           cotacao_id?: string
@@ -436,6 +526,7 @@ export type Database = {
           data_envio?: string | null
           fornecedor_id?: string
           id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -459,6 +550,13 @@ export type Database = {
             referencedRelation: "fornecedores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fornecedores_cotacao_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       itens_cotacao: {
@@ -468,6 +566,7 @@ export type Database = {
           id: string
           nome: string
           quantidade: number
+          tenant_id: string | null
           unidade: string | null
         }
         Insert: {
@@ -476,6 +575,7 @@ export type Database = {
           id?: string
           nome: string
           quantidade?: number
+          tenant_id?: string | null
           unidade?: string | null
         }
         Update: {
@@ -484,6 +584,7 @@ export type Database = {
           id?: string
           nome?: string
           quantidade?: number
+          tenant_id?: string | null
           unidade?: string | null
         }
         Relationships: [
@@ -500,6 +601,74 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_propostas_comparativo"
             referencedColumns: ["cotacao_id"]
+          },
+          {
+            foreignKeyName: "itens_cotacao_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obra_fases: {
+        Row: {
+          created_at: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          id: string
+          nome: string
+          obra_id: string
+          ordem: number | null
+          progresso: number | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          nome: string
+          obra_id: string
+          ordem?: number | null
+          progresso?: number | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          nome?: string
+          obra_id?: string
+          ordem?: number | null
+          progresso?: number | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -596,6 +765,7 @@ export type Database = {
           nome: string
           proposta_id: string
           quantidade: number
+          tenant_id: string | null
           valor_unitario: number
         }
         Insert: {
@@ -604,6 +774,7 @@ export type Database = {
           nome: string
           proposta_id: string
           quantidade?: number
+          tenant_id?: string | null
           valor_unitario?: number
         }
         Update: {
@@ -612,6 +783,7 @@ export type Database = {
           nome?: string
           proposta_id?: string
           quantidade?: number
+          tenant_id?: string | null
           valor_unitario?: number
         }
         Relationships: [
@@ -620,6 +792,13 @@ export type Database = {
             columns: ["proposta_id"]
             isOneToOne: false
             referencedRelation: "propostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposta_itens_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -749,6 +928,7 @@ export type Database = {
       }
     }
     Functions: {
+      atualizar_progresso_fase: { Args: { f_id: string }; Returns: undefined }
       atualizar_ranking_fornecedor: {
         Args: { f_id: string }
         Returns: undefined
