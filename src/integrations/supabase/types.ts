@@ -241,6 +241,13 @@ export type Database = {
             foreignKeyName: "cotacoes_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "cotacoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
             referencedRelation: "vw_progresso_obra"
             referencedColumns: ["obra_id"]
           },
@@ -306,6 +313,13 @@ export type Database = {
             foreignKeyName: "documentos_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "documentos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
             referencedRelation: "vw_progresso_obra"
             referencedColumns: ["obra_id"]
           },
@@ -363,6 +377,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obra_fases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fase_itens_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["fase_id"]
           },
           {
             foreignKeyName: "fase_itens_fase_id_fkey"
@@ -451,6 +472,13 @@ export type Database = {
             foreignKeyName: "financeiro_fase_id_fkey"
             columns: ["fase_id"]
             isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["fase_id"]
+          },
+          {
+            foreignKeyName: "financeiro_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
             referencedRelation: "vw_fase_eficiencia"
             referencedColumns: ["id"]
           },
@@ -474,6 +502,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
           },
           {
             foreignKeyName: "financeiro_obra_id_fkey"
@@ -761,6 +796,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
           },
           {
             foreignKeyName: "obra_fases_obra_id_fkey"
@@ -1069,6 +1111,18 @@ export type Database = {
       }
     }
     Views: {
+      vw_alertas_inteligentes: {
+        Row: {
+          data_fim: string | null
+          fase: string | null
+          fase_id: string | null
+          obra: string | null
+          obra_id: string | null
+          progresso: number | null
+          status_ia: string | null
+        }
+        Relationships: []
+      }
       vw_fase_eficiencia: {
         Row: {
           eficiencia_percentual: number | null
@@ -1093,6 +1147,8 @@ export type Database = {
           atrasado: boolean | null
           data_fim: string | null
           data_inicio: string | null
+          dias_decorridos: number | null
+          dias_planejados: number | null
           diferenca_progresso: number | null
           id: string | null
           nome: string | null
@@ -1100,30 +1156,37 @@ export type Database = {
           progresso: number | null
           progresso_esperado: number | null
           status: string | null
+          tenant_id: string | null
         }
         Insert: {
           atrasado?: never
           data_fim?: string | null
           data_inicio?: string | null
+          dias_decorridos?: never
+          dias_planejados?: never
           diferenca_progresso?: never
           id?: string | null
           nome?: string | null
           obra_id?: string | null
-          progresso?: never
+          progresso?: number | null
           progresso_esperado?: never
           status?: string | null
+          tenant_id?: string | null
         }
         Update: {
           atrasado?: never
           data_fim?: string | null
           data_inicio?: string | null
+          dias_decorridos?: never
+          dias_planejados?: never
           diferenca_progresso?: never
           id?: string | null
           nome?: string | null
           obra_id?: string | null
-          progresso?: never
+          progresso?: number | null
           progresso_esperado?: never
           status?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -1137,6 +1200,13 @@ export type Database = {
             foreignKeyName: "obra_fases_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
             referencedRelation: "vw_progresso_obra"
             referencedColumns: ["obra_id"]
           },
@@ -1145,6 +1215,13 @@ export type Database = {
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1212,6 +1289,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
           },
           {
             foreignKeyName: "obra_fases_obra_id_fkey"
