@@ -1,83 +1,70 @@
 
 
-# Plano: Contexto Global de Obra Ativa
+# Plano: Chat com IA Real + Anexos
 
-## Problema
-Telas como Etapas, Financeiro, Compras e Cotações não têm contexto de obra. Etapas usa "primeira obra" hardcoded, Financeiro lista tudo sem filtro, Compras usa uma view sem filtro. Risco de lançar dados na obra errada.
+## O que existe hoje
+- `Chat.tsx`: UI WhatsApp-style com processamento local de keywords (sem IA)
+- Edge functions `gerar-escopo` e `apoio-decisao` já usam `LOVABLE_API_KEY` + Lovable AI Gateway
+- Bucket `documentos` já existe (privado)
+- DB functions: `fn_criar_obra_inteligente`, `fn_criar_cotacao_com_fornecedores`, etc.
 
 ## Solução
 
-### 1. Criar Context React: `ObraAtivaProvider`
+### 1. Edge Function `chat-assistente`
 
-Novo arquivo `src/hooks/useObraAtiva.tsx`:
-- React Context com `obraAtivaId` e `setObraAtivaId`
-- Persiste seleção em `localStorage`
-- Query para buscar lista de obras (`id, nome`) do usuário
-- Expõe `obras`, `obraAtiva` (objeto com id+nome), `obraAtivaId`, `setObraAtivaId`
+Novo arquivo `supabase/functions/chat-assistente/index.ts`:
 
-### 2. Integrar Provider no App
+- Recebe: `{ mensagem, obra_id, historico[], anexos[] }`
+- Valida JWT em code (extrair user do token)
+- System prompt com intents suportadas
+- Usa Lovable AI Gateway (`ai.gateway.lovable.dev`) com tool calling
+- Tools disponíveis para a IA:
+  - `criar_obra(nome, tipo, classificacao)` — chama `fn_criar_obra_inteligente` via Supabase service role
+  - `criar_gasto(obra_id, descricao, valor)` — INSERT em `financeiro`
+  - `criar_etapa(obra_id, nome)` — INSERT em `obra_fases`
+  - `status_obra(obra_id)` — SELECT de fases + financeiro para resumir
+  - `responder_texto(resposta, botoes[])` — resposta livre
+- Quando a IA chama um tool, a edge function executa via Supabase client (service role) e retorna resultado
+- Resposta final: `{ resposta, acoes[], executado }`
 
-Em `App.tsx`, wrappear as rotas protegidas com `<ObraAtivaProvider>` (dentro de `AuthProvider` e `QueryClientProvider`).
+### 2. Frontend Chat.tsx — Refatorar
 
-### 3. Seletor de Obra no Header (AppLayout)
+- Remover `processUserMessage` local
+- Adicionar estado para anexos (files pendentes)
+- `enviarMensagem` chama `supabase.functions.invoke('chat-assistente', { body })` com histórico completo
+- Enviar histórico de mensagens para manter contexto
+- Renderizar resposta com `react-markdown`
+- Botão 📎 para anexar arquivos (aceita jpg, png, pdf, doc)
+- Upload de anexos para `supabase.storage.from('documentos').upload(...)` antes de enviar mensagem
+- URLs dos anexos enviadas junto com a mensagem
 
-Em `AppLayout.tsx`:
-- Adicionar `Select` no header (ao lado do botão Voltar)
-- Mostra nome da obra ativa
-- Dropdown com todas as obras do usuário
-- Visível em mobile e desktop
+### 3. Anexos — Upload Flow
 
-### 4. Breadcrumb contextual
+- No input, adicionar botão de clipe (📎)
+- Ao selecionar arquivo: upload para `documentos` bucket, path `chat/{user_id}/{timestamp}_{filename}`
+- Exibir preview (miniatura para imagens, ícone para docs)
+- Enviar URLs na mensagem para a edge function
+- Salvar registro na tabela `documentos` com `obra_id` (se houver obra ativa)
 
-Abaixo do header ou dentro dele, exibir:
-`Obras > Nome da Obra > [Tela Atual]`
-Usando os componentes Breadcrumb já existentes em `src/components/ui/breadcrumb.tsx`.
+### 4. Markdown nas respostas
 
-### 5. Bloqueio sem obra selecionada
+- Instalar `react-markdown` (já pode estar disponível, ou adicionar)
+- Renderizar `msg.content` com `<ReactMarkdown>` em vez de split por `**`
 
-Criar componente `RequireObra` que verifica se há obra ativa. Se não:
-- Exibe mensagem "Selecione uma obra para continuar"
-- Bloqueia o conteúdo da página
-
-### 6. Atualizar telas para usar contexto
-
-**Etapas** (`src/pages/Etapas.tsx`):
-- Remover query "primeira-obra"
-- Usar `obraAtivaId` do context
-- Mutations usam `obraAtivaId` automaticamente
-
-**Financeiro** (`src/pages/Financeiro.tsx`):
-- Filtrar transações por `obra_id = obraAtivaId`
-- Remover seletor de obra do formulário de criação (usar automaticamente)
-
-**Cotações** (`src/pages/Cotacoes.tsx`):
-- Filtrar por `obra_id = obraAtivaId`
-- Criar cotação com `obra_id` automático
-
-**Compras** (`src/pages/Compras.tsx`):
-- Filtrar view por obra (se possível) ou filtrar client-side
-
-**Fornecedores**: Mantém sem filtro (exceção documentada).
-
-**Dashboard**: Sincronizar o filtro de obra do dashboard com o contexto global.
-
-### 7. Sidebar + Mobile Nav
-
-Adicionar indicador visual da obra ativa na sidebar (desktop) e no bottom nav (mobile).
-
-## Arquivos afetados
+## Arquivos
 
 | Arquivo | Ação |
 |---|---|
-| `src/hooks/useObraAtiva.tsx` | Criar (context + provider) |
-| `src/App.tsx` | Adicionar provider |
-| `src/components/AppLayout.tsx` | Seletor de obra + breadcrumb no header |
-| `src/pages/Etapas.tsx` | Usar context, remover query primeira-obra |
-| `src/pages/Financeiro.tsx` | Filtrar por obraAtivaId |
-| `src/pages/Cotacoes.tsx` | Filtrar por obraAtivaId |
-| `src/pages/Compras.tsx` | Filtrar por obraAtivaId |
-| `src/pages/Dashboard.tsx` | Sincronizar com context |
+| `supabase/functions/chat-assistente/index.ts` | Criar — edge function com IA real |
+| `src/pages/Chat.tsx` | Reescrever — conectar com edge, anexos, markdown |
 
-## Sem migrations
-Todas as tabelas já têm `obra_id`. Apenas filtros no frontend.
+## Segurança
+- Edge function valida JWT do usuário
+- Operações de banco usam service role mas filtram por user_id extraído do token
+- Anexos salvos com path do user_id
+- RLS já protege leitura dos dados
+
+## Sem migrations necessárias
+- Tabela `documentos` e bucket `documentos` já existem
+- Functions SQL já existem (`fn_criar_obra_inteligente`, etc.)
 
