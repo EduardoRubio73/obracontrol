@@ -12,6 +12,10 @@ import {
   Sparkles,
   Clock,
   Package,
+  Camera,
+  AlertTriangle,
+  DollarSign,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +27,10 @@ const tipoConfig: Record<string, { icon: typeof FileText; color: string; bg: str
   escopo_aprovado: { icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/15" },
   profissional_escolhido: { icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-600/15" },
   proposta_recebida: { icon: Package, color: "text-violet-500", bg: "bg-violet-500/15" },
+  foto_adicionada: { icon: Camera, color: "text-pink-500", bg: "bg-pink-500/15" },
+  alteracao_registrada: { icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-600/15" },
+  pagamento_registrado: { icon: DollarSign, color: "text-emerald-500", bg: "bg-emerald-500/15" },
+  tarefa_concluida: { icon: CheckCircle2, color: "text-success", bg: "bg-success/15" },
   default: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted" },
 };
 
