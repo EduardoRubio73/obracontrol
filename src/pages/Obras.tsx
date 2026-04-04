@@ -147,7 +147,7 @@ const Obras = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Valor Previsto</TableHead>
                 <TableHead>Localização</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
