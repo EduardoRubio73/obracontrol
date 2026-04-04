@@ -105,6 +105,15 @@ const PortalFornecedor = () => {
         .from("proposta_itens")
         .insert(propostaItens);
       if (itensError) throw itensError;
+      // 5. Update tracking status to "respondeu"
+      await supabase
+        .from("cotacao_fornecedores")
+        .update({
+          status: "respondeu",
+          data_resposta: new Date().toISOString(),
+        })
+        .eq("cotacao_id", cotacao.id)
+        .eq("fornecedor_id", forn.id);
     },
     onSuccess: () => {
       setSubmitted(true);
