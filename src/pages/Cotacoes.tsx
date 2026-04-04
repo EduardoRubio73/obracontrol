@@ -46,6 +46,8 @@ const Cotacoes = () => {
   const [newItemName, setNewItemName] = useState("");
   const [newItemQtd, setNewItemQtd] = useState("1");
   const [newItemUnit, setNewItemUnit] = useState("un");
+  const [prodSearch, setProdSearch] = useState("");
+  const [selectedProds, setSelectedProds] = useState<Record<string, { nome: string; unidade: string; qtd: string }>>({});
   const [emailDialog, setEmailDialog] = useState<string | null>(null);
   const [emailList, setEmailList] = useState("");
   const [prazoDias, setPrazoDias] = useState("7");
