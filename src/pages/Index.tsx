@@ -368,6 +368,49 @@ const Hoje = () => {
           })}
         </div>
       )}
+
+      {/* ===== FLOATING VOICE BUTTON ===== */}
+      {voiceSupported && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+          {voiceStatus !== "idle" && (
+            <Card className={`border-2 shadow-lg ${
+              voiceStatus === "listening" ? "bg-sky-50 border-sky-300" :
+              voiceStatus === "processing" ? "bg-emerald-50 border-emerald-300" :
+              "bg-rose-50 border-rose-300"
+            }`}>
+              <CardContent className="py-2 px-4">
+                <p className={`text-sm font-semibold ${
+                  voiceStatus === "listening" ? "text-sky-700" :
+                  voiceStatus === "processing" ? "text-emerald-700" :
+                  "text-rose-700"
+                }`}>
+                  {voiceLabels[voiceStatus]}
+                </p>
+                {voiceStatus === "processing" && transcript && (
+                  <p className="text-xs text-muted-foreground mt-0.5">"{transcript}"</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          <Button
+            size="lg"
+            onClick={handleVoiceClick}
+            className={`h-16 w-16 rounded-full shadow-xl transition-all ${
+              voiceStatus === "listening"
+                ? "bg-rose-500 hover:bg-rose-600 animate-pulse"
+                : "bg-sky-500 hover:bg-sky-600"
+            }`}
+          >
+            {voiceStatus === "listening" ? (
+              <MicOff className="h-7 w-7 text-white" />
+            ) : voiceStatus === "processing" ? (
+              <Loader2 className="h-7 w-7 text-white animate-spin" />
+            ) : (
+              <Mic className="h-7 w-7 text-white" />
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
