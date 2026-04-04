@@ -497,83 +497,142 @@ const NovaObra = () => {
         </div>
       )}
 
-      {/* ── STEP 5: Envio para profissionais ── */}
+      {/* ── STEP 5: Selecionar Fornecedores ── */}
       {step === 5 && (
         <div className="space-y-5">
           <div style={stagger(1)}>
-            <h3 className="font-bold text-foreground mb-1">Enviar para profissionais</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Selecione os profissionais que receberão esta solicitação.
+            <h3 className="text-lg font-bold text-foreground mb-1">Selecionar Fornecedores</h3>
+            <p className="text-sm text-muted-foreground">
+              Selecionamos os melhores profissionais para sua obra
             </p>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 mb-4">
-              <Star className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-sm text-primary font-medium">
-                Recomendado para obra {classificacao}: {profissionalLabel(classificacao)}
-              </span>
-            </div>
           </div>
 
-          {fornecedores && fornecedores.length > 0 ? (() => {
-            const recommended = fornecedores.filter((f) => isRecomendado((f as any).categoria, classificacao));
-            const others = fornecedores.filter((f) => !isRecomendado((f as any).categoria, classificacao));
-            const sorted = [...recommended, ...others];
+          {/* Recommendation banner */}
+          <div
+            className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-primary/10 border border-primary/20"
+            style={stagger(2)}
+          >
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm text-primary font-medium">
+              Recomendado: {profissionalLabel(classificacao)}
+            </span>
+          </div>
 
-            return (
-              <div className="space-y-2">
-                {sorted.map((f, i) => {
-                  const isRec = isRecomendado((f as any).categoria, classificacao);
-                  const catLabel = ALL_CATEGORIAS.find((c) => c.value === (f as any).categoria)?.label;
-                  return (
-                    <label
-                      key={f.id}
-                      style={stagger(i + 2)}
-                      className={`
-                        flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all
-                        active:scale-[0.97]
-                        ${selectedFornecedores.includes(f.id)
-                          ? "border-primary bg-primary/10"
-                          : isRec
-                          ? "border-primary/30 bg-primary/5 hover:border-primary/50"
-                          : "border-border bg-card hover:border-primary/40"
-                        }
-                      `}
-                    >
-                      <Checkbox
-                        checked={selectedFornecedores.includes(f.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedFornecedores((prev) =>
-                            checked ? [...prev, f.id] : prev.filter((id) => id !== f.id)
-                          );
-                        }}
-                      />
-                      <div className="flex-1">
+          {/* Selected fornecedores cards */}
+          {selectedFornecedores.length > 0 ? (
+            <div className="space-y-3">
+              {selectedFornecedores.map((f, i) => {
+                const catLabel = ALL_CATEGORIAS.find((c) => c.value === f.categoria)?.label;
+                return (
+                  <Card key={f.id} className="rounded-2xl" style={stagger(i + 3)}>
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-foreground">{f.nome}</p>
-                          {isRec && (
-                            <Badge className="bg-primary/20 text-primary text-xs border-0">
-                              <Star className="h-3 w-3 mr-0.5" /> Recomendado
+                          <p className="font-semibold text-foreground truncate">{f.nome}</p>
+                          {isRecomendado(f.categoria, classificacao) && (
+                            <Badge className="bg-primary/20 text-primary text-xs border-0 shrink-0">
+                              <Star className="h-3 w-3 mr-0.5" /> IA
                             </Badge>
                           )}
                         </div>
-                        <div className="flex gap-2 mt-0.5">
-                          {catLabel && <span className="text-xs text-muted-foreground">{catLabel}</span>}
-                          {!catLabel && f.tipo && <span className="text-xs text-muted-foreground capitalize">{f.tipo}</span>}
-                          {f.email && <span className="text-xs text-muted-foreground">• {f.email}</span>}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                          {catLabel && (
+                            <Badge variant="outline" className="text-xs px-2 py-0 h-5">
+                              {catLabel}
+                            </Badge>
+                          )}
+                          {f.tipo && (
+                            <span className="text-xs text-muted-foreground capitalize">{f.tipo}</span>
+                          )}
+                          {f.score != null && f.score > 0 && (
+                            <span className="text-xs text-muted-foreground">Score: {Number(f.score).toFixed(1)}</span>
+                          )}
+                          {f.telefone && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Phone className="h-3 w-3" /> {f.telefone}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </label>
-                  );
-                })}
-              </div>
-            );
-          })() : (
-            <Card className="rounded-2xl" style={stagger(2)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => removeFornecedor(f.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="rounded-2xl border-dashed" style={stagger(3)}>
               <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">Nenhum fornecedor cadastrado.</p>
-                <p className="text-sm text-muted-foreground mt-1">Você pode enviar para profissionais depois.</p>
+                <p className="text-muted-foreground">Nenhum fornecedor selecionado.</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {allFornecedores && allFornecedores.length > 0
+                    ? "Adicione fornecedores abaixo."
+                    : "Cadastre fornecedores primeiro em Fornecedores."}
+                </p>
               </CardContent>
             </Card>
           )}
+
+          {/* Add fornecedor card */}
+          {selectedFornecedores.length < 3 && allFornecedores && allFornecedores.length > 0 && (
+            <Card className="rounded-2xl" style={stagger(6)}>
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold text-foreground mb-2">Adicionar Fornecedor</p>
+                <div className="flex gap-2">
+                  <Select value={addFornecedorId} onValueChange={setAddFornecedorId}>
+                    <SelectTrigger className="flex-1 h-10 rounded-xl">
+                      <SelectValue placeholder="Selecionar fornecedor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allFornecedores
+                        .filter((f) => !selectedFornecedores.some((s) => s.id === f.id))
+                        .map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.nome} {f.categoria ? `(${ALL_CATEGORIAS.find((c) => c.value === f.categoria)?.label || f.categoria})` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 rounded-xl shrink-0"
+                    onClick={addFornecedor}
+                    disabled={!addFornecedorId}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Summary card */}
+          <Card className="rounded-2xl bg-muted/50" style={stagger(7)}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedFornecedores.length} de 3 selecionado{selectedFornecedores.length !== 1 ? "s" : ""}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Você pode enviar para até 3 fornecedores
+                </p>
+              </div>
+              {selectedFornecedores.length < 1 && (
+                <Badge variant="destructive" className="text-xs">Mín. 1</Badge>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
