@@ -42,7 +42,7 @@ const Dashboard = () => {
     return acc;
   }, {});
 
-  const chartArray = chartData ? Object.values(chartData).sort((a, b) => a.mes.localeCompare(b.mes)) : [];
+  const chartArray = chartData ? Object.values(chartData).sort((a, b) => (a as any).mes.localeCompare((b as any).mes)) : [];
 
   const fmt = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
