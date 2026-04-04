@@ -19,7 +19,7 @@ export function AppLayout() {
             <Outlet />
           </main>
         </div>
-        <MobileBottomNav />
+        
       </div>
     </SidebarProvider>
   );
