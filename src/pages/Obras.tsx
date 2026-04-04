@@ -161,8 +161,11 @@ const Obras = () => {
                   </TableCell>
                   <TableCell>{fmt(obra.valor_previsto)}</TableCell>
                   <TableCell>{obra.localizacao ?? "—"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => { setEditing(obra); setOpen(true); }}>
+                  <TableCell className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/obras/${obra.id}`); }}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditing(obra); setOpen(true); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </TableCell>
