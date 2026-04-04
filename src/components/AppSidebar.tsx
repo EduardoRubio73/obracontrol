@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Hoje", url: "/", icon: Home },
+  { title: "Menu", url: "/", icon: Home },
+  { title: "Hoje", url: "/hoje", icon: Home },
   { title: "Etapas", url: "/etapas", icon: Layers },
   { title: "Compras", url: "/compras", icon: ShoppingCart },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
