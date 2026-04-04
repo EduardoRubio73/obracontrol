@@ -96,19 +96,42 @@ const NovaObra = () => {
   const [escopo, setEscopo] = useState<EscopoIA | null>(null);
   const [selectedFornecedores, setSelectedFornecedores] = useState<Array<{ id: string; nome: string; categoria: string | null; tipo?: string | null; score?: number | null; telefone?: string | null }>>([]);
   const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+  const [obraId, setObraId] = useState<string | null>(null);
+  const [addFornecedorId, setAddFornecedorId] = useState("");
 
   // Voice
   const { status: voiceStatus, isSupported: voiceSupported, startListening, stopListening } = useVoiceCommand();
 
-  // Fetch fornecedores for step 5
-  const { data: fornecedores } = useQuery({
+  // Fetch all fornecedores for the add-select
+  const { data: allFornecedores } = useQuery({
     queryKey: ["fornecedores-lista"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornecedores").select("id, nome, email, tipo, categoria").eq("status", "ativo");
+      const { data, error } = await supabase.from("fornecedores").select("id, nome, email, tipo, categoria, score, telefone").eq("status", "ativo");
       if (error) throw error;
       return data;
     },
   });
+
+  // Load suggestions when entering step 5
+  const loadSuggestions = async () => {
+    if (suggestionsLoaded) return;
+    const { data } = await supabase.rpc("fn_sugerir_top3_fornecedores", { p_complexidade: classificacao });
+    if (data && data.length > 0) {
+      const enriched = data.map((s: any) => {
+        const full = allFornecedores?.find((f) => f.id === s.id);
+        return {
+          id: s.id,
+          nome: s.nome,
+          categoria: s.categoria || null,
+          tipo: full?.tipo || null,
+          score: full?.score || null,
+          telefone: full?.telefone || null,
+        };
+      });
+      setSelectedFornecedores(enriched);
+    }
+    setSuggestionsLoaded(true);
+  };
 
   // Generate escopo via edge function
   const gerarEscopo = useMutation({
@@ -128,7 +151,7 @@ const NovaObra = () => {
     },
   });
 
-  // Create obra + dossie
+  // Create obra + cotação via RPC
   const criarObra = useMutation({
     mutationFn: async () => {
       // 1. Create obra
@@ -160,35 +183,23 @@ const NovaObra = () => {
         dados: { tipo_obra: tipoObra, classificacao, escopo },
       });
 
-      // 3. If fornecedores selected, create cotacao + send
+      // 3. If fornecedores selected, create cotacao via RPC
       if (selectedFornecedores.length > 0) {
-        const token = crypto.randomUUID();
-        const { data: cotacao, error: cotErr } = await supabase
-          .from("cotacoes")
-          .insert({
-            obra_id: newObraId,
-            descricao: `Cotação inicial - ${nome}`,
-            status: "enviada" as const,
-            token_publico: token,
-            data_envio: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
+        const fornIds = selectedFornecedores.map((f) => f.id);
+        const { data: cotacaoId, error: cotErr } = await supabase.rpc(
+          "fn_criar_cotacao_com_fornecedores" as any,
+          {
+            p_obra_id: newObraId,
+            p_descricao: `Cotação inicial - ${nome}`,
+            p_fornecedores_ids: fornIds,
+          }
+        );
         if (cotErr) throw cotErr;
 
-        // Add fornecedores to cotacao
-        const fornecedoresInsert = selectedFornecedores.map((fId) => ({
-          cotacao_id: cotacao.id,
-          fornecedor_id: fId,
-          status: "enviado",
-          data_envio: new Date().toISOString(),
-        }));
-        await supabase.from("cotacao_fornecedores").insert(fornecedoresInsert);
-
         // Add escopo items as cotacao items
-        if (escopo?.necessidades) {
+        if (escopo?.necessidades && cotacaoId) {
           const itens = escopo.necessidades.map((n) => ({
-            cotacao_id: cotacao.id,
+            cotacao_id: cotacaoId,
             nome: n,
             quantidade: 1,
             unidade: "un",
@@ -202,7 +213,7 @@ const NovaObra = () => {
           tipo: "solicitacao_enviada",
           titulo: "Solicitação enviada para profissionais",
           descricao: `Enviada para ${selectedFornecedores.length} profissional(is)`,
-          dados: { cotacao_id: cotacao.id, fornecedor_ids: selectedFornecedores },
+          dados: { cotacao_id: cotacaoId, fornecedor_ids: fornIds },
         });
       }
 
