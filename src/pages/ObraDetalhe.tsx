@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +150,58 @@ const ObraDetalhe = () => {
         atrasado: boolean;
         status: string;
       }[];
+    },
+  });
+
+  // System alerts
+  const { data: systemAlertas } = useQuery({
+    queryKey: ["alertas-sistema"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("alertas_sistema" as any)
+        .select("*")
+        .eq("resolvido", false)
+        .order("created_at", { ascending: false }) as any;
+      if (error) throw error;
+      return data as { id: string; entidade: string; tipo: string; mensagem: string; created_at: string }[];
+    },
+  });
+
+  // Purchase suggestions
+  const { data: sugestoes } = useQuery({
+    queryKey: ["sugestao-compra", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vw_sugestao_compra" as any)
+        .select("*")
+        .eq("obra_id", id!)
+        .neq("acao", "ok") as any;
+      if (error) throw error;
+      return data as { id: string; fase: string; item: string; valor_previsto: number; valor_real: number; diferenca: number; acao: string }[];
+    },
+  });
+
+  // Generate alerts on load
+  const { user } = useAuth();
+  useEffect(() => {
+    if (user?.id) {
+      supabase.rpc("gerar_alertas_sistema", { p_user_id: user.id }).then(({ error }) => {
+        if (error) console.error("gerar_alertas_sistema:", error.message);
+      });
+    }
+  }, [user?.id]);
+
+  // Resolve alert mutation
+  const resolveAlert = useMutation({
+    mutationFn: async (alertId: string) => {
+      const { error } = await (supabase.from("alertas_sistema" as any) as any)
+        .update({ resolvido: true })
+        .eq("id", alertId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alertas-sistema"] });
+      toast.success("Alerta resolvido!");
     },
   });
 
@@ -450,6 +503,102 @@ const ObraDetalhe = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* System Alerts */}
+      {(systemAlertas?.length ?? 0) > 0 && (
+        <Card className="border-destructive/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bell className="h-5 w-5 text-destructive" />
+              Alertas do Sistema
+              <Badge variant="destructive" className="ml-auto">{systemAlertas!.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {systemAlertas!.map((a) => {
+              const alertColors: Record<string, string> = {
+                atraso: "border-red-200 bg-red-50/50 text-red-700",
+                orcamento: "border-orange-200 bg-orange-50/50 text-orange-700",
+                parada: "border-yellow-200 bg-yellow-50/50 text-yellow-700",
+              };
+              const cls = alertColors[a.tipo] ?? "border-blue-200 bg-blue-50/50 text-blue-700";
+              return (
+                <div key={a.id} className={`flex items-start gap-3 rounded-lg border p-3 ${cls}`}>
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">{a.entidade}</Badge>
+                      <Badge variant="outline" className="text-xs">{a.tipo}</Badge>
+                    </div>
+                    <p className="text-sm mt-1">{a.mensagem}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(a.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={() => resolveAlert.mutate(a.id)}
+                  >
+                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                    Resolver
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Purchase Suggestions */}
+      {(sugestoes?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">🛒 Sugestão de Compra</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fase</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Previsto</TableHead>
+                  <TableHead className="text-right">Real</TableHead>
+                  <TableHead className="text-right">Diferença</TableHead>
+                  <TableHead className="text-center">Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sugestoes!.map((s) => {
+                  const acaoConfig: Record<string, { label: string; className: string }> = {
+                    renegociar: { label: "Renegociar", className: "bg-red-500/15 text-red-700 border-red-200" },
+                    revisar: { label: "Revisar", className: "bg-orange-500/15 text-orange-700 border-orange-200" },
+                    comprar: { label: "Comprar", className: "bg-blue-500/15 text-blue-700 border-blue-200" },
+                  };
+                  const cfg = acaoConfig[s.acao] ?? { label: s.acao, className: "" };
+                  return (
+                    <TableRow key={s.id}>
+                      <TableCell className="text-sm">{s.fase}</TableCell>
+                      <TableCell className="font-medium">{s.item}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(s.valor_previsto)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(s.valor_real)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className={s.diferenca > 0 ? "text-red-600 font-semibold" : "text-green-600"}>
+                          {s.diferenca > 0 ? "+" : ""}{fmt(s.diferenca)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={cfg.className}>{cfg.label}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
