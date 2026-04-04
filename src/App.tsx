@@ -7,16 +7,14 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
-import Obras from "./pages/Obras";
-import ObraDetalhe from "./pages/ObraDetalhe";
-import Cotacoes from "./pages/Cotacoes";
+import Etapas from "./pages/Etapas";
+import EtapaDetalhe from "./pages/EtapaDetalhe";
+import Compras from "./pages/Compras";
 import Financeiro from "./pages/Financeiro";
+import Cotacoes from "./pages/Cotacoes";
 import Fornecedores from "./pages/Fornecedores";
-import Perfil from "./pages/Perfil";
-import Comparacao from "./pages/Comparacao";
-import Analise from "./pages/Analise";
-import Ranking from "./pages/Ranking";
 import Produtos from "./pages/Produtos";
+import Perfil from "./pages/Perfil";
 import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
 
@@ -24,14 +22,24 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><p>Carregando...</p></div>;
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Carregando...</p>
+      </div>
+    );
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><p>Carregando...</p></div>;
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Carregando...</p>
+      </div>
+    );
   if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -44,19 +52,29 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<PublicRoute><Auth /></PublicRoute>} />
-            {/* Public supplier portal - no auth required */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Auth />
+                </PublicRoute>
+              }
+            />
             <Route path="/cotacao/:token" element={<PortalFornecedor />} />
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/" element={<Index />} />
-              <Route path="/obras" element={<Obras />} />
-              <Route path="/obras/:id" element={<ObraDetalhe />} />
-              <Route path="/cotacoes" element={<Cotacoes />} />
-              <Route path="/cotacoes/:id/comparar" element={<Comparacao />} />
-              <Route path="/cotacoes/:id/analise" element={<Analise />} />
+              <Route path="/etapas" element={<Etapas />} />
+              <Route path="/etapas/:id" element={<EtapaDetalhe />} />
+              <Route path="/compras" element={<Compras />} />
               <Route path="/financeiro" element={<Financeiro />} />
+              <Route path="/cotacoes" element={<Cotacoes />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
-              <Route path="/ranking" element={<Ranking />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/perfil" element={<Perfil />} />
             </Route>

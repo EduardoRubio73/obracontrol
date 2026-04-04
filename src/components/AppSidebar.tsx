@@ -1,17 +1,16 @@
 import {
-  LayoutDashboard,
-  Building2,
-  FileText,
+  Home,
+  Layers,
+  ShoppingCart,
   DollarSign,
+  FileText,
   Users,
-  Trophy,
   Package,
   UserCircle,
   LogOut,
 } from "lucide-react";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
@@ -26,12 +25,12 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Obras", url: "/obras", icon: Building2 },
-  { title: "Cotações", url: "/cotacoes", icon: FileText },
+  { title: "Hoje", url: "/", icon: Home },
+  { title: "Etapas", url: "/etapas", icon: Layers },
+  { title: "Compras", url: "/compras", icon: ShoppingCart },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
+  { title: "Cotações", url: "/cotacoes", icon: FileText },
   { title: "Fornecedores", url: "/fornecedores", icon: Users },
-  { title: "Ranking", url: "/ranking", icon: Trophy },
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Perfil", url: "/perfil", icon: UserCircle },
 ];
@@ -39,16 +38,21 @@ const items = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
   const { signOut } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="flex items-center gap-2 px-4 py-5">
-          <img src={logoImg} alt="ObraControl" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
+          <img
+            src={logoImg}
+            alt="ObraControl"
+            className="h-9 w-9 shrink-0 rounded-lg object-contain"
+          />
           {!collapsed && (
-            <span className="text-lg font-bold text-foreground">ObraControl</span>
+            <span className="text-lg font-bold text-foreground">
+              ObraControl
+            </span>
           )}
         </div>
 
@@ -78,7 +82,10 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={signOut} className="text-destructive hover:bg-destructive/10">
+            <SidebarMenuButton
+              onClick={signOut}
+              className="text-destructive hover:bg-destructive/10"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               {!collapsed && <span>Sair</span>}
             </SidebarMenuButton>
