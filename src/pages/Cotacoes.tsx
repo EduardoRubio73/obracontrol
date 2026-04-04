@@ -166,8 +166,90 @@ const Cotacoes = () => {
       unidade: newItemUnit || "un",
     });
   };
+  const gerarEmail = (email: string, nomeObra: string, link: string, prazo: string) => {
+    const subject = `Solicitação de Orçamento - ${nomeObra}`;
+    const body = `Prezados,
 
-  return (
+Estamos realizando uma cotação referente à obra:
+
+${nomeObra}
+
+Solicitamos o envio da proposta através do link abaixo:
+
+${link}
+
+Prazo para envio: ${prazo}
+
+IMPORTANTE:
+O envio deve ser feito exclusivamente pelo formulário para garantir padronização e análise correta.
+
+As propostas serão analisadas com base em critérios técnicos e financeiros.
+
+Atenciosamente,
+ObraControl`;
+
+    const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  };
+
+  const handleEnviarEmails = () => {
+    if (!emailDialog) return;
+    const cotacao = cotacoes?.find((c) => c.id === emailDialog);
+    if (!cotacao) return;
+
+    const token = (cotacao as any).token_publico;
+    const link = `${window.location.origin}/cotacao/${token}`;
+    const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
+    const prazo = (cotacao as any).data_expiracao ?? "Não definido";
+
+    const emails = emailList
+      .split(/[,;\n]/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+
+    if (!emails.length) {
+      toast.error("Informe pelo menos um email válido");
+      return;
+    }
+
+    // Open mailto for each (or combined)
+    if (emails.length === 1) {
+      gerarEmail(emails[0], nomeObra, link, prazo);
+    } else {
+      // Use first email as To, rest as CC via single mailto
+      const [first, ...rest] = emails;
+      const subject = `Solicitação de Orçamento - ${nomeObra}`;
+      const body = `Prezados,
+
+Estamos realizando uma cotação referente à obra:
+
+${nomeObra}
+
+Solicitamos o envio da proposta através do link abaixo:
+
+${link}
+
+Prazo para envio: ${prazo}
+
+IMPORTANTE:
+O envio deve ser feito exclusivamente pelo formulário para garantir padronização e análise correta.
+
+As propostas serão analisadas com base em critérios técnicos e financeiros.
+
+Atenciosamente,
+ObraControl`;
+
+      const cc = rest.map(encodeURIComponent).join(",");
+      const mailto = `mailto:${encodeURIComponent(first)}?cc=${cc}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+    }
+
+    toast.success(`Email preparado para ${emails.length} fornecedor(es)!`);
+    setEmailDialog(null);
+    setEmailList("");
+  };
+
+
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Cotações</h1>
