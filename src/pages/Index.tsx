@@ -163,8 +163,69 @@ const Hoje = () => {
 
   const hasContent = (alertas?.length ?? 0) > 0 || (tarefas?.length ?? 0) > 0 || (atrasadas?.length ?? 0) > 0 || (compras?.length ?? 0) > 0;
 
+  // Voice command handler
+  const handleVoiceCommand = useCallback((cmd: VoiceCommand, raw: string) => {
+    switch (cmd.action) {
+      case "concluir_tarefa": {
+        if (tarefas?.length) {
+          // Try to match by name, or complete first task
+          const match = cmd.target
+            ? tarefas.find((t) => t.nome.toLowerCase().includes(cmd.target!.toLowerCase()))
+            : tarefas[0];
+          if (match) {
+            toggleTask.mutate(match.id);
+            toast.success(`Tarefa "${match.nome}" concluída por voz!`);
+          } else {
+            toast.info("Não encontrei essa tarefa. Tente novamente.");
+          }
+        } else {
+          toast.info("Não há tarefas pendentes.");
+        }
+        break;
+      }
+      case "ver_atrasos":
+        if (atrasosRef.current) {
+          atrasosRef.current.scrollIntoView({ behavior: "smooth" });
+          toast.info("Mostrando fases atrasadas");
+        } else {
+          toast.info("Não há fases atrasadas.");
+        }
+        break;
+      case "ver_compras":
+        if (comprasRef.current) {
+          comprasRef.current.scrollIntoView({ behavior: "smooth" });
+          toast.info("Mostrando compras pendentes");
+        } else {
+          toast.info("Não há compras pendentes.");
+        }
+        break;
+      case "ver_status":
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast.info("Mostrando resumo do dia");
+        break;
+      default:
+        toast.error(`Não entendi: "${raw}". Tente: concluir, atrasos, compras ou status.`);
+    }
+  }, [tarefas, toggleTask]);
+
+  const handleVoiceClick = () => {
+    if (voiceStatus === "listening") {
+      stopListening();
+    } else {
+      startListening(handleVoiceCommand);
+    }
+  };
+
+  // Voice status labels
+  const voiceLabels: Record<string, string> = {
+    idle: "Falar",
+    listening: "Estou ouvindo...",
+    processing: "Entendi, processando...",
+    error: "Não entendi, tente novamente",
+  };
+
   return (
-    <div className="space-y-8 max-w-2xl mx-auto">
+    <div className="space-y-8 max-w-2xl mx-auto pb-24">
       {/* Hero greeting */}
       <div className="text-center space-y-2 pt-4">
         <div className="flex justify-center">
