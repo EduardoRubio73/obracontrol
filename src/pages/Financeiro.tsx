@@ -68,6 +68,7 @@ const Financeiro = () => {
       tipo: fd.get("tipo"),
       descricao: fd.get("descricao") || null,
       data_transacao: fd.get("data_transacao") || null,
+      user_id: user!.id,
     });
   };
 
