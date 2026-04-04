@@ -706,6 +706,7 @@ export type Database = {
     }
     Functions: {
       current_tenant_id: { Args: never; Returns: string }
+      expirar_cotacoes: { Args: never; Returns: undefined }
     }
     Enums: {
       status_cotacao:

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,22 @@ const PortalFornecedor = () => {
     },
   });
 
+  // Track visualização when cotação loads
+  useEffect(() => {
+    if (!cotacao?.id) return;
+    supabase
+      .from("cotacao_fornecedores")
+      .update({
+        status: "visualizado",
+        data_visualizacao: new Date().toISOString(),
+      })
+      .eq("cotacao_id", cotacao.id)
+      .in("status", ["enviado"])
+      .then(({ error }) => {
+        if (error) console.error("tracking view:", error.message);
+      });
+  }, [cotacao?.id]);
+
   const submitProposta = useMutation({
     mutationFn: async () => {
       if (!cotacao || !itens?.length) throw new Error("Dados inválidos");
@@ -89,6 +105,15 @@ const PortalFornecedor = () => {
         .from("proposta_itens")
         .insert(propostaItens);
       if (itensError) throw itensError;
+      // 5. Update tracking status to "respondeu"
+      await supabase
+        .from("cotacao_fornecedores")
+        .update({
+          status: "respondeu",
+          data_resposta: new Date().toISOString(),
+        })
+        .eq("cotacao_id", cotacao.id)
+        .eq("fornecedor_id", forn.id);
     },
     onSuccess: () => {
       setSubmitted(true);
