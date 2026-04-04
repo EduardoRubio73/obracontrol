@@ -138,7 +138,7 @@ const ObraDetalhe = () => {
       const { data, error } = await supabase
         .from("vw_fases_previsao" as any)
         .select("*")
-        .eq("obra_id", id!);
+        .eq("obra_id", id!) as any;
       if (error) throw error;
       return data as {
         id: string;
