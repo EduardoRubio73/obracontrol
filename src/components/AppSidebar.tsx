@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Building2,
   FileText,
   DollarSign,
   Users,
