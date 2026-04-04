@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Building2, Eye, FileSearch } from "lucide-react";
+import { Plus, Building2, Eye, FileSearch, ArrowLeft, LogOut } from "lucide-react";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
 import { DashboardObrasRecentes } from "@/components/dashboard/DashboardObrasRecentes";
@@ -212,7 +212,12 @@ const Dashboard = () => {
     <div className="max-w-6xl mx-auto space-y-6 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-4 w-4" /> Início
+          </Button>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        </div>
         <div className="flex items-center gap-2">
           <Select value={obraFiltro} onValueChange={setObraFiltro}>
             <SelectTrigger className="w-[200px] rounded-xl">
