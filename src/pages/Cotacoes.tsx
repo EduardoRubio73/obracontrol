@@ -851,4 +851,10 @@ ObraControl`;
   );
 };
 
-export default Cotacoes;
+export default function Cotacoes() {
+  return (
+    <RequireObra>
+      <CotacoesContent />
+    </RequireObra>
+  );
+}
