@@ -253,34 +253,32 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* DESKTOP: Charts Row */}
-      <div className="hidden md:grid md:grid-cols-2 gap-4">
+      {/* Charts Row */}
+      <div className="grid md:grid-cols-2 gap-4">
         <DashboardTimeline fases={fases ?? []} />
         <DashboardChartPrevistoGasto chartData={chartData} />
       </div>
 
-      {/* DESKTOP: Evolução Mensal */}
-      <div className="hidden md:block">
-        <DashboardEvolucaoMensal financeiro={financeiro ?? []} />
-      </div>
+      {/* Evolução Mensal */}
+      <DashboardEvolucaoMensal financeiro={financeiro ?? []} />
 
-      {/* DESKTOP: Documentos + Alterações (when obra selected) */}
+      {/* Documentos + Alterações (when obra selected) */}
       {filtroId && (
-        <div className="hidden md:grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <DashboardDocumentos documentos={documentos ?? []} />
           <DashboardAlteracoes alteracoes={alteracoes ?? []} />
         </div>
       )}
 
-      {/* DESKTOP: Fornecedores + Cotações Detalhadas */}
-      <div className="hidden md:grid md:grid-cols-2 gap-4">
+      {/* Fornecedores + Cotações Detalhadas */}
+      <div className="grid md:grid-cols-2 gap-4">
         <DashboardFornecedores fornecedores={fornecedores ?? []} />
         <DashboardCotacoesDetalhadas cotacoes={cotacoesDetalhadas} />
       </div>
 
       {/* DESKTOP: Tabela completa de obras */}
       {!filtroId && (obras ?? []).length > 0 && (
-        <Card className="hidden md:block rounded-2xl">
+        <Card className="rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Todas as Obras</CardTitle>
           </CardHeader>
@@ -333,10 +331,8 @@ const Dashboard = () => {
         </Card>
       )}
 
-      {/* DESKTOP: Admin Section */}
-      <div className="hidden md:block">
-        <DashboardAdminSection auditoria={auditoria ?? []} vozLogs={vozLogs ?? []} />
-      </div>
+      {/* Admin Section */}
+      <DashboardAdminSection auditoria={auditoria ?? []} vozLogs={vozLogs ?? []} />
     </div>
   );
 };
