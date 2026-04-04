@@ -1555,7 +1555,19 @@ export type Database = {
       avaliar_fornecedor: { Args: { f_id: string }; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       expirar_cotacoes: { Args: never; Returns: undefined }
+      fn_criar_cotacao_automatica: {
+        Args: { p_complexidade: string; p_descricao: string; p_obra_id: string }
+        Returns: string
+      }
       fn_sugerir_fornecedores: {
+        Args: { p_complexidade: string }
+        Returns: {
+          categoria: string
+          id: string
+          nome: string
+        }[]
+      }
+      fn_sugerir_top3_fornecedores: {
         Args: { p_complexidade: string }
         Returns: {
           categoria: string
@@ -1584,6 +1596,7 @@ export type Database = {
           }
       gerar_alertas_sistema: { Args: { p_user_id: string }; Returns: undefined }
       interpretar_comando_voz: { Args: { p_texto: string }; Returns: string }
+      is_admin_global: { Args: never; Returns: boolean }
       mensagem_dia: { Args: { p_obra: string }; Returns: string }
       processar_alertas: { Args: never; Returns: undefined }
     }
