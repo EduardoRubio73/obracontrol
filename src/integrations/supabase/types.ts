@@ -22,8 +22,9 @@ export type Database = {
           id: string
           mensagem: string | null
           resolvido: boolean | null
-          tenant_id: string
+          tenant_id: string | null
           tipo: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -32,8 +33,9 @@ export type Database = {
           id?: string
           mensagem?: string | null
           resolvido?: boolean | null
-          tenant_id: string
+          tenant_id?: string | null
           tipo?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -42,8 +44,9 @@ export type Database = {
           id?: string
           mensagem?: string | null
           resolvido?: boolean | null
-          tenant_id?: string
+          tenant_id?: string | null
           tipo?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -217,6 +220,13 @@ export type Database = {
             foreignKeyName: "cotacoes_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "cotacoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
             referencedRelation: "vw_resumo_financeiro"
             referencedColumns: ["id"]
           },
@@ -270,6 +280,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documentos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
           },
           {
             foreignKeyName: "documentos_obra_id_fkey"
@@ -339,13 +356,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_fases_previsao"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fase_itens_fase_id_fkey"
-            columns: ["fase_id"]
-            isOneToOne: false
-            referencedRelation: "vw_sugestao_compra"
-            referencedColumns: ["fase_id"]
           },
           {
             foreignKeyName: "fase_itens_tenant_id_fkey"
@@ -431,13 +441,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_fase_id_fkey"
-            columns: ["fase_id"]
-            isOneToOne: false
-            referencedRelation: "vw_sugestao_compra"
-            referencedColumns: ["fase_id"]
-          },
-          {
             foreignKeyName: "financeiro_fornecedor_id_fkey"
             columns: ["fornecedor_id"]
             isOneToOne: false
@@ -450,6 +453,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
           },
           {
             foreignKeyName: "financeiro_obra_id_fkey"
@@ -730,6 +740,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "obras"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
           },
           {
             foreignKeyName: "obra_fases_obra_id_fkey"
@@ -1040,7 +1057,30 @@ export type Database = {
             foreignKeyName: "obra_fases_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
             referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_progresso_obra: {
+        Row: {
+          obra_id: string | null
+          progresso_geral: number | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obras_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1079,10 +1119,9 @@ export type Database = {
           acao: string | null
           diferenca: number | null
           fase: string | null
-          fase_id: string | null
+          id: string | null
           item: string | null
           obra_id: string | null
-          tenant_id: string | null
           valor_previsto: number | null
           valor_real: number | null
         }
@@ -1098,14 +1137,14 @@ export type Database = {
             foreignKeyName: "obra_fases_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
-            referencedRelation: "vw_resumo_financeiro"
-            referencedColumns: ["id"]
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
           },
           {
-            foreignKeyName: "obra_fases_tenant_id_fkey"
-            columns: ["tenant_id"]
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
             isOneToOne: false
-            referencedRelation: "tenants"
+            referencedRelation: "vw_resumo_financeiro"
             referencedColumns: ["id"]
           },
         ]
@@ -1139,6 +1178,8 @@ export type Database = {
               tipo: string
             }[]
           }
+      gerar_alertas_sistema: { Args: { p_user_id: string }; Returns: undefined }
+      mensagem_dia: { Args: { p_obra: string }; Returns: string }
       processar_alertas: { Args: never; Returns: undefined }
     }
     Enums: {
