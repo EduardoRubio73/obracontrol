@@ -515,6 +515,39 @@ ObraControl`;
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Email Dialog */}
+      <Dialog open={!!emailDialog} onOpenChange={(v) => { if (!v) { setEmailDialog(null); setEmailList(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Enviar Cotação por Email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Informe os emails dos fornecedores. O seu app de email será aberto com a mensagem pronta.
+            </p>
+            <div className="space-y-2">
+              <Label>Emails dos fornecedores</Label>
+              <textarea
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder={"fornecedor1@email.com\nfornecedor2@email.com\nfornecedor3@email.com"}
+                value={emailList}
+                onChange={(e) => setEmailList(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Separe por vírgula, ponto-e-vírgula ou quebra de linha
+              </p>
+            </div>
+            <Button className="w-full" onClick={handleEnviarEmails}>
+              <Mail className="mr-2 h-4 w-4" />
+              Abrir Email
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
