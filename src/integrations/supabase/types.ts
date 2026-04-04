@@ -58,6 +58,67 @@ export type Database = {
           },
         ]
       }
+      cotacao_fornecedores: {
+        Row: {
+          cotacao_id: string
+          created_at: string | null
+          data_envio: string | null
+          data_resposta: string | null
+          data_visualizacao: string | null
+          email: string | null
+          fornecedor_id: string
+          id: string
+          prazo_limite: string | null
+          status: string | null
+        }
+        Insert: {
+          cotacao_id: string
+          created_at?: string | null
+          data_envio?: string | null
+          data_resposta?: string | null
+          data_visualizacao?: string | null
+          email?: string | null
+          fornecedor_id: string
+          id?: string
+          prazo_limite?: string | null
+          status?: string | null
+        }
+        Update: {
+          cotacao_id?: string
+          created_at?: string | null
+          data_envio?: string | null
+          data_resposta?: string | null
+          data_visualizacao?: string | null
+          email?: string | null
+          fornecedor_id?: string
+          id?: string
+          prazo_limite?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotacao_fornecedores_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "cotacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotacao_fornecedores_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_propostas_comparativo"
+            referencedColumns: ["cotacao_id"]
+          },
+          {
+            foreignKeyName: "cotacao_fornecedores_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotacoes: {
         Row: {
           created_at: string | null
