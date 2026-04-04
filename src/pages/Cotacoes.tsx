@@ -131,6 +131,41 @@ const Cotacoes = () => {
     },
   });
 
+  // Products catalog for multi-select
+  const { data: produtosCatalog } = useQuery({
+    queryKey: ["produtos-catalog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("produtos")
+        .select("*, categorias_produtos(nome)")
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const filteredProducts = useMemo(() => {
+    if (!produtosCatalog) return [];
+    if (!prodSearch) return produtosCatalog;
+    const s = prodSearch.toLowerCase();
+    return produtosCatalog.filter(
+      (p: any) =>
+        p.nome.toLowerCase().includes(s) ||
+        p.categorias_produtos?.nome?.toLowerCase().includes(s)
+    );
+  }, [produtosCatalog, prodSearch]);
+
+  // Group products by category
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filteredProducts.forEach((p: any) => {
+      const cat = p.categorias_produtos?.nome || "Sem categoria";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
+    });
+    return groups;
+  }, [filteredProducts]);
+
   const createCotacao = useMutation({
     mutationFn: async (values: any) => {
       const { error } = await supabase.from("cotacoes").insert(values);
