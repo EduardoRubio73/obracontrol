@@ -324,6 +324,17 @@ const MenuPrincipal = () => {
         })}
       </div>
 
+      {/* ── BLOCO 5: Abrir painel completo ── */}
+      <div className="mt-6" style={stagger(8)}>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="w-full h-12 rounded-2xl border-2 border-border bg-card text-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.97] hover:bg-muted"
+        >
+          <LayoutDashboard className="h-5 w-5" />
+          Abrir painel completo
+        </button>
+      </div>
+
       {/* ── Voz (botão flutuante) ── */}
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
