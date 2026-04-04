@@ -191,6 +191,11 @@ export default function EtapaDetalhe() {
         )}
       </div>
 
+      {/* Photos */}
+      {obraId && id && (
+        <FasePhotos faseId={id} obraId={obraId} />
+      )}
+
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
