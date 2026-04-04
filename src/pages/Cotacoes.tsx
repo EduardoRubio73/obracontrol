@@ -34,6 +34,8 @@ const Cotacoes = () => {
   const [newItemName, setNewItemName] = useState("");
   const [newItemQtd, setNewItemQtd] = useState("1");
   const [newItemUnit, setNewItemUnit] = useState("un");
+  const [emailDialog, setEmailDialog] = useState<string | null>(null);
+  const [emailList, setEmailList] = useState("");
 
   const { data: obras } = useQuery({
     queryKey: ["obras-select"],
