@@ -67,46 +67,11 @@ const defaultTheme = obraThemes.casa;
 
 /* ── gradient menu items ── */
 const menuItems = [
-  {
-    key: "hoje",
-    label: "Hoje",
-    icon: Home,
-    gradient: "from-[#FF8A00] to-[#FFB347]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]",
-    url: "/hoje",
-  },
-  {
-    key: "etapas",
-    label: "Etapas",
-    icon: Layers,
-    gradient: "from-[#4FACFE] to-[#00F2FE]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(79,172,254,0.35)]",
-    url: "/etapas",
-  },
-  {
-    key: "compras",
-    label: "Compras",
-    icon: ShoppingCart,
-    gradient: "from-[#43E97B] to-[#38F9D7]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(67,233,123,0.35)]",
-    url: "/compras",
-  },
-  {
-    key: "financeiro",
-    label: "Financeiro",
-    icon: DollarSign,
-    gradient: "from-[#667EEA] to-[#764BA2]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(102,126,234,0.35)]",
-    url: "/financeiro",
-  },
-  {
-    key: "fornecedores",
-    label: "Contatos",
-    icon: Users,
-    gradient: "from-[#BDC3C7] to-[#2C3E50]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(44,62,80,0.25)]",
-    url: "/fornecedores",
-  },
+  { key: "hoje", label: "Hoje", icon: Home, gradient: "from-[#FF8A00] to-[#FFB347]", shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]", url: "/hoje" },
+  { key: "etapas", label: "Etapas", icon: Layers, gradient: "from-[#4FACFE] to-[#00F2FE]", shadow: "shadow-[0_8px_24px_-4px_rgba(79,172,254,0.35)]", url: "/etapas" },
+  { key: "compras", label: "Compras", icon: ShoppingCart, gradient: "from-[#43E97B] to-[#38F9D7]", shadow: "shadow-[0_8px_24px_-4px_rgba(67,233,123,0.35)]", url: "/compras" },
+  { key: "financeiro", label: "Financeiro", icon: DollarSign, gradient: "from-[#667EEA] to-[#764BA2]", shadow: "shadow-[0_8px_24px_-4px_rgba(102,126,234,0.35)]", url: "/financeiro" },
+  { key: "fornecedores", label: "Contatos", icon: Users, gradient: "from-[#BDC3C7] to-[#2C3E50]", shadow: "shadow-[0_8px_24px_-4px_rgba(44,62,80,0.25)]", url: "/fornecedores" },
 ];
 
 /* ── animation style helper ── */
@@ -182,6 +147,41 @@ const MenuPrincipal = () => {
     },
   });
 
+  const { data: comprasCount } = useQuery({
+    queryKey: ["compras-count"],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("vw_sugestao_compra" as any)
+        .select("id")
+        .neq("acao", "ok")) as any;
+      if (error) throw error;
+      return (data as any[])?.length ?? 0;
+    },
+  });
+
+  const { data: etapasEmAndamento } = useQuery({
+    queryKey: ["etapas-andamento-count"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("obra_fases")
+        .select("id")
+        .eq("status", "em_andamento");
+      if (error) throw error;
+      return data?.length ?? 0;
+    },
+  });
+
+  const { data: fornecedoresCount } = useQuery({
+    queryKey: ["fornecedores-count"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fornecedores")
+        .select("id");
+      if (error) throw error;
+      return data?.length ?? 0;
+    },
+  });
+
   const toggleTask = useMutation({
     mutationFn: async (itemId: string) => {
       const { error } = await supabase
@@ -211,6 +211,13 @@ const MenuPrincipal = () => {
   const orderedMenu = hasAlerts
     ? menuItems
     : [menuItems[1], menuItems[0], ...menuItems.slice(2)];
+
+  const badgeCounts: Record<string, number | undefined> = {
+    hoje: tarefas?.length,
+    etapas: etapasEmAndamento ?? undefined,
+    compras: comprasCount ?? undefined,
+    fornecedores: fornecedoresCount ?? undefined,
+  };
 
   /* ── voice ── */
   const handleVoiceCommand = useCallback(
@@ -313,6 +320,7 @@ const MenuPrincipal = () => {
           const Icon = item.icon;
           const isFull =
             orderedMenu.length % 2 !== 0 && i === orderedMenu.length - 1;
+          const count = badgeCounts[item.key];
           return (
             <button
               key={item.key}
@@ -329,7 +337,11 @@ const MenuPrincipal = () => {
                 ${isFull ? "col-span-2" : ""}
               `}
             >
-              {/* glass overlay on hover */}
+              {count != null && count > 0 && (
+                <span className="absolute top-3 right-3 z-20 min-w-[24px] h-6 px-1.5 flex items-center justify-center rounded-full bg-white/25 backdrop-blur-sm text-white text-xs font-bold">
+                  {count}
+                </span>
+              )}
               <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               <Icon
                 className="h-9 w-9 drop-shadow-md relative z-10"
