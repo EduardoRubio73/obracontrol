@@ -2,10 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Mic, MicOff, Send, Loader2, Bot, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Bot, Paperclip, X, FileText, Image as ImageIcon, Mic, Volume2 } from "lucide-react";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
-import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { useAuth } from "@/hooks/useAuth";
+import { useVoiceLoop, VoiceLoopStatus } from "@/hooks/useVoiceLoop";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -51,13 +51,12 @@ export default function Chat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesRef = useRef(messages);
 
-  const {
-    status: voiceStatus,
-    isSupported: voiceSupported,
-    startListening,
-    stopListening,
-  } = useVoiceCommand();
+  // Keep messagesRef in sync
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -92,7 +91,6 @@ export default function Chat() {
       const tipo = pf.file.type.startsWith("image/") ? "imagem" : "documento";
       uploaded.push({ nome: pf.file.name, url: urlData.publicUrl, tipo });
 
-      // Save to documentos table if obra is active
       if (obraAtivaId) {
         await supabase.from("documentos").insert({
           obra_id: obraAtivaId,
@@ -108,14 +106,13 @@ export default function Chat() {
     return uploaded;
   };
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() && pendingFiles.length === 0) return;
+  // Core send function — returns the AI response text
+  const sendMessage = useCallback(async (text: string, filesToSend?: PendingFile[]): Promise<string> => {
+    if (!text.trim() && (!filesToSend || filesToSend.length === 0)) return "";
 
-    // Upload files first
     let anexos: { nome: string; url: string; tipo: string }[] = [];
-    if (pendingFiles.length > 0) {
-      anexos = await uploadFiles(pendingFiles);
-      setPendingFiles([]);
+    if (filesToSend && filesToSend.length > 0) {
+      anexos = await uploadFiles(filesToSend);
     }
 
     const userMsg: ChatMessage = {
@@ -131,8 +128,7 @@ export default function Chat() {
     setIsTyping(true);
 
     try {
-      // Build history from previous messages (exclude welcome)
-      const historico = messages
+      const historico = messagesRef.current
         .filter((m) => m.id !== "welcome")
         .map((m) => ({ role: m.role, content: m.content }));
 
@@ -147,52 +143,53 @@ export default function Chat() {
 
       if (error) throw error;
 
+      let responseText = "";
+
       if (data?.error) {
         toast.error(data.error);
-        const errorMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `⚠️ ${data.error}`,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errorMsg]);
+        responseText = `⚠️ ${data.error}`;
       } else {
-        const assistantMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: data.resposta || "Não consegui processar sua mensagem.",
-          acoes: data.acoes?.length > 0 ? data.acoes : undefined,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+        responseText = data.resposta || "Não consegui processar sua mensagem.";
       }
+
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: responseText,
+        acoes: data?.acoes?.length > 0 ? data.acoes : undefined,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      return responseText;
     } catch (err) {
       console.error("Chat error:", err);
+      const errorText = "❌ Erro ao se comunicar com o assistente. Tente novamente.";
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "❌ Erro ao se comunicar com o assistente. Tente novamente.",
+        content: errorText,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMsg]);
+      return errorText;
     } finally {
       setIsTyping(false);
     }
-  }, [messages, obraAtivaId, pendingFiles, user]);
+  }, [obraAtivaId, user]);
+
+  // Voice loop integration
+  const voiceLoop = useVoiceLoop({
+    onTranscript: async (text) => {
+      return await sendMessage(text);
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
-  };
-
-  const handleVoiceClick = () => {
-    if (voiceStatus === "listening") {
-      stopListening();
-    } else {
-      startListening((_cmd, raw) => {
-        if (raw) sendMessage(raw);
-      });
-    }
+    const files = pendingFiles.length > 0 ? [...pendingFiles] : undefined;
+    setPendingFiles([]);
+    sendMessage(input, files);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,6 +221,21 @@ export default function Chat() {
     });
   };
 
+  const toggleVoiceLoop = () => {
+    if (voiceLoop.isActive) {
+      voiceLoop.stop();
+    } else {
+      voiceLoop.start();
+    }
+  };
+
+  const voiceStatusLabel: Record<VoiceLoopStatus, string> = {
+    idle: "",
+    listening: "🎤 Fale agora...",
+    processing: "⏳ Processando...",
+    speaking: "🔊 Respondendo...",
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3.5rem)] max-w-2xl mx-auto">
       {/* Header */}
@@ -242,15 +254,6 @@ export default function Chat() {
             )}
           </div>
         </div>
-        {voiceSupported && (
-          <Button variant="ghost" size="icon" onClick={handleVoiceClick} className="shrink-0">
-            {voiceStatus === "listening" ? (
-              <MicOff className="h-5 w-5 text-destructive" />
-            ) : (
-              <Mic className="h-5 w-5 text-muted-foreground" />
-            )}
-          </Button>
-        )}
       </div>
 
       {/* Messages */}
@@ -264,7 +267,6 @@ export default function Chat() {
                   : "bg-card border border-border rounded-bl-md"
               }`}
             >
-              {/* Attachments */}
               {msg.anexos && msg.anexos.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {msg.anexos.map((a, i) => (
@@ -280,12 +282,10 @@ export default function Chat() {
                 </div>
               )}
 
-              {/* Content */}
               <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
 
-              {/* Action buttons */}
               {msg.acoes && msg.acoes.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {msg.acoes.map((acao) => (
@@ -317,7 +317,6 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Suggestions */}
         {messages.length <= 1 && !isTyping && (
           <div className="flex flex-wrap gap-2 pt-2">
             {SUGGESTIONS.map((s) => (
@@ -333,10 +332,18 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Voice status */}
-      {voiceStatus === "listening" && (
-        <div className="px-4 py-2 bg-primary/10 text-primary text-center text-sm font-medium animate-pulse shrink-0">
-          🎤 Ouvindo... fale agora
+      {/* Voice loop status bar */}
+      {voiceLoop.isActive && (
+        <div
+          className={`px-4 py-2.5 text-center text-sm font-medium shrink-0 transition-colors ${
+            voiceLoop.status === "listening"
+              ? "bg-destructive/10 text-destructive animate-pulse"
+              : voiceLoop.status === "speaking"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {voiceStatusLabel[voiceLoop.status]}
         </div>
       )}
 
@@ -366,7 +373,7 @@ export default function Chat() {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input area */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3 border-t bg-card shrink-0">
         <input
           ref={fileInputRef}
@@ -386,18 +393,40 @@ export default function Chat() {
         >
           <Paperclip className="h-5 w-5 text-muted-foreground" />
         </Button>
+
         <Input
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Fale ou digite o que deseja fazer..."
           className="flex-1 rounded-full h-11 bg-background text-sm"
-          disabled={isTyping}
+          disabled={isTyping || voiceLoop.isActive}
         />
+
+        {/* Voice loop toggle button */}
+        {voiceLoop.isSupported && (
+          <Button
+            type="button"
+            size="icon"
+            variant={voiceLoop.isActive ? "destructive" : "outline"}
+            className={`shrink-0 h-11 w-11 rounded-full transition-all ${
+              voiceLoop.status === "listening" ? "animate-pulse ring-2 ring-destructive/50" : ""
+            }`}
+            onClick={toggleVoiceLoop}
+            disabled={isTyping}
+          >
+            {voiceLoop.status === "speaking" ? (
+              <Volume2 className="h-5 w-5" />
+            ) : (
+              <Mic className="h-5 w-5" />
+            )}
+          </Button>
+        )}
+
         <Button
           type="submit"
           size="icon"
-          disabled={(!input.trim() && pendingFiles.length === 0) || isTyping}
+          disabled={(!input.trim() && pendingFiles.length === 0) || isTyping || voiceLoop.isActive}
           className="h-11 w-11 rounded-full shrink-0"
         >
           {isTyping ? (
