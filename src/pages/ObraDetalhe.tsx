@@ -616,6 +616,7 @@ const ObraDetalhe = () => {
           </form>
         </DialogContent>
       </Dialog>
+    </div>
   );
 };
 
