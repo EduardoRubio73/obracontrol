@@ -112,7 +112,87 @@ const ObraDetalhe = () => {
     },
   });
 
-  // System alerts
+  // Fase itens
+  const { data: faseItens } = useQuery({
+    queryKey: ["fase-itens", id],
+    enabled: !!fases?.length,
+    queryFn: async () => {
+      const faseIds = fases!.map((f) => f.id);
+      const { data, error } = await supabase
+        .from("fase_itens")
+        .select("*")
+        .in("fase_id", faseIds);
+      if (error) throw error;
+      return data as FaseItem[];
+    },
+  });
+
+  // Toggle item status
+  const toggleItemStatus = useMutation({
+    mutationFn: async ({ itemId, newStatus }: { itemId: string; newStatus: string }) => {
+      const { error } = await supabase
+        .from("fase_itens")
+        .update({ status: newStatus })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", id] });
+    },
+  });
+
+  // Upsert item
+  const upsertItem = useMutation({
+    mutationFn: async (values: Partial<FaseItem> & { fase_id: string }) => {
+      if (editingItem) {
+        const { error } = await supabase
+          .from("fase_itens")
+          .update({ nome: values.nome, valor_previsto: values.valor_previsto, valor_real: values.valor_real })
+          .eq("id", editingItem.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("fase_itens")
+          .insert(values as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", id] });
+      toast.success(editingItem ? "Item atualizado!" : "Item criado!");
+      setItemDialog(false);
+      setEditingItem(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Delete item
+  const deleteItem = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase.from("fase_itens").delete().eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", id] });
+      toast.success("Item removido!");
+    },
+  });
+
+  const handleItemSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    upsertItem.mutate({
+      fase_id: itemFaseId!,
+      nome: fd.get("nome") as string,
+      valor_previsto: Number(fd.get("valor_previsto") || 0),
+      valor_real: Number(fd.get("valor_real") || 0),
+    });
+  };
+
+
   const { data: systemAlertas } = useQuery({
     queryKey: ["alertas-sistema"],
     queryFn: async () => {
