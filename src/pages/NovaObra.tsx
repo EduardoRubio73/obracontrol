@@ -93,7 +93,7 @@ const NovaObra = () => {
   const { data: fornecedores } = useQuery({
     queryKey: ["fornecedores-lista"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornecedores").select("id, nome, email, tipo").eq("status", "ativo");
+      const { data, error } = await supabase.from("fornecedores").select("id, nome, email, tipo, categoria").eq("status", "ativo");
       if (error) throw error;
       return data;
     },
