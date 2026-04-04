@@ -1,12 +1,12 @@
 import {
   LayoutDashboard,
-  Building2,
   FileText,
   DollarSign,
   Users,
   UserCircle,
   LogOut,
 } from "lucide-react";
+import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
