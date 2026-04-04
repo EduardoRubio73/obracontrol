@@ -4,6 +4,7 @@ import {
   Building2,
   FileText,
   DollarSign,
+  Trophy,
   UserCircle,
 } from "lucide-react";
 
@@ -12,6 +13,7 @@ const tabs = [
   { title: "Obras", url: "/obras", icon: Building2 },
   { title: "Cotações", url: "/cotacoes", icon: FileText },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
+  { title: "Ranking", url: "/ranking", icon: Trophy },
   { title: "Perfil", url: "/perfil", icon: UserCircle },
 ];
 

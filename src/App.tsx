@@ -14,6 +14,7 @@ import Fornecedores from "./pages/Fornecedores";
 import Perfil from "./pages/Perfil";
 import Comparacao from "./pages/Comparacao";
 import Analise from "./pages/Analise";
+import Ranking from "./pages/Ranking";
 import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/cotacoes/:id/analise" element={<Analise />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
+              <Route path="/ranking" element={<Ranking />} />
               <Route path="/perfil" element={<Perfil />} />
             </Route>
             <Route path="*" element={<NotFound />} />

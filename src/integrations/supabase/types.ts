@@ -321,6 +321,44 @@ export type Database = {
           },
         ]
       }
+      fornecedor_metricas: {
+        Row: {
+          fornecedor_id: string
+          score: number | null
+          tempo_medio_resposta: number | null
+          total_convites: number | null
+          total_respostas: number | null
+          total_vitorias: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          fornecedor_id: string
+          score?: number | null
+          tempo_medio_resposta?: number | null
+          total_convites?: number | null
+          total_respostas?: number | null
+          total_vitorias?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          fornecedor_id?: string
+          score?: number | null
+          tempo_medio_resposta?: number | null
+          total_convites?: number | null
+          total_respostas?: number | null
+          total_vitorias?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fornecedor_metricas_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: true
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fornecedores: {
         Row: {
           cnpj: string | null
@@ -705,6 +743,10 @@ export type Database = {
       }
     }
     Functions: {
+      atualizar_ranking_fornecedor: {
+        Args: { f_id: string }
+        Returns: undefined
+      }
       current_tenant_id: { Args: never; Returns: string }
       expirar_cotacoes: { Args: never; Returns: undefined }
     }
