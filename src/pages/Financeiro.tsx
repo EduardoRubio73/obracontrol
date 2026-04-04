@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,26 +20,20 @@ import { Plus } from "lucide-react";
 const fmt = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function Financeiro() {
+function FinanceiroContent() {
   const { user } = useAuth();
+  const { obraAtivaId } = useObraAtiva();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  const { data: obras } = useQuery({
-    queryKey: ["obras-select"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("obras").select("id, nome, valor_previsto");
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const { data: transacoes, isLoading } = useQuery({
-    queryKey: ["financeiro"],
+    queryKey: ["financeiro", obraAtivaId],
+    enabled: !!obraAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financeiro")
-        .select("*, obras(nome)")
+        .select("*")
+        .eq("obra_id", obraAtivaId!)
         .order("data_transacao", { ascending: false });
       if (error) throw error;
       return data;
@@ -62,7 +58,7 @@ export default function Financeiro() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+      queryClient.invalidateQueries({ queryKey: ["financeiro", obraAtivaId] });
       toast.success("Registrado!");
       setOpen(false);
     },
@@ -73,7 +69,7 @@ export default function Financeiro() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     create.mutate({
-      obra_id: fd.get("obra_id"),
+      obra_id: obraAtivaId!,
       valor: Number(fd.get("valor")),
       tipo: fd.get("tipo"),
       descricao: fd.get("descricao") || null,
@@ -90,7 +86,6 @@ export default function Financeiro() {
         </h1>
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="shadow-sm border-2 border-destructive/20 bg-destructive/5">
           <CardContent className="p-5 text-center">
@@ -110,7 +105,6 @@ export default function Financeiro() {
         </Card>
       </div>
 
-      {/* Add button */}
       <Button
         className="w-full h-14 rounded-2xl font-bold text-lg"
         onClick={() => setOpen(true)}
@@ -119,7 +113,6 @@ export default function Financeiro() {
         Adicionar gasto
       </Button>
 
-      {/* Transaction list */}
       {transacoes?.map((t) => {
         const isDespesa = t.tipo === "despesa";
         return (
@@ -140,7 +133,7 @@ export default function Financeiro() {
                 </span>
               </div>
               <p className="text-base text-muted-foreground mt-2">
-                {t.descricao ?? (t.obras as any)?.nome ?? "—"}
+                {t.descricao ?? "—"}
               </p>
               {t.data_transacao && (
                 <p className="text-sm text-muted-foreground mt-1">
@@ -160,28 +153,12 @@ export default function Financeiro() {
         </Card>
       )}
 
-      {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Adicionar</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Obra</Label>
-              <select
-                name="obra_id"
-                required
-                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
-              >
-                <option value="">Selecione</option>
-                {obras?.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor</Label>
@@ -228,5 +205,13 @@ export default function Financeiro() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function Financeiro() {
+  return (
+    <RequireObra>
+      <FinanceiroContent />
+    </RequireObra>
   );
 }

@@ -1,19 +1,13 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Building2, Eye, FileSearch, ArrowLeft, LogOut } from "lucide-react";
+import { Plus, FileSearch, ArrowLeft } from "lucide-react";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
 import { DashboardObrasRecentes } from "@/components/dashboard/DashboardObrasRecentes";
@@ -41,9 +35,9 @@ const fmt = (v: number) =>
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [obraFiltro, setObraFiltro] = useState<string>("todas");
+  const { obraAtivaId, setObraAtivaId, obras: obrasContext } = useObraAtiva();
 
-  const filtroId = obraFiltro !== "todas" ? obraFiltro : null;
+  const filtroId = obraAtivaId;
 
   /* ── Queries ── */
   const { data: obras } = useQuery({
@@ -219,17 +213,6 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={obraFiltro} onValueChange={setObraFiltro}>
-            <SelectTrigger className="w-[200px] rounded-xl">
-              <SelectValue placeholder="Selecionar obra" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as obras</SelectItem>
-              {(obras ?? []).map((o) => (
-                <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           {filtroId && (
             <Button variant="outline" className="rounded-xl gap-2" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
               <FileSearch className="h-4 w-4" /> Gerar Dossiê

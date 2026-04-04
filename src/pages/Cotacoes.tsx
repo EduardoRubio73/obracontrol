@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,8 +38,9 @@ const trackingStatusConfig: Record<string, { label: string; color: string; icon:
   expirado: { label: "Expirado", color: "bg-destructive/10 text-destructive", icon: <AlertTriangle className="h-3 w-3" /> },
 };
 
-const Cotacoes = () => {
+const CotacoesContent = () => {
   const { user } = useAuth();
+  const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -59,14 +62,7 @@ const Cotacoes = () => {
     });
   }, []);
 
-  const { data: obras } = useQuery({
-    queryKey: ["obras-select"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("obras").select("id, nome");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Removed obras query - using obraAtiva from context
 
   const { data: fornecedoresDb } = useQuery({
     queryKey: ["fornecedores-select"],
@@ -78,11 +74,13 @@ const Cotacoes = () => {
   });
 
   const { data: cotacoes, isLoading } = useQuery({
-    queryKey: ["cotacoes"],
+    queryKey: ["cotacoes", obraAtivaId],
+    enabled: !!obraAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cotacoes")
         .select("*, obras(nome)")
+        .eq("obra_id", obraAtivaId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -272,7 +270,7 @@ const Cotacoes = () => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     createCotacao.mutate({
-      obra_id: fd.get("obra_id"),
+      obra_id: obraAtivaId!,
       descricao: fd.get("descricao"),
       data_expiracao: fd.get("data_expiracao") || null,
     });
@@ -445,12 +443,9 @@ ObraControl`;
             <form onSubmit={handleNewCotacao} className="space-y-4">
               <div className="space-y-2">
                 <Label>Obra</Label>
-                <select name="obra_id" required className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="">Selecione</option>
-                  {obras?.map((o) => (
-                    <option key={o.id} value={o.id}>{o.nome}</option>
-                  ))}
-                </select>
+                <p className="text-sm font-medium text-foreground bg-muted rounded-md px-3 py-2">
+                  {obraAtiva?.nome ?? "—"}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Descrição</Label>
@@ -856,4 +851,10 @@ ObraControl`;
   );
 };
 
-export default Cotacoes;
+export default function Cotacoes() {
+  return (
+    <RequireObra>
+      <CotacoesContent />
+    </RequireObra>
+  );
+}
