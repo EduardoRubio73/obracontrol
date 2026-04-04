@@ -315,7 +315,7 @@ const Hoje = () => {
 
       {/* ===== FASES COM ATRASO ===== */}
       {(atrasadas?.length ?? 0) > 0 && (
-        <div className="space-y-3">
+        <div ref={atrasosRef} className="space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Clock className="h-5 w-5 text-rose-500" />
             ⏳ Fases com atraso
