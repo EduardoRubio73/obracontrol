@@ -8,11 +8,64 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, ShieldCheck, ShieldAlert, ShieldOff } from "lucide-react";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
 type Fornecedor = Tables<"fornecedores">;
+
+interface FornecedorMetrica {
+  fornecedor_id: string;
+  total_convites: number | null;
+  total_respostas: number | null;
+  total_vitorias: number | null;
+  tempo_medio_resposta: number | null;
+  score: number | null;
+}
+
+function getReputacao(score: number | null, totalConvites: number | null, totalRespostas: number | null) {
+  const s = score ?? 0;
+  const convites = totalConvites ?? 0;
+  const respostas = totalRespostas ?? 0;
+  const faltas = convites - respostas;
+
+  // Bloqueado: score muito baixo ou muitas faltas
+  if (s < 0.3 && convites >= 2) {
+    return {
+      status: "bloqueado",
+      label: "Bloqueado",
+      className: "bg-red-500/15 text-red-700 border-red-200",
+      icon: ShieldOff,
+    };
+  }
+  // Alerta: 2+ faltas ou score mediano
+  if (faltas >= 2 || (s < 0.5 && convites >= 2)) {
+    return {
+      status: "alerta",
+      label: "Atenção",
+      className: "bg-orange-500/15 text-orange-700 border-orange-200",
+      icon: ShieldAlert,
+    };
+  }
+  // Ativo/Confiável
+  if (convites > 0) {
+    return {
+      status: "ativo",
+      label: "Confiável",
+      className: "bg-green-500/15 text-green-700 border-green-200",
+      icon: ShieldCheck,
+    };
+  }
+  // Sem histórico
+  return {
+    status: "novo",
+    label: "Novo",
+    className: "bg-muted text-muted-foreground border-border",
+    icon: ShieldCheck,
+  };
+}
 
 const Fornecedores = () => {
   const { user } = useAuth();
@@ -28,6 +81,19 @@ const Fornecedores = () => {
       return data;
     },
   });
+
+  const { data: metricas } = useQuery({
+    queryKey: ["fornecedor-metricas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fornecedor_metricas").select("*");
+      if (error) throw error;
+      return data as FornecedorMetrica[];
+    },
+  });
+
+  const metricasMap = new Map(
+    (metricas ?? []).map((m) => [m.fornecedor_id, m])
+  );
 
   const upsert = useMutation({
     mutationFn: async (values: Partial<TablesInsert<"fornecedores">>) => {
@@ -59,6 +125,28 @@ const Fornecedores = () => {
       telefone: fd.get("telefone") as string || null,
       endereco: fd.get("endereco") as string || null,
     });
+  };
+
+  const renderReputacao = (fornecedorId: string) => {
+    const m = metricasMap.get(fornecedorId);
+    const rep = getReputacao(m?.score ?? null, m?.total_convites ?? null, m?.total_respostas ?? null);
+    const Icon = rep.icon;
+    return (
+      <div className="flex items-center gap-2">
+        <Badge className={rep.className}>
+          <Icon className="mr-1 h-3 w-3" />
+          {rep.label}
+        </Badge>
+        {m && (m.total_convites ?? 0) > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Progress value={(m.score ?? 0) * 100} className="h-1.5 w-12" />
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {((m.score ?? 0) * 100).toFixed(0)}%
+            </span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -118,6 +206,7 @@ const Fornecedores = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Reputação</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Email</TableHead>
@@ -129,6 +218,7 @@ const Fornecedores = () => {
                 <TableRow key={f.id}>
                   <TableCell className="font-medium">{f.nome}</TableCell>
                   <TableCell>{f.tipo ?? "—"}</TableCell>
+                  <TableCell>{renderReputacao(f.id)}</TableCell>
                   <TableCell>{f.cnpj ?? "—"}</TableCell>
                   <TableCell>{f.telefone ?? "—"}</TableCell>
                   <TableCell>{f.email ?? "—"}</TableCell>
@@ -141,7 +231,7 @@ const Fornecedores = () => {
               ))}
               {!isLoading && !fornecedores?.length && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     Nenhum fornecedor cadastrado
                   </TableCell>
                 </TableRow>
@@ -155,8 +245,11 @@ const Fornecedores = () => {
       <div className="space-y-3 md:hidden">
         {fornecedores?.map((f) => (
           <Card key={f.id} className="cursor-pointer" onClick={() => { setEditing(f); setOpen(true); }}>
-            <CardContent className="p-4">
-              <p className="font-medium">{f.nome}</p>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{f.nome}</p>
+                {renderReputacao(f.id)}
+              </div>
               <p className="text-sm text-muted-foreground">{f.tipo ?? "—"} · {f.telefone ?? "—"}</p>
             </CardContent>
           </Card>
