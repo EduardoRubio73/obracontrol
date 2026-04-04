@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check, BarChart3 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   rascunho: "bg-muted text-muted-foreground",
@@ -20,6 +21,7 @@ const statusColors: Record<string, string> = {
 
 const Cotacoes = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: cotacoes, isLoading } = useQuery({
@@ -145,6 +147,18 @@ const Cotacoes = () => {
               </Table>
             ) : (
               <p className="text-muted-foreground text-sm">Nenhuma proposta recebida</p>
+            )}
+            {propostas && propostas.length >= 2 && (
+              <Button
+                className="mt-4 w-full"
+                onClick={() => {
+                  setSelectedId(null);
+                  navigate(`/cotacoes/${selectedId}/comparar`);
+                }}
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Comparar Propostas
+              </Button>
             )}
           </div>
         </DialogContent>

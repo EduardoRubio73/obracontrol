@@ -436,6 +436,41 @@ export type Database = {
         }
         Relationships: []
       }
+      proposta_itens: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          proposta_id: string
+          quantidade: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          proposta_id: string
+          quantidade?: number
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          proposta_id?: string
+          quantidade?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposta_itens_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propostas: {
         Row: {
           arquivo_url: string | null
