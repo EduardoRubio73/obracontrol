@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy, PackagePlus, Brain,
+  ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy, PackagePlus, Brain, Mail,
 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
