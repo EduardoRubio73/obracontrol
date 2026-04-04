@@ -119,6 +119,39 @@ const ObraDetalhe = () => {
     },
   });
 
+  // Smart alerts from RPC
+  const { data: smartAlertas } = useQuery({
+    queryKey: ["obra-alertas", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("gerar_alertas_fase", {
+        p_obra_id: id!,
+      });
+      if (error) throw error;
+      return data as { fase_id: string; nome: string; tipo: string; mensagem: string }[];
+    },
+  });
+
+  // Prediction view
+  const { data: previsao } = useQuery({
+    queryKey: ["obra-previsao", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vw_fases_previsao" as any)
+        .select("*")
+        .eq("obra_id", id!);
+      if (error) throw error;
+      return data as {
+        id: string;
+        nome: string;
+        progresso: number;
+        progresso_esperado: number | null;
+        diferenca_progresso: number | null;
+        atrasado: boolean;
+        status: string;
+      }[];
+    },
+  });
+
   // Mutations
   const upsertFase = useMutation({
     mutationFn: async (values: Partial<Fase>) => {
