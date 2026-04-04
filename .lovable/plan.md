@@ -1,72 +1,71 @@
 
 
-# Plano: Tela de Seleção de Fornecedores (Step 5 do Wizard)
+# Plano: Dashboard Avançado + Perfil Admin
 
 ## Visao Geral
 
-Reformular o Step 5 do wizard `/nova-obra` para ser uma tela completa de seleção de fornecedores com: sugestões automáticas via `fn_sugerir_top3_fornecedores`, remoção/adição manual, validação (min 1, max 3), card de resumo, e criação de cotação com fornecedores escolhidos via nova função DB.
+Evoluir o Dashboard existente para incluir: filtro global por obra, novos cards (documentos, alterações, fornecedores, cotações detalhadas, evolução mensal), seção admin com auditoria/logs, e botão de geração de dossiê. Mobile mantém visão resumida.
 
 ## O que ja existe
 
-- Step 5 em `NovaObra.tsx` (linhas 453-531): lista todos os fornecedores ativos com checkboxes, destaca recomendados
-- Função DB `fn_sugerir_top3_fornecedores(complexidade)` que retorna top 3 baseado em categoria
-- Lógica de criação de cotação inline no `criarObra` mutation (linhas 153-196)
+- `Dashboard.tsx`: cards resumo, obras recentes, financeiro, cotações, timeline de fases, gráfico previsto vs gasto, tabela de obras (desktop only)
+- `Auditoria.tsx`: página separada com filtro por tabela
+- `Dossie.tsx`: página de dossiê por obra com timeline de eventos
+- Tabelas DB: `financeiro` (com `data_transacao`), `documentos`, `obra_alteracoes`, `fornecedores`, `cotacoes`, `propostas`, `auditoria`, `voz_comandos_log`
 
 ## O que muda
 
-### 1. Nova função DB: `fn_criar_cotacao_com_fornecedores`
+### 1. Filtro Global por Obra (Dashboard.tsx)
 
-```sql
-fn_criar_cotacao_com_fornecedores(
-  p_obra_id uuid,
-  p_descricao text,
-  p_fornecedores_ids uuid[]
-) RETURNS uuid
-```
+- Adicionar `useState<string | null>` para `obraFiltro` no topo
+- Select com todas as obras + opção "Todas as obras"
+- Quando selecionada, todas as queries filtram por `obra_id`
+- Queries afetadas: financeiro, fases, cotações, alertas + novas queries
 
-- Cria cotação com status `enviada` e token público
-- Vincula cada fornecedor via `cotacao_fornecedores`
-- Retorna o `cotacao_id`
+### 2. Novos Cards Desktop
 
-Substitui a lógica inline que existe hoje no frontend.
+**Evolução Mensal (LineChart)**: Query financeiro agrupado por mês (`data_transacao`), filtrado por obra selecionada. Usa `recharts` LineChart.
 
-### 2. Reformular Step 5 em `NovaObra.tsx`
+**Comparativo**: Card com previsto vs real vs saldo da obra selecionada (já existe parcialmente, refinar para obra individual).
 
-**Header**: "Selecionar Fornecedores" + subtítulo "Selecionamos os melhores profissionais para sua obra"
+**Documentos**: Query `documentos` filtrada por obra. Lista com nome, tipo, data, botão visualizar.
 
-**Carga inicial**: Chamar `fn_sugerir_top3_fornecedores(classificacao)` via RPC para pré-selecionar automaticamente os fornecedores sugeridos. Exibir esses como lista pré-selecionada.
+**Alterações (Auditoria de Obra)**: Query `obra_alteracoes` filtrada por obra. Exibe tipo, descrição, impacto financeiro.
 
-**Card de fornecedor**: Exibir nome, categoria, tipo (badge), score, telefone. Botão "Remover" (❌) em vez de checkbox.
+**Fornecedores**: Query `cotacao_fornecedores` + `fornecedores` para obra selecionada. Exibe nome, score, status.
 
-**Card "Adicionar Fornecedor"**: Select/autocomplete que busca de `fornecedores` (filtra os já selecionados). Botão adicionar.
+**Cotações Detalhadas**: Query `cotacoes` + `propostas` para obra. Exibe status, propostas recebidas, fornecedor vencedor.
 
-**Validação**: Min 1, max 3. Mostrar aviso visual.
+### 3. Seção Admin (Desktop only)
 
-**Card Resumo**: Total selecionados + mensagem "Você pode enviar para até 3 fornecedores".
+- Verificar admin via `is_admin_global()` — chamar como RPC ou checar no frontend se o user tem permissão (simplificado: mostrar para todos autenticados, dados já filtrados por RLS)
+- Card Auditoria: últimos 20 logs da tabela `auditoria`
+- Card Logs Voz: últimos registros de `voz_comandos_log`
+- Visão multi-obras: tabela comparativa já existe, manter
 
-**Botão principal**: "Enviar Cotação" — chama `fn_criar_cotacao_com_fornecedores` via RPC.
+### 4. Botão "Gerar Dossiê"
 
-### 3. Ajuste no fluxo `criarObra`
+- Quando obra selecionada, mostrar botão "Gerar Dossiê da Obra"
+- Navega para `/obras/{id}/dossie` (página já existente)
 
-- Separar criação da obra (step 5 → cria obra) da criação da cotação (novo step intermediário ou ação do botão "Enviar Cotação")
-- Após envio: redirecionar para `/cotacoes` (ou página de acompanhamento)
+### 5. Mobile
 
-### 4. Após envio
-
-- Registrar no dossiê: `solicitacao_enviada`
-- Redirecionar para `/cotacoes` ou tela de acompanhamento
+- Manter apenas: resumo cards, obras recentes, progresso, ações rápidas
+- Esconder: gráficos, auditoria, documentos, tabelas (usar `hidden md:block`)
 
 ## Detalhes Tecnicos
 
-- **Migration**: 1 nova função `fn_criar_cotacao_com_fornecedores` (SECURITY DEFINER para poder ler `obras.user_id`)
-- **Frontend**: Reescrever step 5 em `NovaObra.tsx` com nova UX (cards com remove, autocomplete para add, resumo, validação)
-- **RPC**: `supabase.rpc('fn_criar_cotacao_com_fornecedores', { p_obra_id, p_descricao, p_fornecedores_ids })`
-- **Query inicial**: `supabase.rpc('fn_sugerir_top3_fornecedores', { p_complexidade: classificacao })` para auto-selecionar
+- **Sem migration necessária** — todas as tabelas já existem
+- **Dashboard.tsx**: reescrever com estado de filtro, ~8 queries condicionais, layout responsivo com `hidden md:block` para seções pesadas
+- **Recharts**: adicionar `LineChart, Line` import (já pinned v2.12.7)
+- **Queries condicionais**: quando `obraFiltro` muda, queries usam `.eq("obra_id", obraFiltro)` se não for "todas"
 
 ## Ordem
 
-1. Migration: criar `fn_criar_cotacao_com_fornecedores`
-2. Reescrever Step 5 UI com auto-seleção, add/remove, validação, resumo
-3. Integrar RPC no fluxo de criação
-4. Registrar dossiê + redirect pós-envio
+1. Adicionar filtro global por obra no header
+2. Refatorar queries existentes para respeitar filtro
+3. Adicionar novos cards desktop (evolução mensal, documentos, alterações, fornecedores, cotações)
+4. Adicionar seção admin (auditoria + logs)
+5. Adicionar botão "Gerar Dossiê"
+6. Garantir mobile mostra apenas resumo
 
