@@ -344,7 +344,7 @@ const Hoje = () => {
 
       {/* ===== PRECISA COMPRAR ===== */}
       {(compras?.length ?? 0) > 0 && (
-        <div className="space-y-3">
+        <div ref={comprasRef} className="space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-sky-500" />
             🛒 Precisa comprar
