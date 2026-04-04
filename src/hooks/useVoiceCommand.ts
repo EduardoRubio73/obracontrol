@@ -7,43 +7,93 @@ interface VoiceCommand {
   target?: string;
 }
 
-const COMMAND_MAP: Record<string, string> = {
-  // concluir tarefa
-  "concluir": "concluir_tarefa",
-  "completar": "concluir_tarefa",
-  "finalizar": "concluir_tarefa",
-  "marcar": "concluir_tarefa",
-  "feito": "concluir_tarefa",
-  "pronto": "concluir_tarefa",
-  "done": "concluir_tarefa",
-  // ver atrasos
-  "atraso": "ver_atrasos",
-  "atrasos": "ver_atrasos",
-  "atrasado": "ver_atrasos",
-  "atrasada": "ver_atrasos",
-  "atrasadas": "ver_atrasos",
-  // ver compras
-  "compra": "ver_compras",
-  "compras": "ver_compras",
-  "comprar": "ver_compras",
-  "material": "ver_compras",
-  "materiais": "ver_compras",
-  // ver status
-  "status": "ver_status",
-  "resumo": "ver_status",
-  "progresso": "ver_status",
-  "como está": "ver_status",
-};
+/* ── Intent definitions: keyword groups → action ── */
+const INTENTS: { action: string; keywords: string[] }[] = [
+  {
+    action: "criar_obra",
+    keywords: [
+      "nova obra", "criar obra", "começar obra", "iniciar obra",
+      "nova reforma", "criar reforma", "começar reforma",
+      "novo projeto", "criar projeto", "iniciar projeto",
+      "vamos começar", "quero criar", "quero começar",
+      "abrir obra", "registrar obra", "cadastrar obra",
+      "nova construção", "iniciar construção",
+    ],
+  },
+  {
+    action: "concluir_tarefa",
+    keywords: [
+      "concluir", "completar", "finalizar", "marcar",
+      "feito", "pronto", "done", "terminei", "acabei",
+      "tarefa pronta", "tarefa feita", "concluí",
+    ],
+  },
+  {
+    action: "ver_atrasos",
+    keywords: [
+      "atraso", "atrasos", "atrasado", "atrasada", "atrasadas",
+      "pendências", "pendencia", "o que falta", "que falta",
+      "problemas", "alertas", "urgente", "urgências",
+    ],
+  },
+  {
+    action: "ver_compras",
+    keywords: [
+      "compra", "compras", "comprar", "material", "materiais",
+      "fornecedor", "fornecedores", "cotação", "cotações",
+      "orçamento", "orçamentos", "pedido", "pedidos",
+    ],
+  },
+  {
+    action: "ver_status",
+    keywords: [
+      "status", "resumo", "progresso", "como está", "como vai",
+      "andamento", "situação", "visão geral", "dashboard",
+      "resultado", "relatório", "como tá",
+    ],
+  },
+  {
+    action: "ver_financeiro",
+    keywords: [
+      "financeiro", "dinheiro", "gasto", "gastos", "custo", "custos",
+      "pagamento", "pagamentos", "quanto gastei", "valor",
+      "receita", "despesa", "despesas", "saldo",
+    ],
+  },
+  {
+    action: "ver_etapas",
+    keywords: [
+      "etapa", "etapas", "fase", "fases",
+      "cronograma", "planejamento", "agenda",
+    ],
+  },
+  {
+    action: "ver_hoje",
+    keywords: [
+      "hoje", "o que fazer", "que fazer hoje", "tarefas do dia",
+      "minha agenda", "meu dia", "próxima tarefa", "próximo passo",
+    ],
+  },
+  {
+    action: "ajuda",
+    keywords: [
+      "ajuda", "help", "o que posso fazer", "comandos",
+      "o que você faz", "opções", "menu", "como funciona",
+    ],
+  },
+];
 
 function parseCommand(transcript: string): VoiceCommand {
   const lower = transcript.toLowerCase().trim();
 
-  for (const [keyword, action] of Object.entries(COMMAND_MAP)) {
-    if (lower.includes(keyword)) {
-      // Extract target (text after the keyword)
-      const idx = lower.indexOf(keyword);
-      const after = lower.slice(idx + keyword.length).trim();
-      return { action, target: after || undefined };
+  // Try multi-word phrases first (longer matches are more specific)
+  for (const intent of INTENTS) {
+    for (const keyword of intent.keywords) {
+      if (lower.includes(keyword)) {
+        const idx = lower.indexOf(keyword);
+        const after = lower.slice(idx + keyword.length).trim();
+        return { action: intent.action, target: after || undefined };
+      }
     }
   }
 
