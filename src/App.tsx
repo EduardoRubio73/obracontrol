@@ -77,7 +77,9 @@ const App = () => (
             <Route
               element={
                 <ProtectedRoute>
-                  <AppLayout />
+                  <ObraAtivaProvider>
+                    <AppLayout />
+                  </ObraAtivaProvider>
                 </ProtectedRoute>
               }
             >
