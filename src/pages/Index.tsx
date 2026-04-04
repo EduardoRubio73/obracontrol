@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useVoiceCommand, VoiceCommand } from "@/hooks/useVoiceCommand";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,9 @@ import {
   ShoppingCart,
   Sun,
   Clock,
+  Mic,
+  MicOff,
+  Loader2,
 } from "lucide-react";
 
 const fmt = (v: number) =>
@@ -23,6 +27,12 @@ const fmt = (v: number) =>
 const Hoje = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { status: voiceStatus, transcript, isSupported: voiceSupported, startListening, stopListening } = useVoiceCommand();
+
+  // Section refs for voice scroll
+  const alertasRef = useRef<HTMLDivElement>(null);
+  const atrasosRef = useRef<HTMLDivElement>(null);
+  const comprasRef = useRef<HTMLDivElement>(null);
 
   // Generate system alerts on load
   useEffect(() => {
@@ -153,8 +163,69 @@ const Hoje = () => {
 
   const hasContent = (alertas?.length ?? 0) > 0 || (tarefas?.length ?? 0) > 0 || (atrasadas?.length ?? 0) > 0 || (compras?.length ?? 0) > 0;
 
+  // Voice command handler
+  const handleVoiceCommand = useCallback((cmd: VoiceCommand, raw: string) => {
+    switch (cmd.action) {
+      case "concluir_tarefa": {
+        if (tarefas?.length) {
+          // Try to match by name, or complete first task
+          const match = cmd.target
+            ? tarefas.find((t) => t.nome.toLowerCase().includes(cmd.target!.toLowerCase()))
+            : tarefas[0];
+          if (match) {
+            toggleTask.mutate(match.id);
+            toast.success(`Tarefa "${match.nome}" concluída por voz!`);
+          } else {
+            toast.info("Não encontrei essa tarefa. Tente novamente.");
+          }
+        } else {
+          toast.info("Não há tarefas pendentes.");
+        }
+        break;
+      }
+      case "ver_atrasos":
+        if (atrasosRef.current) {
+          atrasosRef.current.scrollIntoView({ behavior: "smooth" });
+          toast.info("Mostrando fases atrasadas");
+        } else {
+          toast.info("Não há fases atrasadas.");
+        }
+        break;
+      case "ver_compras":
+        if (comprasRef.current) {
+          comprasRef.current.scrollIntoView({ behavior: "smooth" });
+          toast.info("Mostrando compras pendentes");
+        } else {
+          toast.info("Não há compras pendentes.");
+        }
+        break;
+      case "ver_status":
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast.info("Mostrando resumo do dia");
+        break;
+      default:
+        toast.error(`Não entendi: "${raw}". Tente: concluir, atrasos, compras ou status.`);
+    }
+  }, [tarefas, toggleTask]);
+
+  const handleVoiceClick = () => {
+    if (voiceStatus === "listening") {
+      stopListening();
+    } else {
+      startListening(handleVoiceCommand);
+    }
+  };
+
+  // Voice status labels
+  const voiceLabels: Record<string, string> = {
+    idle: "Falar",
+    listening: "Estou ouvindo...",
+    processing: "Entendi, processando...",
+    error: "Não entendi, tente novamente",
+  };
+
   return (
-    <div className="space-y-8 max-w-2xl mx-auto">
+    <div className="space-y-8 max-w-2xl mx-auto pb-24">
       {/* Hero greeting */}
       <div className="text-center space-y-2 pt-4">
         <div className="flex justify-center">
@@ -244,7 +315,7 @@ const Hoje = () => {
 
       {/* ===== FASES COM ATRASO ===== */}
       {(atrasadas?.length ?? 0) > 0 && (
-        <div className="space-y-3">
+        <div ref={atrasosRef} className="space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Clock className="h-5 w-5 text-rose-500" />
             ⏳ Fases com atraso
@@ -273,7 +344,7 @@ const Hoje = () => {
 
       {/* ===== PRECISA COMPRAR ===== */}
       {(compras?.length ?? 0) > 0 && (
-        <div className="space-y-3">
+        <div ref={comprasRef} className="space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-sky-500" />
             🛒 Precisa comprar
@@ -295,6 +366,49 @@ const Hoje = () => {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* ===== FLOATING VOICE BUTTON ===== */}
+      {voiceSupported && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+          {voiceStatus !== "idle" && (
+            <Card className={`border-2 shadow-lg ${
+              voiceStatus === "listening" ? "bg-sky-50 border-sky-300" :
+              voiceStatus === "processing" ? "bg-emerald-50 border-emerald-300" :
+              "bg-rose-50 border-rose-300"
+            }`}>
+              <CardContent className="py-2 px-4">
+                <p className={`text-sm font-semibold ${
+                  voiceStatus === "listening" ? "text-sky-700" :
+                  voiceStatus === "processing" ? "text-emerald-700" :
+                  "text-rose-700"
+                }`}>
+                  {voiceLabels[voiceStatus]}
+                </p>
+                {voiceStatus === "processing" && transcript && (
+                  <p className="text-xs text-muted-foreground mt-0.5">"{transcript}"</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          <Button
+            size="lg"
+            onClick={handleVoiceClick}
+            className={`h-16 w-16 rounded-full shadow-xl transition-all ${
+              voiceStatus === "listening"
+                ? "bg-rose-500 hover:bg-rose-600 animate-pulse"
+                : "bg-sky-500 hover:bg-sky-600"
+            }`}
+          >
+            {voiceStatus === "listening" ? (
+              <MicOff className="h-7 w-7 text-white" />
+            ) : voiceStatus === "processing" ? (
+              <Loader2 className="h-7 w-7 text-white animate-spin" />
+            ) : (
+              <Mic className="h-7 w-7 text-white" />
+            )}
+          </Button>
         </div>
       )}
     </div>
