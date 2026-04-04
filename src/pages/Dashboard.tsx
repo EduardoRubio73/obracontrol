@@ -220,17 +220,6 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={obraFiltro} onValueChange={setObraFiltro}>
-            <SelectTrigger className="w-[200px] rounded-xl">
-              <SelectValue placeholder="Selecionar obra" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as obras</SelectItem>
-              {(obras ?? []).map((o) => (
-                <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           {filtroId && (
             <Button variant="outline" className="rounded-xl gap-2" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
               <FileSearch className="h-4 w-4" /> Gerar Dossiê
