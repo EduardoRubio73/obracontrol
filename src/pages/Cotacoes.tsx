@@ -443,12 +443,9 @@ ObraControl`;
             <form onSubmit={handleNewCotacao} className="space-y-4">
               <div className="space-y-2">
                 <Label>Obra</Label>
-                <select name="obra_id" required className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="">Selecione</option>
-                  {obras?.map((o) => (
-                    <option key={o.id} value={o.id}>{o.nome}</option>
-                  ))}
-                </select>
+                <p className="text-sm font-medium text-foreground bg-muted rounded-md px-3 py-2">
+                  {obraAtiva?.nome ?? "—"}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Descrição</Label>
