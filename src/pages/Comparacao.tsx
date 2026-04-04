@@ -27,6 +27,12 @@ const fmt = (v: number) =>
 const Comparacao = () => {
   const { id: cotacaoId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [iaRecomendacao, setIaRecomendacao] = useState<{
+    indice_recomendado: number;
+    justificativa: string;
+    pontos_atencao: string[];
+  } | null>(null);
+  const navigate = useNavigate();
 
   const { data: cotacao } = useQuery({
     queryKey: ["cotacao-detalhe", cotacaoId],
