@@ -161,8 +161,8 @@ const MenuPrincipal = () => {
   const firstName = profile?.nome?.split(" ")[0] ?? "";
   const hasAlerts = (alertas?.length ?? 0) > 0;
 
-  const tipoObra = (obra as any)?.tipo_obra ?? "casa";
-  const theme = obraThemes[tipoObra] ?? defaultTheme;
+
+
 
   // Dynamic order: alerts → Hoje first, else Etapas first
   const orderedMenu = hasAlerts
