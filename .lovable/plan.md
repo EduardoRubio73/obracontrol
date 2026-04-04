@@ -1,130 +1,148 @@
 
 
-# Plano: Fase 1 — Assistente de Início de Obra
+# Plano: Agente Retaguarda (Backoffice)
 
 ## Visao Geral
 
-Criar um fluxo guiado (wizard) para iniciar uma obra, desde a descrição pelo usuario ate a escolha do profissional vencedor. O sistema usa IA para estruturar o escopo e apoiar a decisao de comparacao de orcamentos.
+Criar um backoffice completo de gestao profissional, com dashboard, lista de obras com filtros, galeria de fotos, controle de materiais, documentos, configuracoes e auditoria. Boa parte da estrutura ja existe (Obras, Financeiro, Fornecedores, Cotacoes, Etapas, Dossie). O trabalho e expandir e conectar tudo num menu lateral completo.
 
-Boa parte da infraestrutura ja existe (cotacoes, propostas, portal do fornecedor, comparacao). O trabalho principal e criar o **wizard de inicio**, a **classificacao automatica**, a **geracao de escopo por IA**, e o **dossie/timeline**.
+## O que ja existe vs o que falta
+
+**Ja existe:** Obras (CRUD + lista), Etapas, Financeiro (basico), Compras, Fornecedores, Cotacoes, Comparacao, Dossie/Timeline, Fotos (por fase), Alteracoes, Perfil, Produtos
+
+**Falta criar:**
+1. Dashboard de visao geral
+2. Galeria centralizada da obra
+3. Materiais (controle previsto vs utilizado)
+4. Documentos (upload centralizado)
+5. Relatorios (exportacao PDF/Excel)
+6. Configuracoes (CRUD cadastros)
+7. Auditoria (visualizacao do log)
+8. Obras expandida (filtros, arquivar, duplicar)
+9. Sidebar atualizada com menu completo
 
 ---
 
 ## Etapas de Implementacao
 
-### 1. Migration: Novas tabelas e campos
+### 1. Migration: Storage bucket + tabela documentos_obra
 
-**Tabela `obra_dossie`** — linha do tempo de eventos da obra:
-- `id`, `obra_id`, `user_id`, `tipo` (text: solicitacao_enviada, retorno_profissional, escopo_aprovado, profissional_escolhido...), `titulo`, `descricao`, `dados` (jsonb), `created_at`
-- RLS: user_id = auth.uid()
+- Criar bucket `documentos` (public: false) para uploads
+- RLS no bucket: user pode ler/escrever seus proprios arquivos
+- A tabela `documentos` ja existe mas sem RLS — adicionar policy `user_id = auth.uid()` e campo `user_id`
 
-**Campo `classificacao` em `obras`** (text): simples, media, complexa
+### 2. Dashboard (`/dashboard`)
 
-**Campo `escopo_ia` em `obras`** (text): descricao estruturada gerada pela IA
+Nova pagina com cards resumo:
+- Obras ativas / concluidas / atrasadas (contagem)
+- Custo total gasto vs previsto
+- Alertas nao resolvidos
+- Grafico simples de progresso (recharts 2.12.7)
 
-**Campo `profissional_recomendado` em `obras`** (text): tipo de profissional sugerido
+Queries: agregar dados de `obras`, `financeiro`, `alertas_sistema`, `obra_fases`
 
-### 2. Edge Function: `gerar-escopo`
+### 3. Obras expandida (melhorar `/obras`)
 
-- Recebe: descricao livre do usuario, tipo_obra, classificacao
-- Usa Lovable AI (gemini-3-flash-preview) para gerar:
-  - Descricao estruturada
-  - Lista de necessidades/materiais
-  - Sugestao de profissional (empreiteiro/tecnico/engenheiro)
-  - Alertas de seguranca
-- Retorna JSON estruturado (via tool calling)
-- Salva escopo_ia e profissional_recomendado na obra
+- Adicionar filtros: ativa, concluida, arquivada (novo status)
+- Botao "Arquivar" e "Duplicar" nas acoes
+- Link para Dossie e Galeria a partir de cada obra
+- Adicionar campo de busca
 
-### 3. Edge Function: `apoio-decisao`
+### 4. Galeria da Obra (`/obras/:id/galeria`)
 
-- Recebe: array de propostas (valor, prazo, escopo)
-- Usa IA para sugerir melhor custo-beneficio
-- Retorna recomendacao com justificativa
+Nova pagina que agrega todas as fotos de `fase_fotos` por obra:
+- Filtro por tipo: antes / durante / depois
+- Agrupamento por etapa
+- Visualizacao em grid com lightbox
 
-### 4. Pagina: Wizard "Nova Obra" (`/nova-obra`)
+### 5. Materiais (`/obras/:id/materiais`)
 
-Fluxo em steps (tudo dentro de uma pagina com estado local):
+Nova pagina baseada nos `fase_itens`:
+- Lista de materiais com status (pendente / comprado / cancelado)
+- Valores previstos vs reais
+- Totalizadores
 
-**Step 1 — Nome e Tipo**
-- Input: nome da obra (texto ou voz)
-- Select: tipo (casa, reforma, apartamento, comercial)
+### 6. Documentos (`/obras/:id/documentos`)
 
-**Step 2 — Classificacao**
-- Opcoes visuais: Simples / Media / Complexa
-- Ao selecionar, exibir automaticamente o tipo de profissional recomendado
-- Regra de seguranca: se complexa, alerta que engenheiro e obrigatorio
+Nova pagina:
+- Upload de arquivos (PDF, imagens) para o bucket `documentos`
+- Lista com nome, tipo, data, tamanho
+- Download direto
+- Vinculado a obra via `obra_id`
 
-**Step 3 — Descricao**
-- Textarea grande para descrever a obra
-- Botao de voz para ditar
-- Ao avancar: chama edge function `gerar-escopo`
+### 7. Relatorios (`/relatorios`)
 
-**Step 4 — Escopo IA (revisao)**
-- Mostra descricao estruturada gerada
-- Lista de necessidades
-- Profissional sugerido
-- Usuario pode editar/aprovar
+Nova pagina com botoes de exportacao:
+- Financeiro por obra → CSV
+- Dossie completo → dados formatados (PDF via edge function futura)
+- Por enquanto: exportar como CSV client-side
 
-**Step 5 — Envio para profissionais**
-- Selecionar fornecedores existentes ou adicionar novos
-- Envia para 3+ profissionais (cria cotacao + cotacao_fornecedores)
-- Gera link publico do portal
+### 8. Configuracoes (`/configuracoes`)
 
-**Step 6 — Confirmacao**
-- Resumo do que foi enviado
-- Obra criada, dossie iniciado
+Nova pagina com tabs:
+- Categorias de produtos (CRUD — ja tem tabela `categorias_produtos`)
+- Tipos de obra (lista estatica por enquanto)
+- Unidades de medida
 
-Visual: cards grandes, botoes grandes, cores suaves, animacoes de entrada (mesmo padrao do menu premium).
+### 9. Auditoria (`/auditoria`)
 
-### 5. Tela de Dossie/Timeline (`/obras/:id/dossie`)
+Nova pagina que le a tabela `auditoria`:
+- Lista cronologica: quem, quando, o que, tabela
+- Filtros por data e tabela
 
-- Lista vertical de eventos (obra_dossie)
-- Icones e cores por tipo de evento
-- Exibe historico completo: criacao, envios, respostas, decisao
+### 10. Sidebar completa
 
-### 6. IA na Comparacao (melhorar pagina existente)
+Atualizar `AppSidebar.tsx` com menu profissional:
 
-- Adicionar botao "Sugestao IA" na pagina `/comparacao/:id`
-- Chama edge function `apoio-decisao`
-- Exibe card com recomendacao e justificativa
-- Ao aceitar proposta: registrar no dossie
+```text
+Dashboard
+Obras
+  └ (sub-rotas: galeria, materiais, documentos, dossie)
+Etapas
+Financeiro
+Compras
+Cotacoes
+Fornecedores
+Relatorios
+Configuracoes
+Auditoria
+Perfil
+```
 
-### 7. Extracoes pos-escolha
+### 11. Routing
 
-- Quando usuario aceita uma proposta vencedora:
-  - Extrair materiais → criar itens de compra
-  - Extrair etapas → criar obra_fases
-  - Registrar no dossie
+Adicionar em `App.tsx`:
+- `/dashboard`
+- `/obras/:id/galeria`
+- `/obras/:id/materiais`
+- `/obras/:id/documentos`
+- `/relatorios`
+- `/configuracoes`
+- `/auditoria`
 
-### 8. Routing e Navegacao
-
-- Adicionar rota `/nova-obra` no App.tsx
-- Adicionar card "Nova Obra" no menu principal (botao de destaque)
-- Adicionar rota `/obras/:id/dossie`
-- Link para dossie a partir do detalhe da obra
+Manter `/` como menu mobile (Index) e `/dashboard` como visao desktop.
 
 ---
 
 ## Detalhes Tecnicos
 
-- **IA**: Lovable AI via edge functions, modelo `google/gemini-3-flash-preview`, structured output via tool calling
-- **Animacoes**: mesmos keyframes `menu-slide-up` com stagger
-- **Voice**: reutilizar `useVoiceCommand` existente para input por voz no wizard
-- **DB**: 1 migration (nova tabela + novos campos em obras)
-- **Edge Functions**: 2 novas (`gerar-escopo`, `apoio-decisao`)
-- **Paginas**: 2 novas (`NovaObra` wizard, `Dossie` timeline)
-- **Modificacoes**: `Index.tsx` (card nova obra), `Comparacao.tsx` (botao IA), logica de aceitar proposta
-
----
+- **Storage**: Supabase Storage bucket `documentos`, RLS por user_id no path
+- **Graficos**: recharts 2.12.7 (ja instalado) para dashboard
+- **Exportacao CSV**: client-side usando Blob + download
+- **Auditoria**: tabela `auditoria` ja existe com dados
+- **Documentos**: tabela `documentos` ja existe mas precisa de user_id e RLS
+- **Animacoes**: mesmo padrao `menu-slide-up` com stagger nas novas paginas
 
 ## Ordem de Execucao
 
-1. Migration (tabela + campos)
-2. Edge function `gerar-escopo`
-3. Edge function `apoio-decisao`
-4. Pagina wizard `/nova-obra` (steps 1-6)
-5. Pagina dossie `/obras/:id/dossie`
-6. Integrar IA na comparacao
-7. Logica de extracao pos-escolha
-8. Navegacao e menu
+1. Migration (storage bucket + documentos RLS + user_id)
+2. Dashboard
+3. Obras expandida (filtros + acoes)
+4. Galeria da Obra
+5. Materiais
+6. Documentos (upload)
+7. Relatorios
+8. Configuracoes
+9. Auditoria
+10. Sidebar + Routing
 
