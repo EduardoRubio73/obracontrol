@@ -27,6 +27,7 @@ const statusColors: Record<string, string> = {
 };
 
 const Obras = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
