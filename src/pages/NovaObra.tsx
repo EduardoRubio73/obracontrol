@@ -455,42 +455,71 @@ const NovaObra = () => {
         <div className="space-y-5">
           <div style={stagger(1)}>
             <h3 className="font-bold text-foreground mb-1">Enviar para profissionais</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Selecione os profissionais que receberão esta solicitação. (Opcional — pode enviar depois)
+            <p className="text-sm text-muted-foreground mb-2">
+              Selecione os profissionais que receberão esta solicitação.
             </p>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 mb-4">
+              <Star className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm text-primary font-medium">
+                Recomendado para obra {classificacao}: {profissionalLabel(classificacao)}
+              </span>
+            </div>
           </div>
 
-          {fornecedores && fornecedores.length > 0 ? (
-            <div className="space-y-2">
-              {fornecedores.map((f, i) => (
-                <label
-                  key={f.id}
-                  style={stagger(i + 2)}
-                  className={`
-                    flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all
-                    active:scale-[0.97]
-                    ${selectedFornecedores.includes(f.id)
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-card hover:border-primary/40"
-                    }
-                  `}
-                >
-                  <Checkbox
-                    checked={selectedFornecedores.includes(f.id)}
-                    onCheckedChange={(checked) => {
-                      setSelectedFornecedores((prev) =>
-                        checked ? [...prev, f.id] : prev.filter((id) => id !== f.id)
-                      );
-                    }}
-                  />
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground">{f.nome}</p>
-                    <p className="text-sm text-muted-foreground">{f.email || f.tipo || "Sem email"}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          ) : (
+          {fornecedores && fornecedores.length > 0 ? (() => {
+            const recommended = fornecedores.filter((f) => isRecomendado((f as any).categoria, classificacao));
+            const others = fornecedores.filter((f) => !isRecomendado((f as any).categoria, classificacao));
+            const sorted = [...recommended, ...others];
+
+            return (
+              <div className="space-y-2">
+                {sorted.map((f, i) => {
+                  const isRec = isRecomendado((f as any).categoria, classificacao);
+                  const catLabel = ALL_CATEGORIAS.find((c) => c.value === (f as any).categoria)?.label;
+                  return (
+                    <label
+                      key={f.id}
+                      style={stagger(i + 2)}
+                      className={`
+                        flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all
+                        active:scale-[0.97]
+                        ${selectedFornecedores.includes(f.id)
+                          ? "border-primary bg-primary/10"
+                          : isRec
+                          ? "border-primary/30 bg-primary/5 hover:border-primary/50"
+                          : "border-border bg-card hover:border-primary/40"
+                        }
+                      `}
+                    >
+                      <Checkbox
+                        checked={selectedFornecedores.includes(f.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedFornecedores((prev) =>
+                            checked ? [...prev, f.id] : prev.filter((id) => id !== f.id)
+                          );
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground">{f.nome}</p>
+                          {isRec && (
+                            <Badge className="bg-primary/20 text-primary text-xs border-0">
+                              <Star className="h-3 w-3 mr-0.5" /> Recomendado
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex gap-2 mt-0.5">
+                          {catLabel && <span className="text-xs text-muted-foreground">{catLabel}</span>}
+                          {!catLabel && f.tipo && <span className="text-xs text-muted-foreground capitalize">{f.tipo}</span>}
+                          {f.email && <span className="text-xs text-muted-foreground">• {f.email}</span>}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          })() : (
             <Card className="rounded-2xl" style={stagger(2)}>
               <CardContent className="p-6 text-center">
                 <p className="text-muted-foreground">Nenhum fornecedor cadastrado.</p>
