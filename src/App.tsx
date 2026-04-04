@@ -13,6 +13,8 @@ import Financeiro from "./pages/Financeiro";
 import Fornecedores from "./pages/Fornecedores";
 import Perfil from "./pages/Perfil";
 import Comparacao from "./pages/Comparacao";
+import Analise from "./pages/Analise";
+import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,11 +42,14 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<PublicRoute><Auth /></PublicRoute>} />
+            {/* Public supplier portal - no auth required */}
+            <Route path="/cotacao/:token" element={<PortalFornecedor />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Index />} />
               <Route path="/obras" element={<Obras />} />
               <Route path="/cotacoes" element={<Cotacoes />} />
               <Route path="/cotacoes/:id/comparar" element={<Comparacao />} />
+              <Route path="/cotacoes/:id/analise" element={<Analise />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/perfil" element={<Perfil />} />
