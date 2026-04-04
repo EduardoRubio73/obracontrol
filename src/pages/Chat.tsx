@@ -2,121 +2,41 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Mic, MicOff, Send, Loader2, Bot } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, Send, Loader2, Bot, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  buttons?: { label: string; action: string }[];
+  acoes?: { label: string; route: string }[];
+  anexos?: { nome: string; url: string; tipo: string }[];
   timestamp: Date;
+}
+
+interface PendingFile {
+  file: File;
+  preview?: string;
 }
 
 const SUGGESTIONS = [
   { label: "Criar obra", message: "Quero criar uma nova obra" },
   { label: "Adicionar gasto", message: "Quero adicionar um gasto" },
   { label: "Ver andamento", message: "Quero ver o andamento da obra" },
+  { label: "Ajuda", message: "O que você pode fazer?" },
 ];
 
-function processUserMessage(
-  text: string,
-  obraAtiva: { id: string; nome: string } | null,
-  navigate: (path: string) => void
-): ChatMessage {
-  const lower = text.toLowerCase().trim();
-  const id = crypto.randomUUID();
-  const timestamp = new Date();
-
-  if (lower.includes("criar obra") || lower.includes("nova obra")) {
-    return {
-      id, role: "assistant", timestamp,
-      content: "Vamos criar uma nova obra! Clique abaixo para iniciar o cadastro.",
-      buttons: [{ label: "Criar obra", action: "/nova-obra" }],
-    };
-  }
-
-  if (lower.includes("gasto") || lower.includes("despesa") || lower.includes("lançar")) {
-    if (!obraAtiva) {
-      return { id, role: "assistant", timestamp, content: "Selecione uma obra primeiro no seletor do topo para registrar um gasto." };
-    }
-    return {
-      id, role: "assistant", timestamp,
-      content: `Vou te levar ao financeiro da obra **${obraAtiva.nome}** para registrar o gasto.`,
-      buttons: [{ label: "Ir para Financeiro", action: "/financeiro" }],
-    };
-  }
-
-  if (lower.includes("andamento") || lower.includes("status") || lower.includes("progresso")) {
-    if (!obraAtiva) {
-      return { id, role: "assistant", timestamp, content: "Selecione uma obra primeiro para ver o andamento." };
-    }
-    return {
-      id, role: "assistant", timestamp,
-      content: `Aqui está o painel da obra **${obraAtiva.nome}**:`,
-      buttons: [
-        { label: "Ver Dashboard", action: "/dashboard" },
-        { label: "Ver Etapas", action: "/etapas" },
-      ],
-    };
-  }
-
-  if (lower.includes("cotação") || lower.includes("cotacao")) {
-    return {
-      id, role: "assistant", timestamp,
-      content: obraAtiva
-        ? `Vou abrir as cotações da obra **${obraAtiva.nome}**.`
-        : "Selecione uma obra para gerenciar cotações.",
-      buttons: obraAtiva ? [{ label: "Ver Cotações", action: "/cotacoes" }] : undefined,
-    };
-  }
-
-  if (lower.includes("etapa")) {
-    return {
-      id, role: "assistant", timestamp,
-      content: obraAtiva
-        ? `Abrindo etapas da obra **${obraAtiva.nome}**.`
-        : "Selecione uma obra para ver as etapas.",
-      buttons: obraAtiva ? [{ label: "Ver Etapas", action: "/etapas" }] : undefined,
-    };
-  }
-
-  if (lower.includes("fornecedor") || lower.includes("contato")) {
-    return {
-      id, role: "assistant", timestamp,
-      content: "Aqui estão seus fornecedores e contatos.",
-      buttons: [{ label: "Ver Fornecedores", action: "/fornecedores" }],
-    };
-  }
-
-  if (lower.includes("compra")) {
-    return {
-      id, role: "assistant", timestamp,
-      content: obraAtiva
-        ? `Vou mostrar as sugestões de compra para **${obraAtiva.nome}**.`
-        : "Selecione uma obra para ver compras.",
-      buttons: obraAtiva ? [{ label: "Ver Compras", action: "/compras" }] : undefined,
-    };
-  }
-
-  if (lower.includes("ajuda") || lower.includes("help")) {
-    return {
-      id, role: "assistant", timestamp,
-      content: "Posso te ajudar com:\n\n• **Criar obra** — iniciar uma nova obra\n• **Adicionar gasto** — registrar despesa\n• **Ver andamento** — status da obra\n• **Cotações** — gerenciar cotações\n• **Etapas** — ver cronograma\n• **Compras** — sugestões de compra\n• **Fornecedores** — contatos",
-    };
-  }
-
-  return {
-    id, role: "assistant", timestamp,
-    content: "Não entendi bem. Tente algo como:\n\n• \"Criar obra\"\n• \"Adicionar gasto\"\n• \"Ver andamento\"\n• \"Ajuda\"",
-  };
-}
+const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.pdf,.doc,.docx";
 
 export default function Chat() {
   const navigate = useNavigate();
-  const { obraAtiva } = useObraAtiva();
+  const { user } = useAuth();
+  const { obraAtiva, obraAtivaId } = useObraAtiva();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -127,12 +47,13 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     status: voiceStatus,
-    transcript,
     isSupported: voiceSupported,
     startListening,
     stopListening,
@@ -146,13 +67,62 @@ export default function Chat() {
 
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
 
-  const sendMessage = useCallback((text: string) => {
-    if (!text.trim()) return;
+  const uploadFiles = async (files: PendingFile[]): Promise<{ nome: string; url: string; tipo: string }[]> => {
+    if (!user) return [];
+    const uploaded: { nome: string; url: string; tipo: string }[] = [];
+
+    for (const pf of files) {
+      const ext = pf.file.name.split(".").pop() || "bin";
+      const path = `chat/${user.id}/${Date.now()}_${pf.file.name}`;
+
+      const { error } = await supabase.storage
+        .from("documentos")
+        .upload(path, pf.file);
+
+      if (error) {
+        console.error("Upload error:", error);
+        toast.error(`Erro ao enviar ${pf.file.name}`);
+        continue;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("documentos")
+        .getPublicUrl(path);
+
+      const tipo = pf.file.type.startsWith("image/") ? "imagem" : "documento";
+      uploaded.push({ nome: pf.file.name, url: urlData.publicUrl, tipo });
+
+      // Save to documentos table if obra is active
+      if (obraAtivaId) {
+        await supabase.from("documentos").insert({
+          obra_id: obraAtivaId,
+          nome: pf.file.name,
+          url: urlData.publicUrl,
+          tipo: ext,
+          tamanho_bytes: pf.file.size,
+          user_id: user.id,
+        });
+      }
+    }
+
+    return uploaded;
+  };
+
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() && pendingFiles.length === 0) return;
+
+    // Upload files first
+    let anexos: { nome: string; url: string; tipo: string }[] = [];
+    if (pendingFiles.length > 0) {
+      anexos = await uploadFiles(pendingFiles);
+      setPendingFiles([]);
+    }
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
       content: text.trim(),
+      anexos: anexos.length > 0 ? anexos : undefined,
       timestamp: new Date(),
     };
 
@@ -160,12 +130,55 @@ export default function Chat() {
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response = processUserMessage(text, obraAtiva, navigate);
-      setMessages((prev) => [...prev, response]);
+    try {
+      // Build history from previous messages (exclude welcome)
+      const historico = messages
+        .filter((m) => m.id !== "welcome")
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const { data, error } = await supabase.functions.invoke("chat-assistente", {
+        body: {
+          mensagem: text.trim(),
+          obra_id: obraAtivaId,
+          historico,
+          anexos: anexos.map((a) => ({ nome: a.nome, url: a.url })),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast.error(data.error);
+        const errorMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: `⚠️ ${data.error}`,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+      } else {
+        const assistantMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: data.resposta || "Não consegui processar sua mensagem.",
+          acoes: data.acoes?.length > 0 ? data.acoes : undefined,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      }
+    } catch (err) {
+      console.error("Chat error:", err);
+      const errorMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "❌ Erro ao se comunicar com o assistente. Tente novamente.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 600 + Math.random() * 400);
-  }, [obraAtiva, navigate]);
+    }
+  }, [messages, obraAtivaId, pendingFiles, user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,8 +195,33 @@ export default function Chat() {
     }
   };
 
-  const handleButtonAction = (action: string) => {
-    navigate(action);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles: PendingFile[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error(`${file.name} excede 20MB`);
+        continue;
+      }
+      const pf: PendingFile = { file };
+      if (file.type.startsWith("image/")) {
+        pf.preview = URL.createObjectURL(file);
+      }
+      newFiles.push(pf);
+    }
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+    e.target.value = "";
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles((prev) => {
+      const removed = prev[index];
+      if (removed.preview) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   return (
@@ -220,27 +258,45 @@ export default function Chat() {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground rounded-br-md"
                   : "bg-card border border-border rounded-bl-md"
               }`}
             >
-              {msg.content.split("**").map((part, i) =>
-                i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+              {/* Attachments */}
+              {msg.anexos && msg.anexos.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {msg.anexos.map((a, i) => (
+                    <div key={i} className="flex items-center gap-1.5 bg-background/50 rounded-lg px-2 py-1 text-xs">
+                      {a.tipo === "imagem" ? (
+                        <ImageIcon className="h-3.5 w-3.5" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5" />
+                      )}
+                      <span className="truncate max-w-[120px]">{a.nome}</span>
+                    </div>
+                  ))}
+                </div>
               )}
 
-              {msg.buttons && (
+              {/* Content */}
+              <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
+
+              {/* Action buttons */}
+              {msg.acoes && msg.acoes.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {msg.buttons.map((btn) => (
+                  {msg.acoes.map((acao) => (
                     <Button
-                      key={btn.action}
+                      key={acao.route}
                       size="sm"
                       variant="outline"
                       className="rounded-xl text-xs h-8 bg-background"
-                      onClick={() => handleButtonAction(btn.action)}
+                      onClick={() => navigate(acao.route)}
                     >
-                      {btn.label}
+                      {acao.label}
                     </Button>
                   ))}
                 </div>
@@ -261,7 +317,7 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Suggestions (only when few messages) */}
+        {/* Suggestions */}
         {messages.length <= 1 && !isTyping && (
           <div className="flex flex-wrap gap-2 pt-2">
             {SUGGESTIONS.map((s) => (
@@ -284,8 +340,52 @@ export default function Chat() {
         </div>
       )}
 
+      {/* Pending files preview */}
+      {pendingFiles.length > 0 && (
+        <div className="px-4 py-2 border-t bg-card flex gap-2 overflow-x-auto shrink-0">
+          {pendingFiles.map((pf, i) => (
+            <div key={i} className="relative flex-shrink-0 w-16 h-16 rounded-lg border border-border overflow-hidden bg-muted">
+              {pf.preview ? (
+                <img src={pf.preview} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+              <button
+                onClick={() => removePendingFile(i)}
+                className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+              <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] px-1 truncate">
+                {pf.file.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3 border-t bg-card shrink-0">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_TYPES}
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0 h-11 w-11"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isTyping}
+        >
+          <Paperclip className="h-5 w-5 text-muted-foreground" />
+        </Button>
         <Input
           ref={inputRef}
           value={input}
@@ -297,7 +397,7 @@ export default function Chat() {
         <Button
           type="submit"
           size="icon"
-          disabled={!input.trim() || isTyping}
+          disabled={(!input.trim() && pendingFiles.length === 0) || isTyping}
           className="h-11 w-11 rounded-full shrink-0"
         >
           {isTyping ? (
