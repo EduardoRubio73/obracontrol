@@ -8,7 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus } from "lucide-react";
 
@@ -95,17 +100,18 @@ export default function EtapaDetalhe() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto pb-24">
+    <div className="space-y-6 max-w-lg mx-auto pb-28 px-1">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pt-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => navigate("/etapas")}
+          className="h-12 w-12 rounded-xl"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-6 w-6" />
         </Button>
-        <h1 className="text-2xl font-extrabold tracking-tight">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           {fase?.nome ?? "Carregando..."}
         </h1>
       </div>
@@ -113,35 +119,35 @@ export default function EtapaDetalhe() {
       {/* Progress */}
       <Card className="shadow-sm">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-muted-foreground">
-              📊 Progresso
-            </p>
-            <span className="text-2xl font-black tabular-nums">
+          <p className="text-base font-semibold text-muted-foreground mb-4">
+            📊 Progresso
+          </p>
+          <div className="flex items-end justify-between mb-3">
+            <span className="text-4xl font-black tabular-nums text-foreground">
               {progress}%
             </span>
+            <p className="text-sm text-muted-foreground">
+              {done} de {total} tarefas
+            </p>
           </div>
           <Progress
             value={progress}
-            className="h-4 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
+            className="h-5 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
           />
-          <p className="text-xs text-muted-foreground mt-2">
-            {done} de {total} tarefas concluídas
-          </p>
         </CardContent>
       </Card>
 
-      {/* New task button */}
+      {/* New task */}
       <Button
-        className="w-full h-12 rounded-xl font-bold text-base"
+        className="w-full h-14 rounded-2xl font-bold text-lg"
         onClick={() => setOpen(true)}
       >
-        <Plus className="mr-2 h-5 w-5" />
+        <Plus className="mr-2 h-6 w-6" />
         Nova tarefa
       </Button>
 
       {/* Checklist */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {itens?.map((item) => {
           const isDone = item.status === "concluido";
           return (
@@ -149,7 +155,7 @@ export default function EtapaDetalhe() {
               key={item.id}
               className={`shadow-sm transition-colors ${isDone ? "opacity-60" : ""}`}
             >
-              <CardContent className="p-4 flex items-center gap-4">
+              <CardContent className="p-5 flex items-center gap-5">
                 <Checkbox
                   checked={isDone}
                   onCheckedChange={() =>
@@ -158,10 +164,10 @@ export default function EtapaDetalhe() {
                       currentStatus: item.status,
                     })
                   }
-                  className="h-6 w-6 rounded-lg border-2"
+                  className="h-7 w-7 rounded-lg border-2"
                 />
                 <p
-                  className={`font-medium text-base flex-1 ${isDone ? "line-through text-muted-foreground" : ""}`}
+                  className={`font-semibold text-lg flex-1 ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}
                 >
                   {item.nome}
                 </p>
@@ -172,10 +178,10 @@ export default function EtapaDetalhe() {
 
         {!itens?.length && (
           <Card className="border-dashed border-2 shadow-none">
-            <CardContent className="py-10 text-center text-muted-foreground">
-              <p className="font-medium">Nenhuma tarefa ainda</p>
-              <p className="text-sm mt-1">
-                Adicione tarefas para acompanhar o progresso
+            <CardContent className="py-14 text-center text-muted-foreground">
+              <p className="text-lg font-medium">Nenhuma tarefa ainda</p>
+              <p className="text-base mt-2">
+                Adicione tarefas para acompanhar
               </p>
             </CardContent>
           </Card>
@@ -194,13 +200,14 @@ export default function EtapaDetalhe() {
               <Input
                 name="nome"
                 required
-                placeholder="Ex: Comprar cimento"
+                placeholder="Ex: Cavar vala"
                 autoFocus
+                className="h-12 text-base"
               />
             </div>
             <Button
               type="submit"
-              className="w-full h-12 rounded-xl font-bold"
+              className="w-full h-14 rounded-2xl font-bold text-lg"
               disabled={createItem.isPending}
             >
               {createItem.isPending ? "Adicionando..." : "Adicionar tarefa"}

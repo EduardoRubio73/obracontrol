@@ -4,7 +4,7 @@ import {
   Layers,
   ShoppingCart,
   DollarSign,
-  UserCircle,
+  Users,
 } from "lucide-react";
 
 const tabs = [
@@ -12,7 +12,7 @@ const tabs = [
   { title: "Etapas", url: "/etapas", icon: Layers },
   { title: "Compras", url: "/compras", icon: ShoppingCart },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Perfil", url: "/perfil", icon: UserCircle },
+  { title: "Contatos", url: "/fornecedores", icon: Users },
 ];
 
 export function MobileBottomNav() {

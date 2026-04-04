@@ -6,17 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-
-const tipoColors: Record<string, string> = {
-  despesa: "bg-red-100 text-red-700",
-  receita: "bg-emerald-100 text-emerald-700",
-  adiantamento: "bg-amber-100 text-amber-700",
-  reembolso: "bg-blue-100 text-blue-700",
-};
 
 const fmt = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -29,7 +26,7 @@ export default function Financeiro() {
   const { data: obras } = useQuery({
     queryKey: ["obras-select"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("obras").select("id, nome");
+      const { data, error } = await supabase.from("obras").select("id, nome, valor_previsto");
       if (error) throw error;
       return data;
     },
@@ -47,9 +44,17 @@ export default function Financeiro() {
     },
   });
 
-  const totalGasto = transacoes
-    ?.filter((t) => t.tipo === "despesa")
-    .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
+  const totalGasto =
+    transacoes
+      ?.filter((t) => t.tipo === "despesa")
+      .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
+
+  const totalRecebido =
+    transacoes
+      ?.filter((t) => t.tipo === "receita")
+      .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
+
+  const disponivel = totalRecebido - totalGasto;
 
   const create = useMutation({
     mutationFn: async (values: any) => {
@@ -58,7 +63,7 @@ export default function Financeiro() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["financeiro"] });
-      toast.success("Gasto adicionado!");
+      toast.success("Registrado!");
       setOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
@@ -78,56 +83,79 @@ export default function Financeiro() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto pb-24">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Financeiro</h1>
+    <div className="space-y-6 max-w-lg mx-auto pb-28 px-1">
+      <div className="pt-4">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          Financeiro
+        </h1>
       </div>
 
-      {/* Total */}
-      <Card className="shadow-sm">
-        <CardContent className="p-6 text-center">
-          <p className="text-sm text-muted-foreground mb-1">💰 Total gasto</p>
-          <p className="text-3xl font-black tabular-nums">{fmt(totalGasto)}</p>
-        </CardContent>
-      </Card>
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="shadow-sm border-2 border-destructive/20 bg-destructive/5">
+          <CardContent className="p-5 text-center">
+            <p className="text-sm text-muted-foreground mb-1">💸 Total gasto</p>
+            <p className="text-2xl font-black tabular-nums text-destructive">
+              {fmt(totalGasto)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm border-2 border-success/20 bg-success/5">
+          <CardContent className="p-5 text-center">
+            <p className="text-sm text-muted-foreground mb-1">💰 Disponível</p>
+            <p className="text-2xl font-black tabular-nums text-success">
+              {fmt(disponivel)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Add button */}
       <Button
-        className="w-full h-12 rounded-xl font-bold text-base"
+        className="w-full h-14 rounded-2xl font-bold text-lg"
         onClick={() => setOpen(true)}
       >
-        <Plus className="mr-2 h-5 w-5" />
+        <Plus className="mr-2 h-6 w-6" />
         Adicionar gasto
       </Button>
 
-      {/* List */}
-      {transacoes?.map((t) => (
-        <Card key={t.id} className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-lg tabular-nums">
-                {fmt(t.valor)}
-              </span>
-              <Badge className={tipoColors[t.tipo ?? ""] ?? "bg-secondary text-secondary-foreground"}>
-                {t.tipo}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t.descricao ?? (t.obras as any)?.nome ?? "—"}
-            </p>
-            {t.data_transacao && (
-              <p className="text-xs text-muted-foreground">
-                {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
+      {/* Transaction list */}
+      {transacoes?.map((t) => {
+        const isDespesa = t.tipo === "despesa";
+        return (
+          <Card key={t.id} className="shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-xl tabular-nums text-foreground">
+                  {isDespesa ? "−" : "+"} {fmt(t.valor)}
+                </p>
+                <span
+                  className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                    isDespesa
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-success/10 text-success"
+                  }`}
+                >
+                  {isDespesa ? "Saída" : "Entrada"}
+                </span>
+              </div>
+              <p className="text-base text-muted-foreground mt-2">
+                {t.descricao ?? (t.obras as any)?.nome ?? "—"}
               </p>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              {t.data_transacao && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
 
       {!isLoading && !transacoes?.length && (
         <Card className="border-dashed border-2 shadow-none">
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Nenhum gasto registrado
+          <CardContent className="py-14 text-center text-muted-foreground">
+            <p className="text-lg">Nenhum gasto registrado</p>
           </CardContent>
         </Card>
       )}
@@ -136,7 +164,7 @@ export default function Financeiro() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar gasto</DialogTitle>
+            <DialogTitle>Adicionar</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -144,7 +172,7 @@ export default function Financeiro() {
               <select
                 name="obra_id"
                 required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
               >
                 <option value="">Selecione</option>
                 {obras?.map((o) => (
@@ -157,33 +185,41 @@ export default function Financeiro() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor</Label>
-                <Input name="valor" type="number" step="0.01" required />
+                <Input
+                  name="valor"
+                  type="number"
+                  step="0.01"
+                  required
+                  className="h-12 text-base"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Tipo</Label>
                 <select
                   name="tipo"
                   required
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
                 >
-                  <option value="despesa">Despesa</option>
-                  <option value="receita">Receita</option>
-                  <option value="adiantamento">Adiantamento</option>
-                  <option value="reembolso">Reembolso</option>
+                  <option value="despesa">Saída</option>
+                  <option value="receita">Entrada</option>
                 </select>
               </div>
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Input name="descricao" placeholder="Ex: Cimento" />
+              <Input
+                name="descricao"
+                placeholder="Ex: Cimento"
+                className="h-12 text-base"
+              />
             </div>
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input name="data_transacao" type="date" />
+              <Input name="data_transacao" type="date" className="h-12 text-base" />
             </div>
             <Button
               type="submit"
-              className="w-full h-12 rounded-xl font-bold"
+              className="w-full h-14 rounded-2xl font-bold text-lg"
               disabled={create.isPending}
             >
               {create.isPending ? "Salvando..." : "Salvar"}
