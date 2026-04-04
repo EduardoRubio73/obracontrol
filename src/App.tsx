@@ -17,6 +17,7 @@ import Fornecedores from "./pages/Fornecedores";
 import Produtos from "./pages/Produtos";
 import NovaObra from "./pages/NovaObra";
 import Dossie from "./pages/Dossie";
+import ObraAlteracoes from "./pages/ObraAlteracoes";
 import Perfil from "./pages/Perfil";
 import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
