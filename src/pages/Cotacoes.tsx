@@ -62,14 +62,7 @@ const CotacoesContent = () => {
     });
   }, []);
 
-  const { data: obras } = useQuery({
-    queryKey: ["obras-select"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("obras").select("id, nome");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Removed obras query - using obraAtiva from context
 
   const { data: fornecedoresDb } = useQuery({
     queryKey: ["fornecedores-select"],
