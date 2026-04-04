@@ -1,68 +1,33 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceCommand, VoiceCommand } from "@/hooks/useVoiceCommand";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
-  Bell,
   CheckCircle2,
   AlertTriangle,
-  ShoppingCart,
-  Sun,
-  Clock,
   Mic,
   MicOff,
   Loader2,
-  ListChecks,
-  Volume2,
 } from "lucide-react";
-
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const Hoje = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { status: voiceStatus, transcript, isSupported: voiceSupported, startListening, stopListening } = useVoiceCommand();
+  const {
+    status: voiceStatus,
+    transcript,
+    isSupported: voiceSupported,
+    startListening,
+    stopListening,
+  } = useVoiceCommand();
 
-  // Section refs for voice scroll
   const alertasRef = useRef<HTMLDivElement>(null);
-  const atrasosRef = useRef<HTMLDivElement>(null);
-  const comprasRef = useRef<HTMLDivElement>(null);
-
-  // Generate system alerts on load
-  useEffect(() => {
-    if (user?.id) {
-      supabase.rpc("gerar_alertas_sistema", { p_user_id: user.id });
-    }
-  }, [user?.id]);
-
-  // Get user's first obra for mensagem_dia
-  const { data: obras } = useQuery({
-    queryKey: ["obras-lista"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("obras").select("id, nome").limit(5);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Mensagem do dia (from first obra)
-  const { data: mensagemDia } = useQuery({
-    queryKey: ["mensagem-dia", obras?.[0]?.id],
-    enabled: !!obras?.[0]?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("mensagem_dia", { p_obra: obras![0].id });
-      if (error) throw error;
-      return data as string;
-    },
-  });
 
   // System alerts (unresolved)
   const { data: alertas } = useQuery({
@@ -74,54 +39,52 @@ const Hoje = () => {
         .eq("resolvido", false)
         .order("created_at", { ascending: false }) as any;
       if (error) throw error;
-      return data as { id: string; entidade: string; tipo: string; mensagem: string; created_at: string }[];
+      return data as {
+        id: string;
+        tipo: string;
+        mensagem: string;
+        created_at: string;
+      }[];
     },
   });
 
-  // Pending fase_itens (not completed)
+  // Pending tasks (fase_itens not completed) — max 3
   const { data: tarefas } = useQuery({
     queryKey: ["tarefas-pendentes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("fase_itens")
-        .select("id, nome, status, fase_id")
+        .select("id, nome, status, fase_id, obra_fases(nome)")
         .neq("status", "concluido")
-        .limit(20);
+        .limit(3);
       if (error) throw error;
       return data;
     },
   });
 
-  // Delayed phases
-  const { data: atrasadas } = useQuery({
-    queryKey: ["fases-atrasadas"],
+  // Overall progress
+  const { data: progresso } = useQuery({
+    queryKey: ["progresso-geral"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("vw_fases_previsao" as any)
-        .select("*")
-        .eq("atrasado", true) as any;
+        .from("vw_progresso_obra" as any)
+        .select("*") as any;
       if (error) throw error;
-      return data as { id: string; nome: string; progresso: number; status: string }[];
-    },
-  });
-
-  // Purchase suggestions
-  const { data: compras } = useQuery({
-    queryKey: ["sugestao-compra-hoje"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vw_sugestao_compra" as any)
-        .select("*")
-        .neq("acao", "ok") as any;
-      if (error) throw error;
-      return data as { id: string; fase: string; item: string; acao: string }[];
+      const rows = data as { progresso_geral: number }[];
+      if (!rows?.length) return 0;
+      const avg =
+        rows.reduce((a: number, r: any) => a + (r.progresso_geral ?? 0), 0) /
+        rows.length;
+      return Math.round(avg);
     },
   });
 
   // Resolve alert
   const resolveAlert = useMutation({
     mutationFn: async (alertId: string) => {
-      const { error } = await (supabase.from("alertas_sistema" as any) as any)
+      const { error } = await (
+        supabase.from("alertas_sistema" as any) as any
+      )
         .update({ resolvido: true })
         .eq("id", alertId);
       if (error) throw error;
@@ -143,72 +106,56 @@ const Hoje = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tarefas-pendentes"] });
-      toast.success("Tarefa concluída!");
+      queryClient.invalidateQueries({ queryKey: ["progresso-geral"] });
+      toast.success("Tarefa concluída! ✅");
     },
   });
 
   // Greeting
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const greeting =
+    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
 
-  const alertColors: Record<string, { bg: string; border: string; text: string }> = {
-    atraso: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700" },
-    orcamento: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
-    parada: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
-  };
+  const hasAlerts = (alertas?.length ?? 0) > 0;
+  const hasTasks = (tarefas?.length ?? 0) > 0;
+  const allGood = !hasAlerts && !hasTasks;
 
-  const acaoLabels: Record<string, { label: string; color: string }> = {
-    comprar: { label: "Comprar", color: "bg-sky-100 text-sky-800 border-sky-200" },
-    revisar: { label: "Revisar", color: "bg-amber-100 text-amber-800 border-amber-200" },
-    renegociar: { label: "Renegociar", color: "bg-rose-100 text-rose-800 border-rose-200" },
-  };
-
-  const hasContent = (alertas?.length ?? 0) > 0 || (tarefas?.length ?? 0) > 0 || (atrasadas?.length ?? 0) > 0 || (compras?.length ?? 0) > 0;
-
-  // Voice command handler
-  const handleVoiceCommand = useCallback((cmd: VoiceCommand, raw: string) => {
-    switch (cmd.action) {
-      case "concluir_tarefa": {
-        if (tarefas?.length) {
-          // Try to match by name, or complete first task
-          const match = cmd.target
-            ? tarefas.find((t) => t.nome.toLowerCase().includes(cmd.target!.toLowerCase()))
-            : tarefas[0];
-          if (match) {
-            toggleTask.mutate(match.id);
-            toast.success(`Tarefa "${match.nome}" concluída por voz!`);
+  // Voice
+  const handleVoiceCommand = useCallback(
+    (cmd: VoiceCommand, raw: string) => {
+      switch (cmd.action) {
+        case "concluir_tarefa": {
+          if (tarefas?.length) {
+            const match = cmd.target
+              ? tarefas.find((t) =>
+                  t.nome.toLowerCase().includes(cmd.target!.toLowerCase())
+                )
+              : tarefas[0];
+            if (match) {
+              toggleTask.mutate(match.id);
+              toast.success(`"${match.nome}" concluída por voz!`);
+            } else {
+              toast.info("Não encontrei essa tarefa.");
+            }
           } else {
-            toast.info("Não encontrei essa tarefa. Tente novamente.");
+            toast.info("Sem tarefas pendentes.");
           }
-        } else {
-          toast.info("Não há tarefas pendentes.");
+          break;
         }
-        break;
+        case "ver_atrasos":
+        case "ver_compras":
+        case "ver_status":
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          toast.info("Mostrando resumo");
+          break;
+        default:
+          toast.error(
+            `Não entendi: "${raw}". Tente: concluir, atrasos, status.`
+          );
       }
-      case "ver_atrasos":
-        if (atrasosRef.current) {
-          atrasosRef.current.scrollIntoView({ behavior: "smooth" });
-          toast.info("Mostrando fases atrasadas");
-        } else {
-          toast.info("Não há fases atrasadas.");
-        }
-        break;
-      case "ver_compras":
-        if (comprasRef.current) {
-          comprasRef.current.scrollIntoView({ behavior: "smooth" });
-          toast.info("Mostrando compras pendentes");
-        } else {
-          toast.info("Não há compras pendentes.");
-        }
-        break;
-      case "ver_status":
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        toast.info("Mostrando resumo do dia");
-        break;
-      default:
-        toast.error(`Não entendi: "${raw}". Tente: concluir, atrasos, compras ou status.`);
-    }
-  }, [tarefas, toggleTask]);
+    },
+    [tarefas, toggleTask]
+  );
 
   const handleVoiceClick = () => {
     if (voiceStatus === "listening") {
@@ -218,252 +165,164 @@ const Hoje = () => {
     }
   };
 
-  // Voice status labels
-  const voiceLabels: Record<string, string> = {
-    idle: "Falar",
-    listening: "Estou ouvindo...",
-    processing: "Entendi, processando...",
-    error: "Não entendi, tente novamente",
-  };
-
   return (
-    <div className="space-y-8 max-w-2xl mx-auto pb-24">
-      {/* Hero greeting */}
-      <div className="text-center space-y-2 pt-4">
-        <div className="flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 border-2 border-amber-200">
-            <Sun className="h-8 w-8 text-amber-600" />
-          </div>
-        </div>
-        <h1 className="text-3xl font-black">{greeting}!</h1>
-        <p className="text-lg text-muted-foreground">Vamos cuidar da sua obra hoje</p>
+    <div className="space-y-6 max-w-lg mx-auto pb-28">
+      {/* Greeting */}
+      <div className="pt-2">
+        <h1 className="text-3xl font-extrabold tracking-tight">
+          {greeting} 👋
+        </h1>
+        <p className="text-lg text-muted-foreground mt-1">
+          Sua obra está{" "}
+          <span className="font-bold text-foreground">{progresso ?? 0}%</span>{" "}
+          pronta
+        </p>
       </div>
 
-      {/* Mensagem do Dia */}
-      {mensagemDia && (
-        <Card className="bg-sky-50/80 border-sky-200 border-2">
-          <CardContent className="py-6 px-8 text-center">
-            <p className="text-xl font-bold text-sky-800">{mensagemDia}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ===== AÇÕES RÁPIDAS ===== */}
-      <div className="grid grid-cols-2 gap-4">
-        <Button
-          size="lg"
-          className="h-20 text-lg font-bold rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex flex-col items-center justify-center gap-1"
-          onClick={() => {
-            if (alertas?.length) {
-              alertasRef.current?.scrollIntoView({ behavior: "smooth" });
-              toast.info("Você tem alertas para resolver!");
-            } else if (tarefas?.length) {
-              document.getElementById("secao-tarefas")?.scrollIntoView({ behavior: "smooth" });
-              toast.info("Confira suas tarefas pendentes!");
-            } else if (compras?.length) {
-              comprasRef.current?.scrollIntoView({ behavior: "smooth" });
-              toast.info("Há compras pendentes!");
-            } else {
-              toast.success("Tudo em dia! 🎉");
-            }
-          }}
-        >
-          <ListChecks className="h-7 w-7" />
-          O que fazer agora
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          className="h-20 text-lg font-bold rounded-2xl border-2 shadow-lg flex flex-col items-center justify-center gap-1"
-          onClick={() => {
-            const parts: string[] = [];
-            if (mensagemDia) parts.push(mensagemDia);
-            if (alertas?.length) {
-              parts.push(`Você tem ${alertas.length} alerta${alertas.length > 1 ? "s" : ""}`);
-              alertas.slice(0, 3).forEach((a) => parts.push(a.mensagem));
-            }
-            if (tarefas?.length) {
-              parts.push(`${tarefas.length} tarefa${tarefas.length > 1 ? "s" : ""} pendente${tarefas.length > 1 ? "s" : ""}`);
-              tarefas.slice(0, 3).forEach((t) => parts.push(t.nome));
-            }
-            if (compras?.length) {
-              parts.push(`${compras.length} compra${compras.length > 1 ? "s" : ""} pendente${compras.length > 1 ? "s" : ""}`);
-            }
-            if (!parts.length) parts.push("Tudo em dia! Nenhuma pendência encontrada.");
-            const utterance = new SpeechSynthesisUtterance(parts.join(". "));
-            utterance.lang = "pt-BR";
-            utterance.rate = 0.95;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-            toast.info("🔊 Lendo conteúdo da tela...");
-          }}
-        >
-          <Volume2 className="h-7 w-7" />
-          Ouvir
-        </Button>
-      </div>
-
-      {!hasContent && (
-        <Card className="border-dashed border-2">
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-emerald-400" />
-            <p className="text-lg font-semibold">Tudo em dia! 🎉</p>
-            <p className="text-sm mt-1">Nenhuma pendência encontrada.</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ===== ALERTAS DO DIA ===== */}
-      {(alertas?.length ?? 0) > 0 && (
+      {/* Alert card (red pastel) */}
+      {hasAlerts && (
         <div ref={alertasRef} className="space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Bell className="h-5 w-5 text-rose-500" />
-            🔔 Alertas do Dia
-            <Badge variant="destructive" className="ml-1">{alertas!.length}</Badge>
-          </h2>
-          {alertas!.map((a) => {
-            const cfg = alertColors[a.tipo] ?? { bg: "bg-sky-50", border: "border-sky-200", text: "text-sky-700" };
-            return (
-              <Card key={a.id} className={`${cfg.bg} ${cfg.border} border-2`}>
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 ${cfg.border} ${cfg.bg}`}>
-                    <AlertTriangle className={`h-6 w-6 ${cfg.text}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-base font-semibold ${cfg.text}`}>{a.mensagem}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {new Date(a.created_at).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className={`shrink-0 ${cfg.text} ${cfg.border}`}
-                    onClick={() => resolveAlert.mutate(a.id)}
-                  >
-                    <CheckCircle2 className="mr-1 h-4 w-4" />
-                    Resolver
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {alertas!.slice(0, 2).map((a) => (
+            <Card
+              key={a.id}
+              className="border-2 border-red-200 bg-red-50 shadow-sm"
+            >
+              <CardContent className="p-5 flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-semibold text-red-800">
+                    {a.mensagem}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-600 shrink-0"
+                  onClick={() => resolveAlert.mutate(a.id)}
+                >
+                  Resolver
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* ===== TAREFAS PARA FAZER ===== */}
-      {(tarefas?.length ?? 0) > 0 && (
+      {/* Action card */}
+      {hasTasks && !allGood && (
+        <Card className="border-2 border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-6 text-center">
+            <p className="text-lg font-bold text-amber-900">
+              Você tem tarefas para fazer hoje
+            </p>
+            <Button
+              className="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl px-8 h-12 text-base"
+              onClick={() =>
+                document
+                  .getElementById("secao-tarefas")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Começar agora
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All good */}
+      {allGood && (
+        <Card className="border-2 border-emerald-200 bg-emerald-50 shadow-sm">
+          <CardContent className="p-8 text-center">
+            <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+            <p className="text-xl font-bold text-emerald-800">
+              Tudo em dia 👏
+            </p>
+            <p className="text-muted-foreground mt-1">
+              Você não tem pendências hoje
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progress */}
+      <Card className="shadow-sm">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-muted-foreground">
+              📊 Progresso geral
+            </p>
+            <span className="text-2xl font-black tabular-nums">
+              {progresso ?? 0}%
+            </span>
+          </div>
+          <Progress
+            value={progresso ?? 0}
+            className="h-4 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Tasks (max 3) */}
+      {hasTasks && (
         <div id="secao-tarefas" className="space-y-3">
-          <h2 className="text-lg font-bold">📋 Tarefas para fazer</h2>
+          <p className="text-sm font-semibold text-muted-foreground">
+            📋 Próximas tarefas
+          </p>
           {tarefas!.map((t) => (
-            <Card key={t.id} className="border-2">
-              <CardContent className="p-5 flex items-center gap-4">
+            <Card key={t.id} className="shadow-sm">
+              <CardContent className="p-4 flex items-center gap-4">
                 <Checkbox
                   checked={false}
                   onCheckedChange={() => toggleTask.mutate(t.id)}
-                  className="h-7 w-7 rounded-lg border-2"
+                  className="h-6 w-6 rounded-lg border-2"
                 />
-                <p className="text-base font-semibold flex-1">{t.nome}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* ===== FASES COM ATRASO ===== */}
-      {(atrasadas?.length ?? 0) > 0 && (
-        <div ref={atrasosRef} className="space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-rose-500" />
-            ⏳ Fases com atraso
-          </h2>
-          {atrasadas!.map((f) => (
-            <Card key={f.id} className="bg-rose-50 border-rose-200 border-2">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 border border-rose-200">
-                      <AlertTriangle className="h-5 w-5 text-rose-600" />
-                    </div>
-                    <p className="text-base font-bold text-rose-800">{f.nome}</p>
-                  </div>
-                  <span className="text-2xl font-black tabular-nums text-rose-700">{f.progresso ?? 0}%</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-base">{t.nome}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(t.obra_fases as any)?.nome ?? ""}
+                  </p>
                 </div>
-                <Progress
-                  value={f.progresso ?? 0}
-                  className="h-4 rounded-full bg-rose-200/60 [&>div]:bg-rose-500 [&>div]:rounded-full"
-                />
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
-      {/* ===== PRECISA COMPRAR ===== */}
-      {(compras?.length ?? 0) > 0 && (
-        <div ref={comprasRef} className="space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-sky-500" />
-            🛒 Precisa comprar
-          </h2>
-          {compras!.map((c) => {
-            const acaoCfg = acaoLabels[c.acao] ?? { label: c.acao, color: "bg-slate-100 text-slate-700 border-slate-200" };
-            return (
-              <Card key={c.id} className="border-2">
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-100 border-2 border-sky-200">
-                    <ShoppingCart className="h-6 w-6 text-sky-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-bold">{c.item}</p>
-                    <p className="text-sm text-muted-foreground">{c.fase}</p>
-                  </div>
-                  <Badge className={`${acaoCfg.color} text-xs font-bold border`}>{acaoCfg.label}</Badge>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ===== FLOATING VOICE BUTTON ===== */}
+      {/* Floating voice button */}
       {voiceSupported && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+        <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
           {voiceStatus !== "idle" && (
-            <Card className={`border-2 shadow-lg ${
-              voiceStatus === "listening" ? "bg-sky-50 border-sky-300" :
-              voiceStatus === "processing" ? "bg-emerald-50 border-emerald-300" :
-              "bg-rose-50 border-rose-300"
-            }`}>
-              <CardContent className="py-2 px-4">
-                <p className={`text-sm font-semibold ${
-                  voiceStatus === "listening" ? "text-sky-700" :
-                  voiceStatus === "processing" ? "text-emerald-700" :
-                  "text-rose-700"
-                }`}>
-                  {voiceLabels[voiceStatus]}
-                </p>
-                {voiceStatus === "processing" && transcript && (
-                  <p className="text-xs text-muted-foreground mt-0.5">"{transcript}"</p>
-                )}
-              </CardContent>
-            </Card>
+            <div
+              className={`mb-2 rounded-xl px-4 py-2 text-sm font-medium shadow-lg ${
+                voiceStatus === "listening"
+                  ? "bg-primary text-primary-foreground"
+                  : voiceStatus === "processing"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-destructive text-destructive-foreground"
+              }`}
+            >
+              {voiceStatus === "listening" && "Estou ouvindo..."}
+              {voiceStatus === "processing" && `"${transcript}"`}
+              {voiceStatus === "error" && "Não entendi, tente novamente"}
+            </div>
           )}
           <Button
             size="lg"
             onClick={handleVoiceClick}
-            className={`h-16 w-16 rounded-full shadow-xl transition-all ${
+            className={`h-14 w-14 rounded-full shadow-xl ${
               voiceStatus === "listening"
-                ? "bg-rose-500 hover:bg-rose-600 animate-pulse"
-                : "bg-sky-500 hover:bg-sky-600"
+                ? "bg-destructive hover:bg-destructive/90 animate-pulse"
+                : "bg-primary hover:bg-primary/90"
             }`}
           >
             {voiceStatus === "listening" ? (
-              <MicOff className="h-7 w-7 text-white" />
+              <MicOff className="h-6 w-6 text-white" />
             ) : voiceStatus === "processing" ? (
-              <Loader2 className="h-7 w-7 text-white animate-spin" />
+              <Loader2 className="h-6 w-6 text-white animate-spin" />
             ) : (
-              <Mic className="h-7 w-7 text-white" />
+              <Mic className="h-6 w-6 text-white" />
             )}
           </Button>
         </div>

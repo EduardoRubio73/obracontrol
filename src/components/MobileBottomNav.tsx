@@ -1,21 +1,17 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Building2,
-  FileText,
+  Home,
+  Layers,
+  ShoppingCart,
   DollarSign,
-  Trophy,
-  Package,
   UserCircle,
 } from "lucide-react";
 
 const tabs = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Obras", url: "/obras", icon: Building2 },
-  { title: "Cotações", url: "/cotacoes", icon: FileText },
+  { title: "Hoje", url: "/", icon: Home },
+  { title: "Etapas", url: "/etapas", icon: Layers },
+  { title: "Compras", url: "/compras", icon: ShoppingCart },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Ranking", url: "/ranking", icon: Trophy },
-  { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Perfil", url: "/perfil", icon: UserCircle },
 ];
 
@@ -29,7 +25,7 @@ export function MobileBottomNav() {
           end={tab.url === "/"}
           className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 px-2 py-1 text-xs transition-colors ${
-              isActive ? "text-primary font-medium" : "text-muted-foreground"
+              isActive ? "text-primary font-semibold" : "text-muted-foreground"
             }`
           }
         >
