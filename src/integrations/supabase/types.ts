@@ -356,6 +356,48 @@ export type Database = {
           },
         ]
       }
+      itens_cotacao: {
+        Row: {
+          cotacao_id: string
+          created_at: string | null
+          id: string
+          nome: string
+          quantidade: number
+          unidade: string | null
+        }
+        Insert: {
+          cotacao_id: string
+          created_at?: string | null
+          id?: string
+          nome: string
+          quantidade?: number
+          unidade?: string | null
+        }
+        Update: {
+          cotacao_id?: string
+          created_at?: string | null
+          id?: string
+          nome?: string
+          quantidade?: number
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_cotacao_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "cotacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_cotacao_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_propostas_comparativo"
+            referencedColumns: ["cotacao_id"]
+          },
+        ]
+      }
       obras: {
         Row: {
           created_at: string | null
