@@ -74,11 +74,13 @@ const CotacoesContent = () => {
   });
 
   const { data: cotacoes, isLoading } = useQuery({
-    queryKey: ["cotacoes"],
+    queryKey: ["cotacoes", obraAtivaId],
+    enabled: !!obraAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cotacoes")
         .select("*, obras(nome)")
+        .eq("obra_id", obraAtivaId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
