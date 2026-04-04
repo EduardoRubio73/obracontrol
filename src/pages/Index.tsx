@@ -37,13 +37,6 @@ const MenuPrincipal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const {
-    status: voiceStatus,
-    transcript,
-    isSupported: voiceSupported,
-    startListening,
-    stopListening,
-  } = useVoiceCommand();
 
   /* ── data ── */
   const { data: profile } = useQuery({
