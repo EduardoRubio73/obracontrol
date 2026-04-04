@@ -119,8 +119,8 @@ const NovaObra = () => {
   const criarObra = useMutation({
     mutationFn: async () => {
       // 1. Create obra
-      const { data: obra, error: obraErr } = await supabase
-        .from("obras")
+      const { data: obra, error: obraErr } = await (supabase
+        .from("obras") as any)
         .insert({
           nome,
           tipo_obra: tipoObra,
@@ -129,7 +129,7 @@ const NovaObra = () => {
           escopo_ia: escopo ? JSON.stringify(escopo) : null,
           profissional_recomendado: escopo?.profissional_recomendado || null,
           user_id: user!.id,
-          status: "planejamento" as const,
+          status: "planejamento",
         })
         .select("id")
         .single();
@@ -139,7 +139,7 @@ const NovaObra = () => {
       setObraId(newObraId);
 
       // 2. Create dossie entry
-      await supabase.from("obra_dossie").insert({
+      await (supabase.from("obra_dossie" as any) as any).insert({
         obra_id: newObraId,
         tipo: "obra_criada",
         titulo: "Obra criada",
