@@ -148,6 +148,18 @@ const Cotacoes = () => {
             ) : (
               <p className="text-muted-foreground text-sm">Nenhuma proposta recebida</p>
             )}
+            {propostas && propostas.length >= 2 && (
+              <Button
+                className="mt-4 w-full"
+                onClick={() => {
+                  setSelectedId(null);
+                  navigate(`/cotacoes/${selectedId}/comparar`);
+                }}
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Comparar Propostas
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
