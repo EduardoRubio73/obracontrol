@@ -227,27 +227,22 @@ const MenuPrincipal = () => {
         }
       `}</style>
 
-      {/* ── BLOCO 1: Header inteligente ── */}
+      {/* ── BLOCO 1: Header unificado ── */}
       <div className="pt-6 pb-1" style={stagger(0)}>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           {greeting}
-          {firstName ? `, ${firstName}` : ""} {theme.emoji}
+          {firstName ? `, ${firstName}` : ""} 👋
         </h1>
         <p className="text-lg text-muted-foreground mt-2">
-          {hasAlerts ? "⚠️ Você tem algo importante hoje" : theme.subtitle}
+          {hasAlerts ? statusAlert : statusOk}
         </p>
       </div>
 
-      {/* ── BLOCO 2: Destaque do dia ── */}
-      <div className="mt-5" style={stagger(1)}>
-        {hasAlerts ? (
-          <div
-            className={`rounded-3xl bg-gradient-to-r ${theme.highlightGradient} border ${theme.highlightBorder} p-6`}
-          >
-            <p className="text-xl font-bold text-foreground">
-              🚨 Você tem etapas atrasadas
-            </p>
-            <p className="text-base text-muted-foreground mt-1">
+      {/* ── BLOCO 2: Alerta (só se houver) ── */}
+      {hasAlerts && (
+        <div className="mt-5" style={stagger(1)}>
+          <div className="rounded-3xl bg-destructive/10 border border-destructive/30 p-6">
+            <p className="text-base text-foreground font-semibold">
               {alertas![0]?.mensagem}
             </p>
             <Button
@@ -257,19 +252,8 @@ const MenuPrincipal = () => {
               Resolver agora
             </Button>
           </div>
-        ) : (
-          <div
-            className={`rounded-3xl bg-gradient-to-r ${theme.okGradient} border ${theme.okBorder} p-6 text-center`}
-          >
-            <p className="text-2xl font-bold text-foreground">
-              Tudo em dia 🎉
-            </p>
-            <p className="text-base text-muted-foreground mt-1">
-              Sua obra está no caminho certo
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── BLOCO 3: Nova Obra CTA ── */}
       <div className="mt-6" style={stagger(2)}>
