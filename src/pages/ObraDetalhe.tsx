@@ -152,6 +152,58 @@ const ObraDetalhe = () => {
     },
   });
 
+  // System alerts
+  const { data: systemAlertas } = useQuery({
+    queryKey: ["alertas-sistema"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("alertas_sistema" as any)
+        .select("*")
+        .eq("resolvido", false)
+        .order("created_at", { ascending: false }) as any;
+      if (error) throw error;
+      return data as { id: string; entidade: string; tipo: string; mensagem: string; created_at: string }[];
+    },
+  });
+
+  // Purchase suggestions
+  const { data: sugestoes } = useQuery({
+    queryKey: ["sugestao-compra", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vw_sugestao_compra" as any)
+        .select("*")
+        .eq("obra_id", id!)
+        .neq("acao", "ok") as any;
+      if (error) throw error;
+      return data as { id: string; fase: string; item: string; valor_previsto: number; valor_real: number; diferenca: number; acao: string }[];
+    },
+  });
+
+  // Generate alerts on load
+  const { user } = useAuth();
+  useEffect(() => {
+    if (user?.id) {
+      supabase.rpc("gerar_alertas_sistema", { p_user_id: user.id }).then(({ error }) => {
+        if (error) console.error("gerar_alertas_sistema:", error.message);
+      });
+    }
+  }, [user?.id]);
+
+  // Resolve alert mutation
+  const resolveAlert = useMutation({
+    mutationFn: async (alertId: string) => {
+      const { error } = await (supabase.from("alertas_sistema" as any) as any)
+        .update({ resolvido: true })
+        .eq("id", alertId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alertas-sistema"] });
+      toast.success("Alerta resolvido!");
+    },
+  });
+
   // Mutations
   const upsertFase = useMutation({
     mutationFn: async (values: Partial<Fase>) => {
