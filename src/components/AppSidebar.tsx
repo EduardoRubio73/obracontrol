@@ -13,6 +13,7 @@ import {
   BarChart3,
   Settings,
   Shield,
+  Bot,
 } from "lucide-react";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
