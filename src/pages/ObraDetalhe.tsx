@@ -588,7 +588,34 @@ const ObraDetalhe = () => {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Item Dialog */}
+      <Dialog open={itemDialog} onOpenChange={(v) => { setItemDialog(v); if (!v) setEditingItem(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingItem ? "Editar Item" : "Novo Item"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleItemSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="item-nome">Nome do Item</Label>
+              <Input id="item-nome" name="nome" defaultValue={editingItem?.nome ?? ""} required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="valor_previsto">Valor Previsto (R$)</Label>
+                <Input id="valor_previsto" name="valor_previsto" type="number" step="0.01" min="0" defaultValue={editingItem?.valor_previsto ?? 0} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor_real">Valor Real (R$)</Label>
+                <Input id="valor_real" name="valor_real" type="number" step="0.01" min="0" defaultValue={editingItem?.valor_real ?? 0} />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={upsertItem.isPending}>
+              {upsertItem.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
   );
 };
 
