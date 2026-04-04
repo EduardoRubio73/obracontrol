@@ -38,8 +38,9 @@ const trackingStatusConfig: Record<string, { label: string; color: string; icon:
   expirado: { label: "Expirado", color: "bg-destructive/10 text-destructive", icon: <AlertTriangle className="h-3 w-3" /> },
 };
 
-const Cotacoes = () => {
+const CotacoesContent = () => {
   const { user } = useAuth();
+  const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
