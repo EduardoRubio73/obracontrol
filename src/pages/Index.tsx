@@ -16,6 +16,7 @@ import {
   MicOff,
   Loader2,
   Plus,
+  LayoutDashboard,
 } from "lucide-react";
 
 /* ── status messages ── */
