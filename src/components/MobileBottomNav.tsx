@@ -4,6 +4,7 @@ import {
   Building2,
   FileText,
   DollarSign,
+  Trophy,
   UserCircle,
 } from "lucide-react";
 
