@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy, PackagePlus, Brain,
+  ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy, PackagePlus, Brain, Mail,
 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
@@ -34,6 +34,8 @@ const Cotacoes = () => {
   const [newItemName, setNewItemName] = useState("");
   const [newItemQtd, setNewItemQtd] = useState("1");
   const [newItemUnit, setNewItemUnit] = useState("un");
+  const [emailDialog, setEmailDialog] = useState<string | null>(null);
+  const [emailList, setEmailList] = useState("");
 
   const { data: obras } = useQuery({
     queryKey: ["obras-select"],
@@ -164,6 +166,89 @@ const Cotacoes = () => {
       unidade: newItemUnit || "un",
     });
   };
+  const gerarEmail = (email: string, nomeObra: string, link: string, prazo: string) => {
+    const subject = `Solicitação de Orçamento - ${nomeObra}`;
+    const body = `Prezados,
+
+Estamos realizando uma cotação referente à obra:
+
+${nomeObra}
+
+Solicitamos o envio da proposta através do link abaixo:
+
+${link}
+
+Prazo para envio: ${prazo}
+
+IMPORTANTE:
+O envio deve ser feito exclusivamente pelo formulário para garantir padronização e análise correta.
+
+As propostas serão analisadas com base em critérios técnicos e financeiros.
+
+Atenciosamente,
+ObraControl`;
+
+    const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  };
+
+  const handleEnviarEmails = () => {
+    if (!emailDialog) return;
+    const cotacao = cotacoes?.find((c) => c.id === emailDialog);
+    if (!cotacao) return;
+
+    const token = (cotacao as any).token_publico;
+    const link = `${window.location.origin}/cotacao/${token}`;
+    const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
+    const prazo = (cotacao as any).data_expiracao ?? "Não definido";
+
+    const emails = emailList
+      .split(/[,;\n]/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+
+    if (!emails.length) {
+      toast.error("Informe pelo menos um email válido");
+      return;
+    }
+
+    // Open mailto for each (or combined)
+    if (emails.length === 1) {
+      gerarEmail(emails[0], nomeObra, link, prazo);
+    } else {
+      // Use first email as To, rest as CC via single mailto
+      const [first, ...rest] = emails;
+      const subject = `Solicitação de Orçamento - ${nomeObra}`;
+      const body = `Prezados,
+
+Estamos realizando uma cotação referente à obra:
+
+${nomeObra}
+
+Solicitamos o envio da proposta através do link abaixo:
+
+${link}
+
+Prazo para envio: ${prazo}
+
+IMPORTANTE:
+O envio deve ser feito exclusivamente pelo formulário para garantir padronização e análise correta.
+
+As propostas serão analisadas com base em critérios técnicos e financeiros.
+
+Atenciosamente,
+ObraControl`;
+
+      const cc = rest.map(encodeURIComponent).join(",");
+      const mailto = `mailto:${encodeURIComponent(first)}?cc=${cc}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+    }
+
+    toast.success(`Email preparado para ${emails.length} fornecedor(es)!`);
+    setEmailDialog(null);
+    setEmailList("");
+  };
+
 
   return (
     <div className="space-y-6">
@@ -229,14 +314,27 @@ const Cotacoes = () => {
                   <PackagePlus className="h-4 w-4" />
                 </Button>
                 {(cotacao as any).token_publico && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Copiar link público"
-                    onClick={() => copyLink((cotacao as any).token_publico)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Enviar por email"
+                      onClick={() => {
+                        setEmailDialog(cotacao.id);
+                        setEmailList("");
+                      }}
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Copiar link público"
+                      onClick={() => copyLink((cotacao as any).token_publico)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
                 <ChevronRight
                   className="h-4 w-4 text-muted-foreground cursor-pointer"
@@ -414,6 +512,39 @@ const Cotacoes = () => {
                 Nenhum item definido. Adicione itens para os fornecedores preencherem.
               </p>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Dialog */}
+      <Dialog open={!!emailDialog} onOpenChange={(v) => { if (!v) { setEmailDialog(null); setEmailList(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Enviar Cotação por Email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Informe os emails dos fornecedores. O seu app de email será aberto com a mensagem pronta.
+            </p>
+            <div className="space-y-2">
+              <Label>Emails dos fornecedores</Label>
+              <textarea
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder={"fornecedor1@email.com\nfornecedor2@email.com\nfornecedor3@email.com"}
+                value={emailList}
+                onChange={(e) => setEmailList(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Separe por vírgula, ponto-e-vírgula ou quebra de linha
+              </p>
+            </div>
+            <Button className="w-full" onClick={handleEnviarEmails}>
+              <Mail className="mr-2 h-4 w-4" />
+              Abrir Email
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
