@@ -353,7 +353,7 @@ const Hoje = () => {
 
       {/* ===== TAREFAS PARA FAZER ===== */}
       {(tarefas?.length ?? 0) > 0 && (
-        <div className="space-y-3">
+        <div id="secao-tarefas" className="space-y-3">
           <h2 className="text-lg font-bold">📋 Tarefas para fazer</h2>
           {tarefas!.map((t) => (
             <Card key={t.id} className="border-2">
