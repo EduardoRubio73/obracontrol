@@ -34,7 +34,7 @@ const Dashboard = () => {
   const economia = totais.previsto - totais.gasto;
 
   // Group financeiro by month
-  const chartData = financeiro?.reduce<Record<string, { mes: string; receita: number; despesa: number }>>((acc, f) => {
+  const chartData = financeiro?.reduce((acc: Record<string, { mes: string; receita: number; despesa: number }>, f) => {
     const mes = f.data_transacao ? f.data_transacao.slice(0, 7) : "Sem data";
     if (!acc[mes]) acc[mes] = { mes, receita: 0, despesa: 0 };
     if (f.tipo === "receita") acc[mes].receita += Number(f.valor);
@@ -42,7 +42,7 @@ const Dashboard = () => {
     return acc;
   }, {});
 
-  const chartArray = chartData ? Object.values(chartData).sort((a, b) => (a as any).mes.localeCompare((b as any).mes)) : [];
+  const chartArray = chartData ? Object.values(chartData).sort((a, b) => a.mes.localeCompare(b.mes)) : [];
 
   const fmt = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
