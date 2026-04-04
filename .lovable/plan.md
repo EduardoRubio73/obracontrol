@@ -1,70 +1,51 @@
 
 
-# Plano: Chat com IA Real + Anexos
+# Plano: Modo Voz Contínua (Tipo Alexa)
 
-## O que existe hoje
-- `Chat.tsx`: UI WhatsApp-style com processamento local de keywords (sem IA)
-- Edge functions `gerar-escopo` e `apoio-decisao` já usam `LOVABLE_API_KEY` + Lovable AI Gateway
-- Bucket `documentos` já existe (privado)
-- DB functions: `fn_criar_obra_inteligente`, `fn_criar_cotacao_com_fornecedores`, etc.
+## Resumo
+Adicionar modo de conversa contínua por voz no Chat: o usuário ativa uma vez, fala, a IA responde com TTS (Web Speech API), e o sistema volta a ouvir automaticamente — loop infinito até desativar.
 
 ## Solução
 
-### 1. Edge Function `chat-assistente`
+### 1. Criar hook `useVoiceLoop`
 
-Novo arquivo `supabase/functions/chat-assistente/index.ts`:
+Novo arquivo `src/hooks/useVoiceLoop.ts`:
 
-- Recebe: `{ mensagem, obra_id, historico[], anexos[] }`
-- Valida JWT em code (extrair user do token)
-- System prompt com intents suportadas
-- Usa Lovable AI Gateway (`ai.gateway.lovable.dev`) com tool calling
-- Tools disponíveis para a IA:
-  - `criar_obra(nome, tipo, classificacao)` — chama `fn_criar_obra_inteligente` via Supabase service role
-  - `criar_gasto(obra_id, descricao, valor)` — INSERT em `financeiro`
-  - `criar_etapa(obra_id, nome)` — INSERT em `obra_fases`
-  - `status_obra(obra_id)` — SELECT de fases + financeiro para resumir
-  - `responder_texto(resposta, botoes[])` — resposta livre
-- Quando a IA chama um tool, a edge function executa via Supabase client (service role) e retorna resultado
-- Resposta final: `{ resposta, acoes[], executado }`
+- Estados: `idle` | `listening` | `processing` | `speaking`
+- Usa `webkitSpeechRecognition` (pt-BR, continuous=false)
+- Usa `SpeechSynthesisUtterance` para TTS (pt-BR)
+- Loop: ouvir → callback com texto → aguardar TTS terminar → ouvir novamente
+- `start()` / `stop()` controlam o loop
+- Auto-stop após 3 erros consecutivos ou silêncio prolongado
+- Vibração leve ao iniciar/parar (navigator.vibrate)
 
-### 2. Frontend Chat.tsx — Refatorar
+### 2. Integrar no Chat.tsx
 
-- Remover `processUserMessage` local
-- Adicionar estado para anexos (files pendentes)
-- `enviarMensagem` chama `supabase.functions.invoke('chat-assistente', { body })` com histórico completo
-- Enviar histórico de mensagens para manter contexto
-- Renderizar resposta com `react-markdown`
-- Botão 📎 para anexar arquivos (aceita jpg, png, pdf, doc)
-- Upload de anexos para `supabase.storage.from('documentos').upload(...)` antes de enviar mensagem
-- URLs dos anexos enviadas junto com a mensagem
+- Adicionar botão "Conversar" (grande, visível) na área de chat
+- Quando ativo: cada resultado de voz chama `sendMessage(texto)`
+- Após receber resposta da IA (`data.resposta`), chamar TTS para falar a resposta
+- Quando TTS termina (`utterance.onend`), o hook volta a ouvir
+- Mensagens de voz aparecem normalmente no histórico do chat
+- Indicadores visuais:
+  - 🔴 pulsando = "Fale agora..."
+  - 🔊 = "Respondendo..."
+  - Estado exibido acima do input
 
-### 3. Anexos — Upload Flow
+### 3. Modificação no `sendMessage`
 
-- No input, adicionar botão de clipe (📎)
-- Ao selecionar arquivo: upload para `documentos` bucket, path `chat/{user_id}/{timestamp}_{filename}`
-- Exibir preview (miniatura para imagens, ícone para docs)
-- Enviar URLs na mensagem para a edge function
-- Salvar registro na tabela `documentos` com `obra_id` (se houver obra ativa)
-
-### 4. Markdown nas respostas
-
-- Instalar `react-markdown` (já pode estar disponível, ou adicionar)
-- Renderizar `msg.content` com `<ReactMarkdown>` em vez de split por `**`
+- Extrair a lógica para retornar a resposta da IA (atualmente só seta state)
+- Permitir que o voice loop receba o texto da resposta para falar via TTS
 
 ## Arquivos
 
 | Arquivo | Ação |
 |---|---|
-| `supabase/functions/chat-assistente/index.ts` | Criar — edge function com IA real |
-| `src/pages/Chat.tsx` | Reescrever — conectar com edge, anexos, markdown |
+| `src/hooks/useVoiceLoop.ts` | Criar — hook com STT + TTS + loop contínuo |
+| `src/pages/Chat.tsx` | Editar — integrar voice loop, botão conversar, indicadores visuais |
 
-## Segurança
-- Edge function valida JWT do usuário
-- Operações de banco usam service role mas filtram por user_id extraído do token
-- Anexos salvos com path do user_id
-- RLS já protege leitura dos dados
-
-## Sem migrations necessárias
-- Tabela `documentos` e bucket `documentos` já existem
-- Functions SQL já existem (`fn_criar_obra_inteligente`, etc.)
+## Notas técnicas
+- Usa Web Speech API nativa (sem dependência externa) — funciona em Chrome/Edge/Safari
+- TTS com `speechSynthesis` nativo (pt-BR)
+- Não usa ElevenLabs (seria upgrade futuro)
+- `sendMessage` será refatorado para retornar `string` da resposta, permitindo o TTS encadear
 
