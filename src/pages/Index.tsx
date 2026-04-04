@@ -19,6 +19,8 @@ import {
   Mic,
   MicOff,
   Loader2,
+  ListChecks,
+  Volume2,
 } from "lucide-react";
 
 const fmt = (v: number) =>
