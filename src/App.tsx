@@ -30,7 +30,7 @@ import Documentos from "./pages/Documentos";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
-
+import Chat from "./pages/Chat";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {

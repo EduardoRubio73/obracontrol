@@ -12,11 +12,9 @@ import {
   ShoppingCart,
   DollarSign,
   Users,
-  Mic,
-  MicOff,
-  Loader2,
   Plus,
   LayoutDashboard,
+  Bot,
 } from "lucide-react";
 
 /* ── status messages ── */
