@@ -186,7 +186,7 @@ const Obras = () => {
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {obras?.map((obra) => (
-          <Card key={obra.id} className="cursor-pointer" onClick={() => { setEditing(obra); setOpen(true); }}>
+          <Card key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}`)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{obra.nome}</span>
