@@ -21,6 +21,7 @@ const statusColors: Record<string, string> = {
 
 const Cotacoes = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: cotacoes, isLoading } = useQuery({
