@@ -272,7 +272,7 @@ const Produtos = () => {
                         <Button variant="ghost" size="icon" onClick={() => openEditProd(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteProd.mutate(p.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ type: "prod", id: p.id, nome: p.nome })}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
