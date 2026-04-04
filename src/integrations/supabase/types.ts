@@ -63,36 +63,42 @@ export type Database = {
           created_at: string | null
           data_criacao: string | null
           data_envio: string | null
+          data_expiracao: string | null
           descricao: string
           id: string
           obra_id: string
           proposta_aceita_id: string | null
           status: Database["public"]["Enums"]["status_cotacao"] | null
           tenant_id: string | null
+          token_publico: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           data_criacao?: string | null
           data_envio?: string | null
+          data_expiracao?: string | null
           descricao: string
           id?: string
           obra_id: string
           proposta_aceita_id?: string | null
           status?: Database["public"]["Enums"]["status_cotacao"] | null
           tenant_id?: string | null
+          token_publico?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           data_criacao?: string | null
           data_envio?: string | null
+          data_expiracao?: string | null
           descricao?: string
           id?: string
           obra_id?: string
           proposta_aceita_id?: string | null
           status?: Database["public"]["Enums"]["status_cotacao"] | null
           tenant_id?: string | null
+          token_publico?: string | null
           updated_at?: string | null
         }
         Relationships: [
