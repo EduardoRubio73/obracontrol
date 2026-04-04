@@ -5,6 +5,7 @@ import {
   FileText,
   DollarSign,
   Trophy,
+  Package,
   UserCircle,
 } from "lucide-react";
 
