@@ -99,7 +99,25 @@ const Comparacao = () => {
   const economia = maiorTotal - menorTotal;
   const vencedor = totais.find((t) => t.total === menorTotal);
 
-  const getCellColor = (itemName: string, fornNome: string) => {
+  const pedirSugestaoIA = useMutation({
+    mutationFn: async () => {
+      if (!propostas) throw new Error("Sem propostas");
+      const payload = propostas.map((p) => ({
+        fornecedor: (p.fornecedor as any)?.nome ?? "Sem nome",
+        valor: (p.itens ?? []).reduce((a, i) => a + i.valor_unitario * i.quantidade, 0),
+        prazo_dias: null,
+        observacoes: null,
+      }));
+      const { data, error } = await supabase.functions.invoke("apoio-decisao", {
+        body: { propostas: payload, descricao_cotacao: cotacao?.descricao },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => setIaRecomendacao(data),
+    onError: (e) => toast.error("Erro IA: " + (e as Error).message),
+  });
+
     const linha = tabela[itemName];
     if (!linha || !linha[fornNome]) return "";
     const valores = Object.values(linha);
