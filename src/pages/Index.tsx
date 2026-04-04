@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,13 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  Mic,
-  MicOff,
-  Loader2,
-} from "lucide-react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 
 const Hoje = () => {
   const { user } = useAuth();
@@ -27,28 +21,36 @@ const Hoje = () => {
     stopListening,
   } = useVoiceCommand();
 
-  const alertasRef = useRef<HTMLDivElement>(null);
+  // Profile name
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("id", user!.id)
+        .single();
+      return data;
+    },
+  });
 
-  // System alerts (unresolved)
+  // Alerts (unresolved)
   const { data: alertas } = useQuery({
     queryKey: ["alertas-sistema"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("alertas_sistema" as any)
+        .from("alertas_sistema")
         .select("*")
         .eq("resolvido", false)
-        .order("created_at", { ascending: false }) as any;
+        .order("created_at", { ascending: false })
+        .limit(3);
       if (error) throw error;
-      return data as {
-        id: string;
-        tipo: string;
-        mensagem: string;
-        created_at: string;
-      }[];
+      return data;
     },
   });
 
-  // Pending tasks (fase_itens not completed) — max 3
+  // Pending tasks
   const { data: tarefas } = useQuery({
     queryKey: ["tarefas-pendentes"],
     queryFn: async () => {
@@ -56,13 +58,13 @@ const Hoje = () => {
         .from("fase_itens")
         .select("id, nome, status, fase_id, obra_fases(nome)")
         .neq("status", "concluido")
-        .limit(3);
+        .limit(5);
       if (error) throw error;
       return data;
     },
   });
 
-  // Overall progress
+  // Progress
   const { data: progresso } = useQuery({
     queryKey: ["progresso-geral"],
     queryFn: async () => {
@@ -76,22 +78,6 @@ const Hoje = () => {
         rows.reduce((a: number, r: any) => a + (r.progresso_geral ?? 0), 0) /
         rows.length;
       return Math.round(avg);
-    },
-  });
-
-  // Resolve alert
-  const resolveAlert = useMutation({
-    mutationFn: async (alertId: string) => {
-      const { error } = await (
-        supabase.from("alertas_sistema" as any) as any
-      )
-        .update({ resolvido: true })
-        .eq("id", alertId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["alertas-sistema"] });
-      toast.success("Alerta resolvido!");
     },
   });
 
@@ -115,10 +101,10 @@ const Hoje = () => {
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const firstName = profile?.nome?.split(" ")[0] ?? "";
 
   const hasAlerts = (alertas?.length ?? 0) > 0;
   const hasTasks = (tarefas?.length ?? 0) > 0;
-  const allGood = !hasAlerts && !hasTasks;
 
   // Voice
   const handleVoiceCommand = useCallback(
@@ -166,121 +152,97 @@ const Hoje = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto pb-28">
-      {/* Greeting */}
-      <div className="pt-2">
-        <h1 className="text-3xl font-extrabold tracking-tight">
-          {greeting} 👋
+    <div className="space-y-8 max-w-lg mx-auto pb-32 px-1">
+      {/* BLOCO 1 — Saudação */}
+      <div className="pt-4">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          {greeting}
+          {firstName ? `, ${firstName}` : ""} 👋
         </h1>
-        <p className="text-lg text-muted-foreground mt-1">
-          Sua obra está{" "}
-          <span className="font-bold text-foreground">{progresso ?? 0}%</span>{" "}
-          pronta
+        <p className="text-lg text-muted-foreground mt-2">
+          Vamos cuidar da sua obra hoje
         </p>
       </div>
 
-      {/* Alert card (red pastel) */}
+      {/* BLOCO 2 — Alerta */}
       {hasAlerts && (
-        <div ref={alertasRef} className="space-y-3">
-          {alertas!.slice(0, 2).map((a) => (
-            <Card
-              key={a.id}
-              className="border-2 border-red-200 bg-red-50 shadow-sm"
-            >
-              <CardContent className="p-5 flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-semibold text-red-800">
-                    {a.mensagem}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-600 shrink-0"
-                  onClick={() => resolveAlert.mutate(a.id)}
-                >
-                  Resolver
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Action card */}
-      {hasTasks && !allGood && (
-        <Card className="border-2 border-amber-200 bg-amber-50 shadow-sm">
-          <CardContent className="p-6 text-center">
-            <p className="text-lg font-bold text-amber-900">
-              Você tem tarefas para fazer hoje
+        <Card className="border-2 border-warning/40 bg-warning/10 shadow-sm">
+          <CardContent className="p-6">
+            <p className="text-xl font-bold text-foreground">
+              ⚠️ Você tem etapas atrasadas
             </p>
-            <Button
-              className="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl px-8 h-12 text-base"
-              onClick={() =>
-                document
-                  .getElementById("secao-tarefas")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Começar agora
-            </Button>
+            <p className="text-base text-muted-foreground mt-1">
+              {alertas![0]?.mensagem}
+            </p>
           </CardContent>
         </Card>
       )}
 
-      {/* All good */}
-      {allGood && (
-        <Card className="border-2 border-emerald-200 bg-emerald-50 shadow-sm">
+      {/* BLOCO 3 — Ação principal */}
+      {hasTasks && (
+        <Button
+          className="w-full h-16 text-xl font-bold rounded-2xl bg-warning text-warning-foreground hover:bg-warning/90 shadow-md"
+          onClick={() =>
+            document
+              .getElementById("secao-tarefas")
+              ?.scrollIntoView({ behavior: "smooth" })
+          }
+        >
+          Começar agora
+        </Button>
+      )}
+
+      {/* Se tudo estiver ok */}
+      {!hasAlerts && !hasTasks && (
+        <Card className="border-2 border-success/30 bg-success/10 shadow-sm">
           <CardContent className="p-8 text-center">
-            <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
-            <p className="text-xl font-bold text-emerald-800">
+            <p className="text-2xl font-bold text-foreground">
               Tudo em dia 👏
             </p>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-base text-muted-foreground mt-2">
               Você não tem pendências hoje
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Progress */}
+      {/* BLOCO 4 — Progresso */}
       <Card className="shadow-sm">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-muted-foreground">
-              📊 Progresso geral
-            </p>
-            <span className="text-2xl font-black tabular-nums">
+          <p className="text-base font-semibold text-muted-foreground mb-4">
+            📊 Progresso da obra
+          </p>
+          <div className="flex items-end justify-between mb-3">
+            <span className="text-4xl font-black tabular-nums text-foreground">
               {progresso ?? 0}%
             </span>
           </div>
           <Progress
             value={progresso ?? 0}
-            className="h-4 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
+            className="h-5 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
           />
         </CardContent>
       </Card>
 
-      {/* Tasks (max 3) */}
+      {/* BLOCO 5 — Tarefas do dia */}
       {hasTasks && (
-        <div id="secao-tarefas" className="space-y-3">
-          <p className="text-sm font-semibold text-muted-foreground">
-            📋 Próximas tarefas
+        <div id="secao-tarefas" className="space-y-4">
+          <p className="text-base font-semibold text-muted-foreground">
+            ✅ Tarefas do dia
           </p>
           {tarefas!.map((t) => (
             <Card key={t.id} className="shadow-sm">
-              <CardContent className="p-4 flex items-center gap-4">
+              <CardContent className="p-5 flex items-center gap-5">
                 <Checkbox
                   checked={false}
                   onCheckedChange={() => toggleTask.mutate(t.id)}
-                  className="h-6 w-6 rounded-lg border-2"
+                  className="h-7 w-7 rounded-lg border-2"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base">{t.nome}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-semibold text-lg text-foreground">
+                    {t.nome}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
                     {(t.obra_fases as any)?.nome ?? ""}
                   </p>
                 </div>
@@ -290,39 +252,38 @@ const Hoje = () => {
         </div>
       )}
 
-      {/* Floating voice button */}
+      {/* BLOCO 6 — Voz (botão flutuante) */}
       {voiceSupported && (
-        <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+        <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
           {voiceStatus !== "idle" && (
             <div
-              className={`mb-2 rounded-xl px-4 py-2 text-sm font-medium shadow-lg ${
+              className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg ${
                 voiceStatus === "listening"
                   ? "bg-primary text-primary-foreground"
                   : voiceStatus === "processing"
-                  ? "bg-emerald-500 text-white"
+                  ? "bg-success text-success-foreground"
                   : "bg-destructive text-destructive-foreground"
               }`}
             >
-              {voiceStatus === "listening" && "Estou ouvindo..."}
+              {voiceStatus === "listening" && "🎤 Estou ouvindo..."}
               {voiceStatus === "processing" && `"${transcript}"`}
-              {voiceStatus === "error" && "Não entendi, tente novamente"}
+              {voiceStatus === "error" && "Não entendi, tente de novo"}
             </div>
           )}
           <Button
-            size="lg"
             onClick={handleVoiceClick}
-            className={`h-14 w-14 rounded-full shadow-xl ${
+            className={`h-16 w-16 rounded-full shadow-xl text-lg ${
               voiceStatus === "listening"
                 ? "bg-destructive hover:bg-destructive/90 animate-pulse"
                 : "bg-primary hover:bg-primary/90"
             }`}
           >
             {voiceStatus === "listening" ? (
-              <MicOff className="h-6 w-6 text-white" />
+              <MicOff className="h-7 w-7 text-primary-foreground" />
             ) : voiceStatus === "processing" ? (
-              <Loader2 className="h-6 w-6 text-white animate-spin" />
+              <Loader2 className="h-7 w-7 text-primary-foreground animate-spin" />
             ) : (
-              <Mic className="h-6 w-6 text-white" />
+              <Mic className="h-7 w-7 text-primary-foreground" />
             )}
           </Button>
         </div>
