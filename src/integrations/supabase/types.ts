@@ -683,6 +683,7 @@ export type Database = {
       }
       fornecedores: {
         Row: {
+          categoria: string | null
           cnpj: string | null
           created_at: string | null
           email: string | null
@@ -698,6 +699,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          categoria?: string | null
           cnpj?: string | null
           created_at?: string | null
           email?: string | null
@@ -713,6 +715,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          categoria?: string | null
           cnpj?: string | null
           created_at?: string | null
           email?: string | null
