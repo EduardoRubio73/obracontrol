@@ -16,6 +16,7 @@ import Perfil from "./pages/Perfil";
 import Comparacao from "./pages/Comparacao";
 import Analise from "./pages/Analise";
 import Ranking from "./pages/Ranking";
+import Produtos from "./pages/Produtos";
 import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
 
