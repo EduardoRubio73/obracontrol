@@ -49,19 +49,19 @@ const classificacoes = [
   {
     value: "simples",
     label: "Simples",
-    desc: "Empreiteiro / construtor",
+    desc: profissionalLabel("simples"),
     color: "from-emerald-400 to-emerald-500",
   },
   {
     value: "media",
     label: "Média",
-    desc: "Empreiteiro + técnico",
+    desc: profissionalLabel("media"),
     color: "from-amber-400 to-orange-500",
   },
   {
     value: "complexa",
     label: "Complexa",
-    desc: "Engenheiro / arquiteto",
+    desc: profissionalLabel("complexa"),
     color: "from-red-400 to-rose-500",
   },
 ];
