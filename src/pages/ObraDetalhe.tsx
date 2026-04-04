@@ -60,6 +60,18 @@ interface Fase {
   data_fim: string | null;
 }
 
+interface FaseItem {
+  id: string;
+  fase_id: string;
+  nome: string;
+  status: string | null;
+  valor_previsto: number | null;
+  valor_real: number | null;
+}
+
+const fmt = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 const ObraDetalhe = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -67,6 +79,10 @@ const ObraDetalhe = () => {
   const { user } = useAuth();
   const [faseDialog, setFaseDialog] = useState(false);
   const [editingFase, setEditingFase] = useState<Fase | null>(null);
+  const [expandedFase, setExpandedFase] = useState<string | null>(null);
+  const [itemDialog, setItemDialog] = useState(false);
+  const [editingItem, setEditingItem] = useState<FaseItem | null>(null);
+  const [itemFaseId, setItemFaseId] = useState<string | null>(null);
 
   // Obra data
   const { data: obra } = useQuery({
