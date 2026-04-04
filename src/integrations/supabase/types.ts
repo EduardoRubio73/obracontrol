@@ -181,6 +181,7 @@ export type Database = {
           tenant_id: string | null
           tipo: Database["public"]["Enums"]["tipo_financeiro"] | null
           updated_at: string | null
+          user_id: string
           valor: number
         }
         Insert: {
@@ -196,6 +197,7 @@ export type Database = {
           tenant_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_financeiro"] | null
           updated_at?: string | null
+          user_id?: string
           valor: number
         }
         Update: {
@@ -211,6 +213,7 @@ export type Database = {
           tenant_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_financeiro"] | null
           updated_at?: string | null
+          user_id?: string
           valor?: number
         }
         Relationships: [

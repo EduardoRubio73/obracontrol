@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ const tipoColors: Record<string, string> = {
 };
 
 const Financeiro = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -66,6 +68,7 @@ const Financeiro = () => {
       tipo: fd.get("tipo"),
       descricao: fd.get("descricao") || null,
       data_transacao: fd.get("data_transacao") || null,
+      user_id: user!.id,
     });
   };
 
