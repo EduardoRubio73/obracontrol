@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Eye } from "lucide-react";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
 type Obra = Tables<"obras">;
@@ -26,6 +27,7 @@ const statusColors: Record<string, string> = {
 };
 
 const Obras = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -145,13 +147,13 @@ const Obras = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Valor Previsto</TableHead>
                 <TableHead>Localização</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {obras?.map((obra) => (
-                <TableRow key={obra.id}>
-                  <TableCell className="font-medium">{obra.nome}</TableCell>
+                <TableRow key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}`)}>
+                  <TableCell className="font-medium text-primary hover:underline">{obra.nome}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>
                       {obra.status}
@@ -159,8 +161,11 @@ const Obras = () => {
                   </TableCell>
                   <TableCell>{fmt(obra.valor_previsto)}</TableCell>
                   <TableCell>{obra.localizacao ?? "—"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => { setEditing(obra); setOpen(true); }}>
+                  <TableCell className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/obras/${obra.id}`); }}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditing(obra); setOpen(true); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -181,7 +186,7 @@ const Obras = () => {
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {obras?.map((obra) => (
-          <Card key={obra.id} className="cursor-pointer" onClick={() => { setEditing(obra); setOpen(true); }}>
+          <Card key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}`)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{obra.nome}</span>

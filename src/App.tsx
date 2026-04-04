@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Obras from "./pages/Obras";
+import ObraDetalhe from "./pages/ObraDetalhe";
 import Cotacoes from "./pages/Cotacoes";
 import Financeiro from "./pages/Financeiro";
 import Fornecedores from "./pages/Fornecedores";
@@ -48,6 +49,7 @@ const App = () => (
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Index />} />
               <Route path="/obras" element={<Obras />} />
+              <Route path="/obras/:id" element={<ObraDetalhe />} />
               <Route path="/cotacoes" element={<Cotacoes />} />
               <Route path="/cotacoes/:id/comparar" element={<Comparacao />} />
               <Route path="/cotacoes/:id/analise" element={<Analise />} />
