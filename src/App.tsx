@@ -21,6 +21,14 @@ import ObraAlteracoes from "./pages/ObraAlteracoes";
 import Perfil from "./pages/Perfil";
 import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
+import Obras from "./pages/Obras";
+import Galeria from "./pages/Galeria";
+import Materiais from "./pages/Materiais";
+import Documentos from "./pages/Documentos";
+import Relatorios from "./pages/Relatorios";
+import Configuracoes from "./pages/Configuracoes";
+import Auditoria from "./pages/Auditoria";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +81,8 @@ const App = () => (
               }
             >
               <Route path="/" element={<Index />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/obras" element={<Obras />} />
               <Route path="/hoje" element={<Hoje />} />
               <Route path="/etapas" element={<Etapas />} />
               <Route path="/etapas/:id" element={<EtapaDetalhe />} />
@@ -83,7 +93,13 @@ const App = () => (
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/nova-obra" element={<NovaObra />} />
               <Route path="/obras/:id/dossie" element={<Dossie />} />
+              <Route path="/obras/:id/galeria" element={<Galeria />} />
+              <Route path="/obras/:id/materiais" element={<Materiais />} />
+              <Route path="/obras/:id/documentos" element={<Documentos />} />
               <Route path="/obras/:id/alteracoes" element={<ObraAlteracoes />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/perfil" element={<Perfil />} />
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -5,15 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Eye } from "lucide-react";
+import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
 type Obra = Tables<"obras">;
@@ -32,6 +32,8 @@ const Obras = () => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Obra | null>(null);
+  const [filtroStatus, setFiltroStatus] = useState<string>("todas");
+  const [busca, setBusca] = useState("");
 
   const { data: obras, isLoading } = useQuery({
     queryKey: ["obras"],
@@ -61,6 +63,37 @@ const Obras = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const archiveMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("obras").update({ status: "cancelado" as any }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["obras"] });
+      toast.success("Obra arquivada");
+    },
+  });
+
+  const duplicateMut = useMutation({
+    mutationFn: async (obra: Obra) => {
+      const { error } = await supabase.from("obras").insert({
+        user_id: user!.id,
+        nome: `${obra.nome} (cópia)`,
+        descricao: obra.descricao,
+        valor_previsto: obra.valor_previsto,
+        localizacao: obra.localizacao,
+        tipo_obra: obra.tipo_obra,
+        classificacao: obra.classificacao,
+        status: "planejamento" as any,
+      } as TablesInsert<"obras">);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["obras"] });
+      toast.success("Obra duplicada!");
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -77,6 +110,12 @@ const Obras = () => {
 
   const fmt = (v: number | null) =>
     (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const filtered = obras?.filter((o) => {
+    if (filtroStatus !== "todas" && o.status !== filtroStatus) return false;
+    if (busca && !o.nome.toLowerCase().includes(busca.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -137,6 +176,27 @@ const Obras = () => {
         </Dialog>
       </div>
 
+      {/* Filters */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar obra..." value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas</SelectItem>
+            <SelectItem value="planejamento">Planejamento</SelectItem>
+            <SelectItem value="execução">Execução</SelectItem>
+            <SelectItem value="concluído">Concluído</SelectItem>
+            <SelectItem value="pausado">Pausado</SelectItem>
+            <SelectItem value="cancelado">Arquivado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Desktop table */}
       <div className="hidden md:block">
         <Card>
@@ -147,35 +207,34 @@ const Obras = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Valor Previsto</TableHead>
                 <TableHead>Localização</TableHead>
-                <TableHead className="w-24"></TableHead>
+                <TableHead className="w-48">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {obras?.map((obra) => (
-                <TableRow key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}`)}>
-                  <TableCell className="font-medium text-primary hover:underline">{obra.nome}</TableCell>
+              {filtered?.map((obra) => (
+                <TableRow key={obra.id}>
+                  <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>{obra.nome}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>
-                      {obra.status}
-                    </Badge>
+                    <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
                   </TableCell>
                   <TableCell>{fmt(obra.valor_previsto)}</TableCell>
                   <TableCell>{obra.localizacao ?? "—"}</TableCell>
-                  <TableCell className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/obras/${obra.id}`); }}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditing(obra); setOpen(true); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" title="Dossiê" onClick={() => navigate(`/obras/${obra.id}/dossie`)}><Clock className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Galeria" onClick={() => navigate(`/obras/${obra.id}/galeria`)}><Image className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Materiais" onClick={() => navigate(`/obras/${obra.id}/materiais`)}><Package className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Documentos" onClick={() => navigate(`/obras/${obra.id}/documentos`)}><FileText className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditing(obra); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Duplicar" onClick={() => duplicateMut.mutate(obra)}><Copy className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Arquivar" onClick={() => archiveMut.mutate(obra.id)}><Archive className="h-4 w-4" /></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !obras?.length && (
+              {!isLoading && !filtered?.length && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhuma obra cadastrada
-                  </TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma obra encontrada</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -185,21 +244,19 @@ const Obras = () => {
 
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
-        {obras?.map((obra) => (
-          <Card key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}`)}>
+        {filtered?.map((obra) => (
+          <Card key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{obra.nome}</span>
-                <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>
-                  {obra.status}
-                </Badge>
+                <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{fmt(obra.valor_previsto)}</p>
             </CardContent>
           </Card>
         ))}
-        {!isLoading && !obras?.length && (
-          <p className="text-center text-muted-foreground py-8">Nenhuma obra cadastrada</p>
+        {!isLoading && !filtered?.length && (
+          <p className="text-center text-muted-foreground py-8">Nenhuma obra encontrada</p>
         )}
       </div>
     </div>
