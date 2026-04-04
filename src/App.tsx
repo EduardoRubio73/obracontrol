@@ -12,6 +12,7 @@ import Cotacoes from "./pages/Cotacoes";
 import Financeiro from "./pages/Financeiro";
 import Fornecedores from "./pages/Fornecedores";
 import Perfil from "./pages/Perfil";
+import Comparacao from "./pages/Comparacao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
