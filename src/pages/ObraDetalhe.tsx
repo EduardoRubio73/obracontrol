@@ -366,32 +366,92 @@ const ObraDetalhe = () => {
         </Card>
       )}
 
-      {/* Alerts */}
-      {alertas.length > 0 && (
-        <Card className="border-orange-300">
+      {/* Smart Alerts */}
+      {(smartAlertas?.length ?? 0) > 0 && (
+        <Card className="border-destructive/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-orange-600">
-              <AlertTriangle className="h-5 w-5" />
-              Fases Atrasadas
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bell className="h-5 w-5 text-destructive" />
+              Alertas Inteligentes
+              <Badge variant="destructive" className="ml-auto">{smartAlertas!.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {alertas.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50/50 p-3"
-              >
-                <div>
-                  <p className="font-medium">{f.nome}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Prazo: {f.data_fim} · Progresso: {f.progresso}%
-                  </p>
+            {smartAlertas!.map((a, i) => {
+              const alertConfig: Record<string, { icon: typeof AlertTriangle; borderClass: string; bgClass: string; textClass: string }> = {
+                atraso: { icon: AlertTriangle, borderClass: "border-red-200", bgClass: "bg-red-50/50", textClass: "text-red-700" },
+                parada: { icon: Pause, borderClass: "border-orange-200", bgClass: "bg-orange-50/50", textClass: "text-orange-700" },
+                risco: { icon: AlertCircle, borderClass: "border-orange-200", bgClass: "bg-orange-50/50", textClass: "text-orange-700" },
+                urgente: { icon: Zap, borderClass: "border-yellow-200", bgClass: "bg-yellow-50/50", textClass: "text-yellow-700" },
+                aviso: { icon: Bell, borderClass: "border-blue-200", bgClass: "bg-blue-50/50", textClass: "text-blue-700" },
+              };
+              const cfg = alertConfig[a.tipo] ?? alertConfig.aviso;
+              const Icon = cfg.icon;
+              return (
+                <div key={`${a.fase_id}-${i}`} className={`flex items-start gap-3 rounded-lg border ${cfg.borderClass} ${cfg.bgClass} p-3`}>
+                  <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${cfg.textClass}`} />
+                  <div className="flex-1">
+                    <p className={`font-medium text-sm ${cfg.textClass}`}>{a.nome}</p>
+                    <p className="text-xs text-muted-foreground">{a.mensagem}</p>
+                  </div>
+                  <Badge className={`${cfg.bgClass} ${cfg.textClass} border ${cfg.borderClass} text-xs`}>
+                    {a.tipo}
+                  </Badge>
                 </div>
-                <Badge className="bg-orange-500/15 text-orange-700 border-orange-200">
-                  {statusFaseLabels[f.status] ?? f.status}
-                </Badge>
-              </div>
-            ))}
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Previsão de Atraso */}
+      {(previsao?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">📊 Previsão de Atraso</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fase</TableHead>
+                  <TableHead className="text-center">Progresso Real</TableHead>
+                  <TableHead className="text-center">Progresso Esperado</TableHead>
+                  <TableHead className="text-center">Diferença</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {previsao!.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.nome}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Progress value={p.progresso} className="h-2 w-16" />
+                        <span className="text-sm tabular-nums">{p.progresso}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center text-sm tabular-nums">
+                      {p.progresso_esperado != null ? `${p.progresso_esperado}%` : "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {p.diferenca_progresso != null ? (
+                        <span className={`text-sm font-semibold tabular-nums ${p.diferenca_progresso >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {p.diferenca_progresso > 0 ? "+" : ""}{p.diferenca_progresso}%
+                        </span>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {p.atrasado ? (
+                        <Badge className="bg-red-500/15 text-red-700 border-red-200">Atrasado</Badge>
+                      ) : (
+                        <Badge className="bg-green-500/15 text-green-700 border-green-200">No Prazo</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
