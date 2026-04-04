@@ -94,8 +94,8 @@ const NovaObra = () => {
   const [classificacao, setClassificacao] = useState("simples");
   const [descricao, setDescricao] = useState("");
   const [escopo, setEscopo] = useState<EscopoIA | null>(null);
-  const [selectedFornecedores, setSelectedFornecedores] = useState<string[]>([]);
-  const [obraId, setObraId] = useState<string | null>(null);
+  const [selectedFornecedores, setSelectedFornecedores] = useState<Array<{ id: string; nome: string; categoria: string | null; tipo?: string | null; score?: number | null; telefone?: string | null }>>([]);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
 
   // Voice
   const { status: voiceStatus, isSupported: voiceSupported, startListening, stopListening } = useVoiceCommand();
