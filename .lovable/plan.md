@@ -1,69 +1,130 @@
 
 
-# Plano: Cadastro de Produtos com Categorias + Seleção Multi-Select nos Itens da Cotação
+# Plano: Fase 1 — Assistente de Início de Obra
 
-## O que será feito
+## Visao Geral
 
-1. Criar tabelas `categorias_produtos` e `produtos` no banco de dados
-2. Criar uma página de gestão de Produtos (CRUD completo) com filtro por categoria
-3. Alterar o dialog "Itens da Cotação" para usar um multi-select de produtos cadastrados (em vez de digitar manualmente)
+Criar um fluxo guiado (wizard) para iniciar uma obra, desde a descrição pelo usuario ate a escolha do profissional vencedor. O sistema usa IA para estruturar o escopo e apoiar a decisao de comparacao de orcamentos.
 
-## Detalhes
+Boa parte da infraestrutura ja existe (cotacoes, propostas, portal do fornecedor, comparacao). O trabalho principal e criar o **wizard de inicio**, a **classificacao automatica**, a **geracao de escopo por IA**, e o **dossie/timeline**.
 
-### 1. Migration SQL — Novas tabelas
+---
 
-```sql
--- Categorias de produtos
-CREATE TABLE public.categorias_produtos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL DEFAULT auth.uid(),
-  nome text NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.categorias_produtos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "categorias_user" ON public.categorias_produtos FOR ALL
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+## Etapas de Implementacao
 
--- Produtos
-CREATE TABLE public.produtos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL DEFAULT auth.uid(),
-  categoria_id uuid REFERENCES public.categorias_produtos(id) ON DELETE SET NULL,
-  nome text NOT NULL,
-  unidade text DEFAULT 'un',
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.produtos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "produtos_user" ON public.produtos FOR ALL
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-```
+### 1. Migration: Novas tabelas e campos
 
-### 2. Nova página `src/pages/Produtos.tsx`
+**Tabela `obra_dossie`** — linha do tempo de eventos da obra:
+- `id`, `obra_id`, `user_id`, `tipo` (text: solicitacao_enviada, retorno_profissional, escopo_aprovado, profissional_escolhido...), `titulo`, `descricao`, `dados` (jsonb), `created_at`
+- RLS: user_id = auth.uid()
 
-- Duas seções: **Categorias** (criar/editar/excluir) e **Produtos** (criar/editar/excluir)
-- Filtro por categoria
-- Campos do produto: nome, unidade, categoria
-- Tabela listando todos os produtos com ações de editar/excluir
-- Inline dialog para criar/editar categoria e produto
+**Campo `classificacao` em `obras`** (text): simples, media, complexa
 
-### 3. Rota e navegação
+**Campo `escopo_ia` em `obras`** (text): descricao estruturada gerada pela IA
 
-- Adicionar `/produtos` em `App.tsx` (rota protegida)
-- Adicionar item "Produtos" no `AppSidebar.tsx` e `MobileBottomNav.tsx` com ícone `Package`
+**Campo `profissional_recomendado` em `obras`** (text): tipo de profissional sugerido
 
-### 4. Alterar dialog "Itens da Cotação" em `Cotacoes.tsx`
+### 2. Edge Function: `gerar-escopo`
 
-- Substituir os inputs manuais por um **multi-select com busca** que lista os produtos cadastrados
-- Agrupar por categoria no dropdown
-- Ao selecionar produtos, preencher automaticamente nome e unidade
-- Manter campo de quantidade editável por item selecionado
-- Botão para adicionar todos os selecionados de uma vez à cotação
+- Recebe: descricao livre do usuario, tipo_obra, classificacao
+- Usa Lovable AI (gemini-3-flash-preview) para gerar:
+  - Descricao estruturada
+  - Lista de necessidades/materiais
+  - Sugestao de profissional (empreiteiro/tecnico/engenheiro)
+  - Alertas de seguranca
+- Retorna JSON estruturado (via tool calling)
+- Salva escopo_ia e profissional_recomendado na obra
 
-### Arquivos modificados
-- 1 migration SQL (tabelas `categorias_produtos` e `produtos` + RLS)
-- `src/pages/Produtos.tsx` (novo — CRUD completo)
-- `src/App.tsx` (nova rota `/produtos`)
-- `src/components/AppSidebar.tsx` (novo item nav)
-- `src/components/MobileBottomNav.tsx` (novo item nav)
-- `src/pages/Cotacoes.tsx` (refatorar dialog de itens para multi-select de produtos)
+### 3. Edge Function: `apoio-decisao`
+
+- Recebe: array de propostas (valor, prazo, escopo)
+- Usa IA para sugerir melhor custo-beneficio
+- Retorna recomendacao com justificativa
+
+### 4. Pagina: Wizard "Nova Obra" (`/nova-obra`)
+
+Fluxo em steps (tudo dentro de uma pagina com estado local):
+
+**Step 1 — Nome e Tipo**
+- Input: nome da obra (texto ou voz)
+- Select: tipo (casa, reforma, apartamento, comercial)
+
+**Step 2 — Classificacao**
+- Opcoes visuais: Simples / Media / Complexa
+- Ao selecionar, exibir automaticamente o tipo de profissional recomendado
+- Regra de seguranca: se complexa, alerta que engenheiro e obrigatorio
+
+**Step 3 — Descricao**
+- Textarea grande para descrever a obra
+- Botao de voz para ditar
+- Ao avancar: chama edge function `gerar-escopo`
+
+**Step 4 — Escopo IA (revisao)**
+- Mostra descricao estruturada gerada
+- Lista de necessidades
+- Profissional sugerido
+- Usuario pode editar/aprovar
+
+**Step 5 — Envio para profissionais**
+- Selecionar fornecedores existentes ou adicionar novos
+- Envia para 3+ profissionais (cria cotacao + cotacao_fornecedores)
+- Gera link publico do portal
+
+**Step 6 — Confirmacao**
+- Resumo do que foi enviado
+- Obra criada, dossie iniciado
+
+Visual: cards grandes, botoes grandes, cores suaves, animacoes de entrada (mesmo padrao do menu premium).
+
+### 5. Tela de Dossie/Timeline (`/obras/:id/dossie`)
+
+- Lista vertical de eventos (obra_dossie)
+- Icones e cores por tipo de evento
+- Exibe historico completo: criacao, envios, respostas, decisao
+
+### 6. IA na Comparacao (melhorar pagina existente)
+
+- Adicionar botao "Sugestao IA" na pagina `/comparacao/:id`
+- Chama edge function `apoio-decisao`
+- Exibe card com recomendacao e justificativa
+- Ao aceitar proposta: registrar no dossie
+
+### 7. Extracoes pos-escolha
+
+- Quando usuario aceita uma proposta vencedora:
+  - Extrair materiais → criar itens de compra
+  - Extrair etapas → criar obra_fases
+  - Registrar no dossie
+
+### 8. Routing e Navegacao
+
+- Adicionar rota `/nova-obra` no App.tsx
+- Adicionar card "Nova Obra" no menu principal (botao de destaque)
+- Adicionar rota `/obras/:id/dossie`
+- Link para dossie a partir do detalhe da obra
+
+---
+
+## Detalhes Tecnicos
+
+- **IA**: Lovable AI via edge functions, modelo `google/gemini-3-flash-preview`, structured output via tool calling
+- **Animacoes**: mesmos keyframes `menu-slide-up` com stagger
+- **Voice**: reutilizar `useVoiceCommand` existente para input por voz no wizard
+- **DB**: 1 migration (nova tabela + novos campos em obras)
+- **Edge Functions**: 2 novas (`gerar-escopo`, `apoio-decisao`)
+- **Paginas**: 2 novas (`NovaObra` wizard, `Dossie` timeline)
+- **Modificacoes**: `Index.tsx` (card nova obra), `Comparacao.tsx` (botao IA), logica de aceitar proposta
+
+---
+
+## Ordem de Execucao
+
+1. Migration (tabela + campos)
+2. Edge function `gerar-escopo`
+3. Edge function `apoio-decisao`
+4. Pagina wizard `/nova-obra` (steps 1-6)
+5. Pagina dossie `/obras/:id/dossie`
+6. Integrar IA na comparacao
+7. Logica de extracao pos-escolha
+8. Navegacao e menu
 
