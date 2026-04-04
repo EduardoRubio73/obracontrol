@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Building2 } from "lucide-react";
+import logoImg from "@/assets/logo-obracontrol.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -43,9 +43,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <img src={logoImg} alt="ObraControl Logo" className="mx-auto mb-4 h-14 w-14 rounded-xl object-contain" />
           <CardTitle className="text-2xl font-bold">ObraControl</CardTitle>
           <CardDescription>
             {isLogin ? "Acesse sua conta" : "Crie sua conta"}

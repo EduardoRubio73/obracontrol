@@ -7,6 +7,7 @@ import {
   UserCircle,
   LogOut,
 } from "lucide-react";
+import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,9 +42,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="flex items-center gap-2 px-4 py-5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={logoImg} alt="ObraControl" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
             <span className="text-lg font-bold text-foreground">ObraControl</span>
           )}
