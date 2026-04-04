@@ -42,9 +42,9 @@ const fmt = (v: number) =>
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [obraFiltro, setObraFiltro] = useState<string>("todas");
+  const { obraAtivaId, setObraAtivaId, obras: obrasContext } = useObraAtiva();
 
-  const filtroId = obraFiltro !== "todas" ? obraFiltro : null;
+  const filtroId = obraAtivaId;
 
   /* ── Queries ── */
   const { data: obras } = useQuery({
