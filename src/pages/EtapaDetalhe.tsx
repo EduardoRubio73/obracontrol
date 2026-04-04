@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus } from "lucide-react";
+import { FasePhotos } from "@/components/FasePhotos";
 
 export default function EtapaDetalhe() {
   const { id } = useParams<{ id: string }>();
