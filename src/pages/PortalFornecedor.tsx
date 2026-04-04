@@ -45,6 +45,22 @@ const PortalFornecedor = () => {
     },
   });
 
+  // Track visualização when cotação loads
+  useEffect(() => {
+    if (!cotacao?.id) return;
+    supabase
+      .from("cotacao_fornecedores")
+      .update({
+        status: "visualizado",
+        data_visualizacao: new Date().toISOString(),
+      })
+      .eq("cotacao_id", cotacao.id)
+      .in("status", ["enviado"])
+      .then(({ error }) => {
+        if (error) console.error("tracking view:", error.message);
+      });
+  }, [cotacao?.id]);
+
   const submitProposta = useMutation({
     mutationFn: async () => {
       if (!cotacao || !itens?.length) throw new Error("Dados inválidos");
