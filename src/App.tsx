@@ -70,6 +70,7 @@ const App = () => (
               }
             >
               <Route path="/" element={<Index />} />
+              <Route path="/hoje" element={<Hoje />} />
               <Route path="/etapas" element={<Etapas />} />
               <Route path="/etapas/:id" element={<EtapaDetalhe />} />
               <Route path="/compras" element={<Compras />} />
