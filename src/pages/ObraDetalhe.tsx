@@ -398,13 +398,15 @@ const ObraDetalhe = () => {
             {fases.map((f) => {
               const pastel = statusPastelColors[f.status] ?? statusPastelColors.pendente;
               const progressCls = statusProgressBg[f.status] ?? "";
+              const borderCls = pastel.split(" ").find(c => c.startsWith("border-")) ?? "border-border";
+              const isExpanded = expandedFase === f.id;
+              const items = faseItens?.filter((i) => i.fase_id === f.id) ?? [];
+              const totalPrevisto = items.reduce((a, i) => a + Number(i.valor_previsto ?? 0), 0);
+              const totalReal = items.reduce((a, i) => a + Number(i.valor_real ?? 0), 0);
+              const diferenca = totalReal - totalPrevisto;
               return (
-                <Card
-                  key={f.id}
-                  className={`border-2 ${pastel.includes("border-") ? pastel.split(" ").find(c => c.startsWith("border-")) : "border-border"} overflow-hidden`}
-                >
+                <Card key={f.id} className={`border-2 ${borderCls} overflow-hidden ${isExpanded ? "sm:col-span-2" : ""}`}>
                   <CardContent className="p-6 space-y-4">
-                    {/* Title & Status */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-bold truncate">{f.nome}</h3>
@@ -417,36 +419,99 @@ const ObraDetalhe = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Badge className={`${pastel} text-xs font-bold`}>
-                          {statusFaseLabels[f.status] ?? f.status}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setEditingFase(f);
-                            setFaseDialog(true);
-                          }}
-                        >
+                        <Badge className={`${pastel} text-xs font-bold`}>{statusFaseLabels[f.status] ?? f.status}</Badge>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingFase(f); setFaseDialog(true); }}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
 
-                    {/* Big progress bar */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-muted-foreground">Progresso</span>
-                        <span className="text-2xl font-black tabular-nums">
-                          {f.progresso ?? 0}%
-                        </span>
+                        <span className="text-2xl font-black tabular-nums">{f.progresso ?? 0}%</span>
                       </div>
-                      <Progress
-                        value={f.progresso ?? 0}
-                        className={`h-5 rounded-full bg-slate-200/60 ${progressCls} [&>div]:rounded-full`}
-                      />
+                      <Progress value={f.progresso ?? 0} className={`h-5 rounded-full bg-slate-200/60 ${progressCls} [&>div]:rounded-full`} />
                     </div>
+
+                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setExpandedFase(isExpanded ? null : f.id)}>
+                      {isExpanded ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}
+                      {isExpanded ? "Ocultar itens" : `Ver itens (${items.length})`}
+                    </Button>
+
+                    {isExpanded && (
+                      <div className="space-y-4 pt-2 border-t">
+                        {items.length > 0 && (
+                          <div className="grid grid-cols-3 gap-3">
+                            <Card className="bg-sky-50 border-sky-200">
+                              <CardContent className="p-4 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">Previsto</p>
+                                <p className="text-xl font-black text-sky-700 tabular-nums">{fmt(totalPrevisto)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="bg-emerald-50 border-emerald-200">
+                              <CardContent className="p-4 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">Real</p>
+                                <p className="text-xl font-black text-emerald-700 tabular-nums">{fmt(totalReal)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className={diferenca > 0 ? "bg-rose-50 border-rose-200" : "bg-emerald-50 border-emerald-200"}>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">Diferença</p>
+                                <p className={`text-xl font-black tabular-nums ${diferenca > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                                  {diferenca > 0 ? "+" : ""}{fmt(diferenca)}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          {items.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Nenhum item nesta fase.</p>
+                          ) : (
+                            items.map((item) => {
+                              const isDone = item.status === "concluido";
+                              const itemDif = Number(item.valor_real ?? 0) - Number(item.valor_previsto ?? 0);
+                              return (
+                                <div key={item.id} className={`flex items-center gap-4 rounded-xl border-2 p-4 transition-colors ${isDone ? "bg-emerald-50/50 border-emerald-200" : "bg-background border-border"}`}>
+                                  <Checkbox
+                                    checked={isDone}
+                                    onCheckedChange={() => toggleItemStatus.mutate({ itemId: item.id, newStatus: isDone ? "pendente" : "concluido" })}
+                                    className="h-7 w-7 rounded-lg border-2"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-base font-semibold ${isDone ? "line-through text-muted-foreground" : ""}`}>{item.nome}</p>
+                                    <div className="flex items-center gap-3 mt-1 text-sm">
+                                      <span className="text-muted-foreground">Prev: <span className="font-semibold text-foreground">{fmt(Number(item.valor_previsto ?? 0))}</span></span>
+                                      <span className="text-muted-foreground">Real: <span className="font-semibold text-foreground">{fmt(Number(item.valor_real ?? 0))}</span></span>
+                                      {itemDif !== 0 && (
+                                        <span className={`font-bold ${itemDif > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                                          {itemDif > 0 ? "+" : ""}{fmt(itemDif)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setItemFaseId(f.id); setItemDialog(true); }}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteItem.mutate(item.id)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        <Button variant="outline" className="w-full" onClick={() => { setEditingItem(null); setItemFaseId(f.id); setItemDialog(true); }}>
+                          <Plus className="mr-1 h-4 w-4" />
+                          Novo Item
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
