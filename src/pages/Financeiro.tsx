@@ -20,6 +20,7 @@ const tipoColors: Record<string, string> = {
 };
 
 const Financeiro = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
