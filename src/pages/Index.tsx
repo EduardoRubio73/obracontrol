@@ -248,6 +248,61 @@ const Hoje = () => {
         </Card>
       )}
 
+      {/* ===== AÇÕES RÁPIDAS ===== */}
+      <div className="grid grid-cols-2 gap-4">
+        <Button
+          size="lg"
+          className="h-20 text-lg font-bold rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex flex-col items-center justify-center gap-1"
+          onClick={() => {
+            if (alertas?.length) {
+              alertasRef.current?.scrollIntoView({ behavior: "smooth" });
+              toast.info("Você tem alertas para resolver!");
+            } else if (tarefas?.length) {
+              document.getElementById("secao-tarefas")?.scrollIntoView({ behavior: "smooth" });
+              toast.info("Confira suas tarefas pendentes!");
+            } else if (compras?.length) {
+              comprasRef.current?.scrollIntoView({ behavior: "smooth" });
+              toast.info("Há compras pendentes!");
+            } else {
+              toast.success("Tudo em dia! 🎉");
+            }
+          }}
+        >
+          <ListChecks className="h-7 w-7" />
+          O que fazer agora
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          className="h-20 text-lg font-bold rounded-2xl border-2 shadow-lg flex flex-col items-center justify-center gap-1"
+          onClick={() => {
+            const parts: string[] = [];
+            if (mensagemDia) parts.push(mensagemDia);
+            if (alertas?.length) {
+              parts.push(`Você tem ${alertas.length} alerta${alertas.length > 1 ? "s" : ""}`);
+              alertas.slice(0, 3).forEach((a) => parts.push(a.mensagem));
+            }
+            if (tarefas?.length) {
+              parts.push(`${tarefas.length} tarefa${tarefas.length > 1 ? "s" : ""} pendente${tarefas.length > 1 ? "s" : ""}`);
+              tarefas.slice(0, 3).forEach((t) => parts.push(t.nome));
+            }
+            if (compras?.length) {
+              parts.push(`${compras.length} compra${compras.length > 1 ? "s" : ""} pendente${compras.length > 1 ? "s" : ""}`);
+            }
+            if (!parts.length) parts.push("Tudo em dia! Nenhuma pendência encontrada.");
+            const utterance = new SpeechSynthesisUtterance(parts.join(". "));
+            utterance.lang = "pt-BR";
+            utterance.rate = 0.95;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+            toast.info("🔊 Lendo conteúdo da tela...");
+          }}
+        >
+          <Volume2 className="h-7 w-7" />
+          Ouvir
+        </Button>
+      </div>
+
       {!hasContent && (
         <Card className="border-dashed border-2">
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -260,7 +315,7 @@ const Hoje = () => {
 
       {/* ===== ALERTAS DO DIA ===== */}
       {(alertas?.length ?? 0) > 0 && (
-        <div className="space-y-3">
+        <div ref={alertasRef} className="space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Bell className="h-5 w-5 text-rose-500" />
             🔔 Alertas do Dia
