@@ -218,7 +218,7 @@ const Produtos = () => {
                   variant="ghost"
                   size="icon"
                   className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => deleteCat.mutate(cat.id)}
+                  onClick={() => setDeleteConfirm({ type: "cat", id: cat.id, nome: cat.nome })}
                 >
                   <Trash2 className="h-3 w-3 text-destructive" />
                 </Button>
