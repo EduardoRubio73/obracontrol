@@ -987,6 +987,30 @@ export type Database = {
         }
         Relationships: []
       }
+      voz_comandos_log: {
+        Row: {
+          comando: string | null
+          created_at: string | null
+          id: string
+          interpretacao: string | null
+          tenant_id: string
+        }
+        Insert: {
+          comando?: string | null
+          created_at?: string | null
+          id?: string
+          interpretacao?: string | null
+          tenant_id: string
+        }
+        Update: {
+          comando?: string | null
+          created_at?: string | null
+          id?: string
+          interpretacao?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       vw_fase_eficiencia: {
@@ -1179,6 +1203,7 @@ export type Database = {
             }[]
           }
       gerar_alertas_sistema: { Args: { p_user_id: string }; Returns: undefined }
+      interpretar_comando_voz: { Args: { p_texto: string }; Returns: string }
       mensagem_dia: { Args: { p_obra: string }; Returns: string }
       processar_alertas: { Args: never; Returns: undefined }
     }
