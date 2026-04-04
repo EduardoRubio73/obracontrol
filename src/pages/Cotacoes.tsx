@@ -288,6 +288,49 @@ const Cotacoes = () => {
     });
   };
 
+  const toggleProd = (p: any) => {
+    setSelectedProds((prev) => {
+      const next = { ...prev };
+      if (next[p.id]) {
+        delete next[p.id];
+      } else {
+        next[p.id] = { nome: p.nome, unidade: p.unidade || "un", qtd: "1" };
+      }
+      return next;
+    });
+  };
+
+  const updateProdQtd = (id: string, qtd: string) => {
+    setSelectedProds((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], qtd },
+    }));
+  };
+
+  const handleAddSelectedProducts = async () => {
+    if (!itemDialog) return;
+    const entries = Object.values(selectedProds);
+    if (!entries.length) {
+      toast.error("Selecione pelo menos um produto");
+      return;
+    }
+    const items = entries.map((e) => ({
+      cotacao_id: itemDialog,
+      nome: e.nome,
+      quantidade: Number(e.qtd) || 1,
+      unidade: e.unidade,
+    }));
+    const { error } = await supabase.from("itens_cotacao").insert(items);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["itens-cotacao", itemDialog] });
+    setSelectedProds({});
+    setProdSearch("");
+    toast.success(`${items.length} item(ns) adicionado(s)!`);
+  };
+
   const handleEnviarEmails = () => {
     if (!emailDialog) return;
     const cotacao = cotacoes?.find((c) => c.id === emailDialog);
