@@ -1559,6 +1559,14 @@ export type Database = {
         Args: { p_complexidade: string; p_descricao: string; p_obra_id: string }
         Returns: string
       }
+      fn_criar_cotacao_com_fornecedores: {
+        Args: {
+          p_descricao: string
+          p_fornecedores_ids: string[]
+          p_obra_id: string
+        }
+        Returns: string
+      }
       fn_sugerir_fornecedores: {
         Args: { p_complexidade: string }
         Returns: {
