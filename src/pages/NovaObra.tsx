@@ -24,8 +24,10 @@ import {
   Wrench,
   Building2,
   Building,
+  Star,
 } from "lucide-react";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
+import { profissionaisRecomendados, profissionalLabel, isRecomendado, ALL_CATEGORIAS } from "@/lib/regras-decisao";
 
 /* ── Types ── */
 interface EscopoIA {
