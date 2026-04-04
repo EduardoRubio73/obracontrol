@@ -331,10 +331,8 @@ const Dashboard = () => {
         </Card>
       )}
 
-      {/* DESKTOP: Admin Section */}
-      <div className="hidden md:block">
-        <DashboardAdminSection auditoria={auditoria ?? []} vozLogs={vozLogs ?? []} />
-      </div>
+      {/* Admin Section */}
+      <DashboardAdminSection auditoria={auditoria ?? []} vozLogs={vozLogs ?? []} />
     </div>
   );
 };
