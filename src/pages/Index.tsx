@@ -244,10 +244,7 @@ const MenuPrincipal = () => {
 
       {/* ── BLOCO 1: Header ── */}
       <div className="pt-6 pb-1" style={stagger(0)}>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          ObraControl
-        </h1>
-        <p className="text-lg font-semibold text-foreground mt-2">
+        <p className="text-lg font-semibold text-foreground">
           Gestão da sua obra
         </p>
         <p className="text-sm text-muted-foreground mt-1">
