@@ -67,46 +67,11 @@ const defaultTheme = obraThemes.casa;
 
 /* ── gradient menu items ── */
 const menuItems = [
-  {
-    key: "hoje",
-    label: "Hoje",
-    icon: Home,
-    gradient: "from-[#FF8A00] to-[#FFB347]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]",
-    url: "/hoje",
-  },
-  {
-    key: "etapas",
-    label: "Etapas",
-    icon: Layers,
-    gradient: "from-[#4FACFE] to-[#00F2FE]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(79,172,254,0.35)]",
-    url: "/etapas",
-  },
-  {
-    key: "compras",
-    label: "Compras",
-    icon: ShoppingCart,
-    gradient: "from-[#43E97B] to-[#38F9D7]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(67,233,123,0.35)]",
-    url: "/compras",
-  },
-  {
-    key: "financeiro",
-    label: "Financeiro",
-    icon: DollarSign,
-    gradient: "from-[#667EEA] to-[#764BA2]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(102,126,234,0.35)]",
-    url: "/financeiro",
-  },
-  {
-    key: "fornecedores",
-    label: "Contatos",
-    icon: Users,
-    gradient: "from-[#BDC3C7] to-[#2C3E50]",
-    shadow: "shadow-[0_8px_24px_-4px_rgba(44,62,80,0.25)]",
-    url: "/fornecedores",
-  },
+  { key: "hoje", label: "Hoje", icon: Home, gradient: "from-[#FF8A00] to-[#FFB347]", shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]", url: "/hoje" },
+  { key: "etapas", label: "Etapas", icon: Layers, gradient: "from-[#4FACFE] to-[#00F2FE]", shadow: "shadow-[0_8px_24px_-4px_rgba(79,172,254,0.35)]", url: "/etapas" },
+  { key: "compras", label: "Compras", icon: ShoppingCart, gradient: "from-[#43E97B] to-[#38F9D7]", shadow: "shadow-[0_8px_24px_-4px_rgba(67,233,123,0.35)]", url: "/compras" },
+  { key: "financeiro", label: "Financeiro", icon: DollarSign, gradient: "from-[#667EEA] to-[#764BA2]", shadow: "shadow-[0_8px_24px_-4px_rgba(102,126,234,0.35)]", url: "/financeiro" },
+  { key: "fornecedores", label: "Contatos", icon: Users, gradient: "from-[#BDC3C7] to-[#2C3E50]", shadow: "shadow-[0_8px_24px_-4px_rgba(44,62,80,0.25)]", url: "/fornecedores" },
 ];
 
 /* ── animation style helper ── */
