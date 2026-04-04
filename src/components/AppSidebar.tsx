@@ -5,6 +5,7 @@ import {
   DollarSign,
   Users,
   Trophy,
+  Package,
   UserCircle,
   LogOut,
 } from "lucide-react";
