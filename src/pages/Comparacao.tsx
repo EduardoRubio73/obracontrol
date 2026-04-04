@@ -32,7 +32,6 @@ const Comparacao = () => {
     justificativa: string;
     pontos_atencao: string[];
   } | null>(null);
-  const navigate = useNavigate();
 
   const { data: cotacao } = useQuery({
     queryKey: ["cotacao-detalhe", cotacaoId],
