@@ -118,6 +118,7 @@ const Comparacao = () => {
     onError: (e) => toast.error("Erro IA: " + (e as Error).message),
   });
 
+  const getCellColor = (itemName: string, fornNome: string) => {
     const linha = tabela[itemName];
     if (!linha || !linha[fornNome]) return "";
     const valores = Object.values(linha);
