@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Building2, Eye, FileSearch } from "lucide-react";
+import { Plus, Building2, Eye, FileSearch, ArrowLeft, LogOut } from "lucide-react";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
 import { DashboardObrasRecentes } from "@/components/dashboard/DashboardObrasRecentes";
