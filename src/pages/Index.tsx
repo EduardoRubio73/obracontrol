@@ -31,6 +31,27 @@ const Hoje = () => {
     }
   }, [user?.id]);
 
+  // Get user's first obra for mensagem_dia
+  const { data: obras } = useQuery({
+    queryKey: ["obras-lista"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("id, nome").limit(5);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Mensagem do dia (from first obra)
+  const { data: mensagemDia } = useQuery({
+    queryKey: ["mensagem-dia", obras?.[0]?.id],
+    enabled: !!obras?.[0]?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("mensagem_dia", { p_obra: obras![0].id });
+      if (error) throw error;
+      return data as string;
+    },
+  });
+
   // System alerts (unresolved)
   const { data: alertas } = useQuery({
     queryKey: ["alertas-sistema"],
@@ -144,6 +165,15 @@ const Hoje = () => {
         <h1 className="text-3xl font-black">{greeting}!</h1>
         <p className="text-lg text-muted-foreground">Vamos cuidar da sua obra hoje</p>
       </div>
+
+      {/* Mensagem do Dia */}
+      {mensagemDia && (
+        <Card className="bg-sky-50/80 border-sky-200 border-2">
+          <CardContent className="py-6 px-8 text-center">
+            <p className="text-xl font-bold text-sky-800">{mensagemDia}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {!hasContent && (
         <Card className="border-dashed border-2">
