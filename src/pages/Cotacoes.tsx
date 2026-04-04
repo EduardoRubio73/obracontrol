@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check, BarChart3 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   rascunho: "bg-muted text-muted-foreground",
