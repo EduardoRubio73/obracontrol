@@ -278,7 +278,7 @@ const Dashboard = () => {
 
       {/* DESKTOP: Tabela completa de obras */}
       {!filtroId && (obras ?? []).length > 0 && (
-        <Card className="hidden md:block rounded-2xl">
+        <Card className="rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Todas as Obras</CardTitle>
           </CardHeader>
