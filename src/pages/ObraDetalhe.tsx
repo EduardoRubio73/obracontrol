@@ -9,13 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  TrendingUp,
-  TrendingDown,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -25,17 +22,7 @@ import {
   Bell,
   Plus,
   Pencil,
-  Activity,
-  DollarSign,
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-
-const statusFaseColors: Record<string, string> = {
-  pendente: "bg-muted text-muted-foreground",
-  em_andamento: "bg-blue-500/15 text-blue-700 border-blue-200",
-  concluido: "bg-green-500/15 text-green-700 border-green-200",
-  cancelado: "bg-red-500/15 text-red-700 border-red-200",
-};
 
 const statusFaseLabels: Record<string, string> = {
   pendente: "Pendente",
@@ -44,8 +31,19 @@ const statusFaseLabels: Record<string, string> = {
   cancelado: "Cancelado",
 };
 
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const statusPastelColors: Record<string, string> = {
+  concluido: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  em_andamento: "bg-sky-100 text-sky-800 border-sky-200",
+  pendente: "bg-slate-100 text-slate-600 border-slate-200",
+  cancelado: "bg-rose-100 text-rose-700 border-rose-200",
+};
+
+const statusProgressBg: Record<string, string> = {
+  concluido: "[&>div]:bg-emerald-400",
+  em_andamento: "[&>div]:bg-sky-400",
+  pendente: "[&>div]:bg-slate-300",
+  cancelado: "[&>div]:bg-rose-400",
+};
 
 interface Fase {
   id: string;
@@ -61,6 +59,7 @@ const ObraDetalhe = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [faseDialog, setFaseDialog] = useState(false);
   const [editingFase, setEditingFase] = useState<Fase | null>(null);
 
@@ -92,67 +91,6 @@ const ObraDetalhe = () => {
     },
   });
 
-  // Fase itens (for chart)
-  const { data: faseItens } = useQuery({
-    queryKey: ["fase-itens", id],
-    enabled: !!fases?.length,
-    queryFn: async () => {
-      const faseIds = fases!.map((f) => f.id);
-      const { data, error } = await supabase
-        .from("fase_itens")
-        .select("*")
-        .in("fase_id", faseIds);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Financeiro
-  const { data: financeiro } = useQuery({
-    queryKey: ["obra-financeiro", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financeiro")
-        .select("*")
-        .eq("obra_id", id!);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Smart alerts from RPC
-  const { data: smartAlertas } = useQuery({
-    queryKey: ["obra-alertas", id],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("gerar_alertas_fase", {
-        p_obra_id: id!,
-      });
-      if (error) throw error;
-      return data as { fase_id: string; nome: string; tipo: string; mensagem: string }[];
-    },
-  });
-
-  // Prediction view
-  const { data: previsao } = useQuery({
-    queryKey: ["obra-previsao", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vw_fases_previsao" as any)
-        .select("*")
-        .eq("obra_id", id!) as any;
-      if (error) throw error;
-      return data as {
-        id: string;
-        nome: string;
-        progresso: number;
-        progresso_esperado: number | null;
-        diferenca_progresso: number | null;
-        atrasado: boolean;
-        status: string;
-      }[];
-    },
-  });
-
   // System alerts
   const { data: systemAlertas } = useQuery({
     queryKey: ["alertas-sistema"],
@@ -167,22 +105,7 @@ const ObraDetalhe = () => {
     },
   });
 
-  // Purchase suggestions
-  const { data: sugestoes } = useQuery({
-    queryKey: ["sugestao-compra", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vw_sugestao_compra" as any)
-        .select("*")
-        .eq("obra_id", id!)
-        .neq("acao", "ok") as any;
-      if (error) throw error;
-      return data as { id: string; fase: string; item: string; valor_previsto: number; valor_real: number; diferenca: number; acao: string }[];
-    },
-  });
-
   // Generate alerts on load
-  const { user } = useAuth();
   useEffect(() => {
     if (user?.id) {
       supabase.rpc("gerar_alertas_sistema", { p_user_id: user.id }).then(({ error }) => {
@@ -191,7 +114,7 @@ const ObraDetalhe = () => {
     }
   }, [user?.id]);
 
-  // Resolve alert mutation
+  // Resolve alert
   const resolveAlert = useMutation({
     mutationFn: async (alertId: string) => {
       const { error } = await (supabase.from("alertas_sistema" as any) as any)
@@ -205,7 +128,7 @@ const ObraDetalhe = () => {
     },
   });
 
-  // Mutations
+  // Phase CRUD
   const upsertFase = useMutation({
     mutationFn: async (values: Partial<Fase>) => {
       if (editingFase) {
@@ -223,7 +146,6 @@ const ObraDetalhe = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["obra-fases", id] });
-      queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
       toast.success(editingFase ? "Fase atualizada!" : "Fase criada!");
       setFaseDialog(false);
       setEditingFase(null);
@@ -245,37 +167,22 @@ const ObraDetalhe = () => {
 
   // KPIs
   const totalFases = fases?.length ?? 0;
-  const fasesConcluidas = fases?.filter((f) => f.status === "concluido").length ?? 0;
-  const fasesAndamento = fases?.filter((f) => f.status === "em_andamento").length ?? 0;
-  const fasesPendentes = fases?.filter((f) => f.status === "pendente").length ?? 0;
   const progressoGeral =
     totalFases > 0
       ? fases!.reduce((acc, f) => acc + (f.progresso ?? 0), 0) / totalFases
       : 0;
 
-  // Financeiro KPIs
-  const custoTotal = financeiro?.reduce((acc, f) => acc + Number(f.valor), 0) ?? 0;
-  const despesas =
-    financeiro?.filter((f) => f.tipo === "despesa").reduce((acc, f) => acc + Number(f.valor), 0) ?? 0;
-  const receitas =
-    financeiro?.filter((f) => f.tipo === "receita").reduce((acc, f) => acc + Number(f.valor), 0) ?? 0;
-
-  // Chart data: cost per phase
-  const chartData = fases?.map((f) => {
-    const itens = faseItens?.filter((i) => i.fase_id === f.id) ?? [];
-    const previsto = itens.reduce((acc, i) => acc + Number(i.valor_previsto ?? 0), 0);
-    const real = itens.reduce((acc, i) => acc + Number(i.valor_real ?? 0), 0);
-    return { nome: f.nome, Previsto: previsto, Real: real };
-  }) ?? [];
-
-  // Alerts: overdue phases
-  const today = new Date().toISOString().split("T")[0];
-  const alertas = fases?.filter(
-    (f) => f.status !== "concluido" && f.status !== "cancelado" && f.data_fim && f.data_fim < today
-  ) ?? [];
+  // Alert icons & colors
+  const alertConfig: Record<string, { icon: typeof AlertTriangle; bg: string; border: string; text: string }> = {
+    atraso: { icon: AlertTriangle, bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700" },
+    orcamento: { icon: AlertCircle, bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
+    parada: { icon: Pause, bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
+    custo: { icon: Zap, bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
+    lento: { icon: Clock, bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/obras")}>
@@ -294,323 +201,81 @@ const ObraDetalhe = () => {
         )}
       </div>
 
-      {/* Progress Overview */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Progresso Geral</span>
-            <span className="text-sm font-bold text-primary">{progressoGeral.toFixed(0)}%</span>
+      {/* ===== BIG PROGRESS CARD ===== */}
+      <Card className="bg-sky-50/70 border-sky-200">
+        <CardContent className="p-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-sky-900">📊 Progresso da Obra</h2>
+            <span className="text-4xl font-black tabular-nums text-sky-600">
+              {progressoGeral.toFixed(0)}%
+            </span>
           </div>
-          <Progress value={progressoGeral} className="h-3" />
+          <Progress
+            value={progressoGeral}
+            className="h-6 rounded-full bg-sky-200/60 [&>div]:bg-sky-500 [&>div]:rounded-full"
+          />
+          <p className="text-sm text-sky-700 mt-3">
+            {totalFases} fase{totalFases !== 1 ? "s" : ""} cadastrada{totalFases !== 1 ? "s" : ""}
+          </p>
         </CardContent>
       </Card>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500/15">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Concluídas</p>
-              <p className="text-xl font-bold">{fasesConcluidas}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/15">
-              <Activity className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Em Andamento</p>
-              <p className="text-xl font-bold">{fasesAndamento}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Pendentes</p>
-              <p className="text-xl font-bold">{fasesPendentes}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500/15">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Atrasadas</p>
-              <p className="text-xl font-bold text-orange-600">{alertas.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Financeiro */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <DollarSign className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Custo Total</p>
-              <p className="text-lg font-bold">{fmt(custoTotal)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/15">
-              <TrendingDown className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Despesas</p>
-              <p className="text-lg font-bold text-red-600">{fmt(despesas)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500/15">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Receitas</p>
-              <p className="text-lg font-bold text-green-600">{fmt(receitas)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Chart: Cost per Phase */}
-      {chartData.some((d) => d.Previsto > 0 || d.Real > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">📈 Custo por Fase</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="nome" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip
-                  formatter={(v: number) => fmt(v)}
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="Previsto" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Real" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Smart Alerts */}
-      {(smartAlertas?.length ?? 0) > 0 && (
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bell className="h-5 w-5 text-destructive" />
-              Alertas Inteligentes
-              <Badge variant="destructive" className="ml-auto">{smartAlertas!.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {smartAlertas!.map((a, i) => {
-              const alertConfig: Record<string, { icon: typeof AlertTriangle; borderClass: string; bgClass: string; textClass: string }> = {
-                atraso: { icon: AlertTriangle, borderClass: "border-red-200", bgClass: "bg-red-50/50", textClass: "text-red-700" },
-                parada: { icon: Pause, borderClass: "border-orange-200", bgClass: "bg-orange-50/50", textClass: "text-orange-700" },
-                risco: { icon: AlertCircle, borderClass: "border-orange-200", bgClass: "bg-orange-50/50", textClass: "text-orange-700" },
-                urgente: { icon: Zap, borderClass: "border-yellow-200", bgClass: "bg-yellow-50/50", textClass: "text-yellow-700" },
-                aviso: { icon: Bell, borderClass: "border-blue-200", bgClass: "bg-blue-50/50", textClass: "text-blue-700" },
-              };
-              const cfg = alertConfig[a.tipo] ?? alertConfig.aviso;
+      {/* ===== ALERT CARDS ===== */}
+      {(systemAlertas?.length ?? 0) > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Bell className="h-5 w-5 text-destructive" />
+            🔔 Alertas Importantes
+            <Badge variant="destructive" className="ml-2">{systemAlertas!.length}</Badge>
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {systemAlertas!.map((a) => {
+              const cfg = alertConfig[a.tipo] ?? { icon: Bell, bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" };
               const Icon = cfg.icon;
               return (
-                <div key={`${a.fase_id}-${i}`} className={`flex items-start gap-3 rounded-lg border ${cfg.borderClass} ${cfg.bgClass} p-3`}>
-                  <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${cfg.textClass}`} />
-                  <div className="flex-1">
-                    <p className={`font-medium text-sm ${cfg.textClass}`}>{a.nome}</p>
-                    <p className="text-xs text-muted-foreground">{a.mensagem}</p>
-                  </div>
-                  <Badge className={`${cfg.bgClass} ${cfg.textClass} border ${cfg.borderClass} text-xs`}>
-                    {a.tipo}
-                  </Badge>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Previsão de Atraso */}
-      {(previsao?.length ?? 0) > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">📊 Previsão de Atraso</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fase</TableHead>
-                  <TableHead className="text-center">Progresso Real</TableHead>
-                  <TableHead className="text-center">Progresso Esperado</TableHead>
-                  <TableHead className="text-center">Diferença</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {previsao!.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.nome}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <Progress value={p.progresso} className="h-2 w-16" />
-                        <span className="text-sm tabular-nums">{p.progresso}%</span>
+                <Card key={a.id} className={`${cfg.bg} ${cfg.border} border-2`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${cfg.bg} border ${cfg.border}`}>
+                        <Icon className={`h-6 w-6 ${cfg.text}`} />
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center text-sm tabular-nums">
-                      {p.progresso_esperado != null ? `${p.progresso_esperado}%` : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {p.diferenca_progresso != null ? (
-                        <span className={`text-sm font-semibold tabular-nums ${p.diferenca_progresso >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {p.diferenca_progresso > 0 ? "+" : ""}{p.diferenca_progresso}%
-                        </span>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {p.atrasado ? (
-                        <Badge className="bg-red-500/15 text-red-700 border-red-200">Atrasado</Badge>
-                      ) : (
-                        <Badge className="bg-green-500/15 text-green-700 border-green-200">No Prazo</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* System Alerts */}
-      {(systemAlertas?.length ?? 0) > 0 && (
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bell className="h-5 w-5 text-destructive" />
-              Alertas do Sistema
-              <Badge variant="destructive" className="ml-auto">{systemAlertas!.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {systemAlertas!.map((a) => {
-              const alertColors: Record<string, string> = {
-                atraso: "border-red-200 bg-red-50/50 text-red-700",
-                orcamento: "border-orange-200 bg-orange-50/50 text-orange-700",
-                parada: "border-yellow-200 bg-yellow-50/50 text-yellow-700",
-              };
-              const cls = alertColors[a.tipo] ?? "border-blue-200 bg-blue-50/50 text-blue-700";
-              return (
-                <div key={a.id} className={`flex items-start gap-3 rounded-lg border p-3 ${cls}`}>
-                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">{a.entidade}</Badge>
-                      <Badge variant="outline" className="text-xs">{a.tipo}</Badge>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className={`${cfg.bg} ${cfg.text} ${cfg.border} border text-xs font-bold`}>
+                            {a.tipo}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {a.entidade}
+                          </Badge>
+                        </div>
+                        <p className={`text-base font-medium ${cfg.text}`}>{a.mensagem}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(a.created_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`shrink-0 text-xs ${cfg.text} hover:${cfg.bg}`}
+                        onClick={() => resolveAlert.mutate(a.id)}
+                      >
+                        <CheckCircle2 className="mr-1 h-4 w-4" />
+                        Resolver
+                      </Button>
                     </div>
-                    <p className="text-sm mt-1">{a.mensagem}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {new Date(a.created_at).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 text-xs"
-                    onClick={() => resolveAlert.mutate(a.id)}
-                  >
-                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                    Resolver
-                  </Button>
-                </div>
+                  </CardContent>
+                </Card>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Purchase Suggestions */}
-      {(sugestoes?.length ?? 0) > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">🛒 Sugestão de Compra</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fase</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Previsto</TableHead>
-                  <TableHead className="text-right">Real</TableHead>
-                  <TableHead className="text-right">Diferença</TableHead>
-                  <TableHead className="text-center">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sugestoes!.map((s) => {
-                  const acaoConfig: Record<string, { label: string; className: string }> = {
-                    renegociar: { label: "Renegociar", className: "bg-red-500/15 text-red-700 border-red-200" },
-                    revisar: { label: "Revisar", className: "bg-orange-500/15 text-orange-700 border-orange-200" },
-                    comprar: { label: "Comprar", className: "bg-blue-500/15 text-blue-700 border-blue-200" },
-                  };
-                  const cfg = acaoConfig[s.acao] ?? { label: s.acao, className: "" };
-                  return (
-                    <TableRow key={s.id}>
-                      <TableCell className="text-sm">{s.fase}</TableCell>
-                      <TableCell className="font-medium">{s.item}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmt(s.valor_previsto)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmt(s.valor_real)}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <span className={s.diferenca > 0 ? "text-red-600 font-semibold" : "text-green-600"}>
-                          {s.diferenca > 0 ? "+" : ""}{fmt(s.diferenca)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge className={cfg.className}>{cfg.label}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Phases List */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">📋 Fases da Obra</CardTitle>
+      {/* ===== PHASE CARD LIST ===== */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">📋 Fases da Obra</h2>
           <Button
-            size="sm"
             onClick={() => {
               setEditingFase(null);
               setFaseDialog(true);
@@ -619,56 +284,75 @@ const ObraDetalhe = () => {
             <Plus className="mr-1 h-4 w-4" />
             Nova Fase
           </Button>
-        </CardHeader>
-        <CardContent>
-          {!fases?.length ? (
-            <p className="py-8 text-center text-muted-foreground">
+        </div>
+
+        {!fases?.length ? (
+          <Card className="border-dashed border-2">
+            <CardContent className="py-12 text-center text-muted-foreground">
               Nenhuma fase cadastrada. Adicione a primeira fase desta obra.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {fases.map((f) => (
-                <div
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {fases.map((f) => {
+              const pastel = statusPastelColors[f.status] ?? statusPastelColors.pendente;
+              const progressCls = statusProgressBg[f.status] ?? "";
+              return (
+                <Card
                   key={f.id}
-                  className="flex items-center gap-4 rounded-lg border p-4"
+                  className={`border-2 ${pastel.includes("border-") ? pastel.split(" ").find(c => c.startsWith("border-")) : "border-border"} overflow-hidden`}
                 >
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{f.nome}</p>
-                      <Badge className={statusFaseColors[f.status] ?? ""}>
-                        {statusFaseLabels[f.status] ?? f.status}
-                      </Badge>
+                  <CardContent className="p-6 space-y-4">
+                    {/* Title & Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold truncate">{f.nome}</h3>
+                        {(f.data_inicio || f.data_fim) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {f.data_inicio && `Início: ${new Date(f.data_inicio).toLocaleDateString("pt-BR")}`}
+                            {f.data_inicio && f.data_fim && " · "}
+                            {f.data_fim && `Fim: ${new Date(f.data_fim).toLocaleDateString("pt-BR")}`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge className={`${pastel} text-xs font-bold`}>
+                          {statusFaseLabels[f.status] ?? f.status}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setEditingFase(f);
+                            setFaseDialog(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Progress value={f.progresso} className="h-2 flex-1" />
-                      <span className="text-sm font-medium tabular-nums w-10 text-right">
-                        {f.progresso}%
-                      </span>
+
+                    {/* Big progress bar */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">Progresso</span>
+                        <span className="text-2xl font-black tabular-nums">
+                          {f.progresso ?? 0}%
+                        </span>
+                      </div>
+                      <Progress
+                        value={f.progresso ?? 0}
+                        className={`h-5 rounded-full bg-slate-200/60 ${progressCls} [&>div]:rounded-full`}
+                      />
                     </div>
-                    {(f.data_inicio || f.data_fim) && (
-                      <p className="text-xs text-muted-foreground">
-                        {f.data_inicio && `Início: ${f.data_inicio}`}
-                        {f.data_inicio && f.data_fim && " · "}
-                        {f.data_fim && `Fim: ${f.data_fim}`}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setEditingFase(f);
-                      setFaseDialog(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Phase Dialog */}
       <Dialog open={faseDialog} onOpenChange={(v) => { setFaseDialog(v); if (!v) setEditingFase(null); }}>
