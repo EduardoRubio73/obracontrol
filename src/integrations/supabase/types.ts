@@ -1555,6 +1555,14 @@ export type Database = {
       avaliar_fornecedor: { Args: { f_id: string }; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       expirar_cotacoes: { Args: never; Returns: undefined }
+      fn_sugerir_fornecedores: {
+        Args: { p_complexidade: string }
+        Returns: {
+          categoria: string
+          id: string
+          nome: string
+        }[]
+      }
       gerar_alertas_fase:
         | {
             Args: never
