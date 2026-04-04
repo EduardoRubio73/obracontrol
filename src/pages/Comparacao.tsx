@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trophy, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, Trophy, TrendingDown, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface PropostaItem {
   nome: string;
@@ -25,6 +27,11 @@ const fmt = (v: number) =>
 const Comparacao = () => {
   const { id: cotacaoId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [iaRecomendacao, setIaRecomendacao] = useState<{
+    indice_recomendado: number;
+    justificativa: string;
+    pontos_atencao: string[];
+  } | null>(null);
 
   const { data: cotacao } = useQuery({
     queryKey: ["cotacao-detalhe", cotacaoId],
@@ -91,6 +98,25 @@ const Comparacao = () => {
   const maiorTotal = totais.length ? Math.max(...totais.map((t) => t.total)) : 0;
   const economia = maiorTotal - menorTotal;
   const vencedor = totais.find((t) => t.total === menorTotal);
+
+  const pedirSugestaoIA = useMutation({
+    mutationFn: async () => {
+      if (!propostas) throw new Error("Sem propostas");
+      const payload = propostas.map((p) => ({
+        fornecedor: (p.fornecedor as any)?.nome ?? "Sem nome",
+        valor: (p.itens ?? []).reduce((a, i) => a + i.valor_unitario * i.quantidade, 0),
+        prazo_dias: null,
+        observacoes: null,
+      }));
+      const { data, error } = await supabase.functions.invoke("apoio-decisao", {
+        body: { propostas: payload, descricao_cotacao: cotacao?.descricao },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => setIaRecomendacao(data),
+    onError: (e) => toast.error("Erro IA: " + (e as Error).message),
+  });
 
   const getCellColor = (itemName: string, fornNome: string) => {
     const linha = tabela[itemName];
@@ -186,6 +212,45 @@ const Comparacao = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* AI Suggestion */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => pedirSugestaoIA.mutate()}
+              disabled={pedirSugestaoIA.isPending}
+              className="gap-2"
+            >
+              {pedirSugestaoIA.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Sugestão IA
+            </Button>
+          </div>
+
+          {iaRecomendacao && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="font-bold text-primary">Recomendação IA</span>
+                </div>
+                <p className="text-sm text-foreground">{iaRecomendacao.justificativa}</p>
+                {iaRecomendacao.pontos_atencao.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Pontos de atenção:</p>
+                    <ul className="space-y-1">
+                      {iaRecomendacao.pontos_atencao.map((p, i) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Desktop: Excel-style table */}
           <div className="hidden md:block">

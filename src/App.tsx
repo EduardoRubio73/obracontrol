@@ -15,6 +15,8 @@ import Financeiro from "./pages/Financeiro";
 import Cotacoes from "./pages/Cotacoes";
 import Fornecedores from "./pages/Fornecedores";
 import Produtos from "./pages/Produtos";
+import NovaObra from "./pages/NovaObra";
+import Dossie from "./pages/Dossie";
 import Perfil from "./pages/Perfil";
 import PortalFornecedor from "./pages/PortalFornecedor";
 import NotFound from "./pages/NotFound";
@@ -78,6 +80,8 @@ const App = () => (
               <Route path="/cotacoes" element={<Cotacoes />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/produtos" element={<Produtos />} />
+              <Route path="/nova-obra" element={<NovaObra />} />
+              <Route path="/obras/:id/dossie" element={<Dossie />} />
               <Route path="/perfil" element={<Perfil />} />
             </Route>
             <Route path="*" element={<NotFound />} />

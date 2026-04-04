@@ -15,6 +15,7 @@ import {
   Mic,
   MicOff,
   Loader2,
+  Plus,
 } from "lucide-react";
 
 /* ── theme config by tipo_obra ── */
@@ -314,7 +315,18 @@ const MenuPrincipal = () => {
         )}
       </div>
 
-      {/* ── BLOCO 3: Menu grid premium ── */}
+      {/* ── BLOCO 3: Nova Obra CTA ── */}
+      <div className="mt-6" style={stagger(2)}>
+        <button
+          onClick={() => navigate("/nova-obra")}
+          className="w-full h-16 rounded-2xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-bold text-lg flex items-center justify-center gap-3 shadow-lg transition-all duration-200 active:scale-[0.97] hover:shadow-xl"
+        >
+          <Plus className="h-6 w-6" />
+          Nova Obra
+        </button>
+      </div>
+
+      {/* ── BLOCO 4: Menu grid premium ── */}
       <div className="grid grid-cols-2 gap-5 mt-8">
         {orderedMenu.map((item, i) => {
           const Icon = item.icon;

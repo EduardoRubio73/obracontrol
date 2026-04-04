@@ -752,6 +752,68 @@ export type Database = {
           },
         ]
       }
+      obra_dossie: {
+        Row: {
+          created_at: string | null
+          dados: Json | null
+          descricao: string | null
+          id: string
+          obra_id: string
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dados?: Json | null
+          descricao?: string | null
+          id?: string
+          obra_id: string
+          tipo: string
+          titulo: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          dados?: Json | null
+          descricao?: string | null
+          id?: string
+          obra_id?: string
+          tipo?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_dossie_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_dossie_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "obra_dossie_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "obra_dossie_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obra_fases: {
         Row: {
           created_at: string | null
@@ -829,13 +891,16 @@ export type Database = {
       }
       obras: {
         Row: {
+          classificacao: string | null
           created_at: string | null
           data_inicio: string | null
           data_prevista_conclusao: string | null
           descricao: string | null
+          escopo_ia: string | null
           id: string
           localizacao: string | null
           nome: string
+          profissional_recomendado: string | null
           status: Database["public"]["Enums"]["status_obra"] | null
           tenant_id: string | null
           tipo_obra: string | null
@@ -845,13 +910,16 @@ export type Database = {
           valor_previsto: number | null
         }
         Insert: {
+          classificacao?: string | null
           created_at?: string | null
           data_inicio?: string | null
           data_prevista_conclusao?: string | null
           descricao?: string | null
+          escopo_ia?: string | null
           id?: string
           localizacao?: string | null
           nome: string
+          profissional_recomendado?: string | null
           status?: Database["public"]["Enums"]["status_obra"] | null
           tenant_id?: string | null
           tipo_obra?: string | null
@@ -861,13 +929,16 @@ export type Database = {
           valor_previsto?: number | null
         }
         Update: {
+          classificacao?: string | null
           created_at?: string | null
           data_inicio?: string | null
           data_prevista_conclusao?: string | null
           descricao?: string | null
+          escopo_ia?: string | null
           id?: string
           localizacao?: string | null
           nome?: string
+          profissional_recomendado?: string | null
           status?: Database["public"]["Enums"]["status_obra"] | null
           tenant_id?: string | null
           tipo_obra?: string | null
