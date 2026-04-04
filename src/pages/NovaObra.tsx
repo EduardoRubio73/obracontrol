@@ -243,6 +243,7 @@ const NovaObra = () => {
     if (step === 1) return nome.trim().length >= 3;
     if (step === 3) return descricao.trim().length >= 10;
     if (step === 4) return escopo !== null;
+    if (step === 5) return selectedFornecedores.length >= 1;
     return true;
   };
 
@@ -251,11 +252,35 @@ const NovaObra = () => {
       gerarEscopo.mutate();
       return;
     }
+    if (step === 4) {
+      setStep(5);
+      loadSuggestions();
+      return;
+    }
     if (step === 5) {
+      if (selectedFornecedores.length < 1) {
+        toast.error("Selecione pelo menos 1 fornecedor");
+        return;
+      }
       criarObra.mutate();
       return;
     }
     setStep((s) => s + 1);
+  };
+
+  const removeFornecedor = (id: string) => {
+    setSelectedFornecedores((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const addFornecedor = () => {
+    if (!addFornecedorId || selectedFornecedores.length >= 3) return;
+    const forn = allFornecedores?.find((f) => f.id === addFornecedorId);
+    if (!forn) return;
+    setSelectedFornecedores((prev) => [
+      ...prev,
+      { id: forn.id, nome: forn.nome, categoria: forn.categoria || null, tipo: forn.tipo, score: forn.score, telefone: forn.telefone },
+    ]);
+    setAddFornecedorId("");
   };
 
   return (
