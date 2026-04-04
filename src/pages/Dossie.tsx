@@ -38,13 +38,13 @@ const Dossie = () => {
   const { data: obra } = useQuery({
     queryKey: ["obra", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("obras")
+      const { data, error } = await (supabase
+        .from("obras") as any)
         .select("nome, tipo_obra, classificacao, status")
         .eq("id", id!)
         .single();
       if (error) throw error;
-      return data;
+      return data as any;
     },
   });
 
