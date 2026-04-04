@@ -13,6 +13,7 @@ import {
   BarChart3,
   Settings,
   Shield,
+  Bot,
 } from "lucide-react";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
@@ -38,6 +39,7 @@ const mainItems = [
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
   { title: "Cotações", url: "/cotacoes", icon: FileText },
   { title: "Fornecedores", url: "/fornecedores", icon: Users },
+  { title: "Assistente IA", url: "/chat", icon: Bot },
 ];
 
 const adminItems = [

@@ -1,9 +1,7 @@
-import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useVoiceCommand, VoiceCommand } from "@/hooks/useVoiceCommand";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -12,11 +10,9 @@ import {
   ShoppingCart,
   DollarSign,
   Users,
-  Mic,
-  MicOff,
-  Loader2,
   Plus,
   LayoutDashboard,
+  Bot,
 } from "lucide-react";
 
 /* ── status messages ── */
@@ -40,13 +36,6 @@ const MenuPrincipal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const {
-    status: voiceStatus,
-    transcript,
-    isSupported: voiceSupported,
-    startListening,
-    stopListening,
-  } = useVoiceCommand();
 
   /* ── data ── */
   const { data: profile } = useQuery({
@@ -171,67 +160,6 @@ const MenuPrincipal = () => {
     fornecedores: fornecedoresCount ?? undefined,
   };
 
-  /* ── voice ── */
-  const handleVoiceCommand = useCallback(
-    (cmd: VoiceCommand, raw: string) => {
-      switch (cmd.action) {
-        case "criar_obra":
-          toast.success("Vamos criar uma nova obra!");
-          navigate("/nova-obra");
-          break;
-        case "concluir_tarefa": {
-          if (tarefas?.length) {
-            const match = cmd.target
-              ? tarefas.find((t) =>
-                  t.nome.toLowerCase().includes(cmd.target!.toLowerCase())
-                )
-              : tarefas[0];
-            if (match) {
-              toggleTask.mutate(match.id);
-              toast.success(`"${match.nome}" concluída por voz!`);
-            } else toast.info("Não encontrei essa tarefa.");
-          } else toast.info("Sem tarefas pendentes.");
-          break;
-        }
-        case "ver_atrasos":
-          navigate("/hoje");
-          break;
-        case "ver_compras":
-          navigate("/compras");
-          break;
-        case "ver_status":
-          navigate("/dashboard");
-          break;
-        case "ver_financeiro":
-          navigate("/financeiro");
-          break;
-        case "ver_etapas":
-          navigate("/etapas");
-          break;
-        case "ver_hoje":
-          navigate("/hoje");
-          break;
-        case "ajuda":
-          toast("Você pode dizer:", {
-            description: "• \"Nova obra\" — criar obra\n• \"Concluir tarefa\" — marcar feita\n• \"Ver atrasos\" — pendências\n• \"Status\" — dashboard\n• \"Financeiro\" — ver gastos\n• \"Etapas\" — cronograma",
-            duration: 6000,
-          });
-          break;
-        default:
-          toast("Não entendi. Tente:", {
-            description: "• Nova obra\n• Concluir tarefa\n• Ver atrasos\n• Status\n• Financeiro\n• Ajuda",
-            duration: 5000,
-          });
-      }
-    },
-    [tarefas, toggleTask, navigate]
-  );
-
-  const handleVoiceClick = () => {
-    if (voiceStatus === "listening") stopListening();
-    else startListening(handleVoiceCommand);
-  };
-
   return (
     <div className="max-w-lg mx-auto pb-32 px-3">
       {/* ── CSS keyframes for staggered entry ── */}
@@ -244,10 +172,7 @@ const MenuPrincipal = () => {
 
       {/* ── BLOCO 1: Header ── */}
       <div className="pt-6 pb-1" style={stagger(0)}>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          ObraControl
-        </h1>
-        <p className="text-lg font-semibold text-foreground mt-2">
+        <p className="text-lg font-semibold text-foreground">
           Gestão da sua obra
         </p>
         <p className="text-sm text-muted-foreground mt-1">
@@ -335,42 +260,15 @@ const MenuPrincipal = () => {
         </button>
       </div>
 
-      {/* ── Voz (botão flutuante) ── */}
-      {voiceSupported && (
-        <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
-          {voiceStatus !== "idle" && (
-            <div
-              className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg animate-fade-in ${
-                voiceStatus === "listening"
-                  ? "bg-primary text-primary-foreground"
-                  : voiceStatus === "processing"
-                  ? "bg-success text-success-foreground"
-                  : "bg-destructive text-destructive-foreground"
-              }`}
-            >
-              {voiceStatus === "listening" && "🎤 Estou ouvindo..."}
-              {voiceStatus === "processing" && `"${transcript}"`}
-              {voiceStatus === "error" && "Não entendi, tente de novo"}
-            </div>
-          )}
-          <Button
-            onClick={handleVoiceClick}
-            className={`h-16 w-16 rounded-full shadow-xl transition-transform duration-100 active:scale-[0.93] ${
-              voiceStatus === "listening"
-                ? "bg-destructive hover:bg-destructive/90 animate-pulse"
-                : "bg-primary hover:bg-primary/90"
-            }`}
-          >
-            {voiceStatus === "listening" ? (
-              <MicOff className="h-7 w-7 text-primary-foreground" />
-            ) : voiceStatus === "processing" ? (
-              <Loader2 className="h-7 w-7 text-primary-foreground animate-spin" />
-            ) : (
-              <Mic className="h-7 w-7 text-primary-foreground" />
-            )}
-          </Button>
-        </div>
-      )}
+      {/* ── Botão flutuante: Assistente ── */}
+      <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8">
+        <Button
+          onClick={() => navigate("/chat")}
+          className="h-16 w-16 rounded-full shadow-xl bg-primary hover:bg-primary/90 transition-transform duration-100 active:scale-[0.93]"
+        >
+          <Bot className="h-7 w-7 text-primary-foreground" />
+        </Button>
+      </div>
     </div>
   );
 };

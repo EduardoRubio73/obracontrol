@@ -1567,6 +1567,15 @@ export type Database = {
         }
         Returns: string
       }
+      fn_criar_obra_inteligente: {
+        Args: {
+          p_classificacao?: string
+          p_descricao?: string
+          p_nome: string
+          p_tipo?: string
+        }
+        Returns: string
+      }
       fn_sugerir_fornecedores: {
         Args: { p_complexidade: string }
         Returns: {

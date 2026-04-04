@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
+import logoImg from "@/assets/logo-obracontrol.png";
 import {
   Select,
   SelectContent,
@@ -62,6 +63,12 @@ export function AppLayout() {
           <header className="sticky top-0 z-40 flex flex-col border-b bg-card">
             <div className="flex h-14 items-center px-4 md:px-6 gap-2">
               <SidebarTrigger className="hidden md:flex" />
+
+              {/* Logo mobile */}
+              <div className="flex items-center gap-2 md:hidden">
+                <img src={logoImg} alt="ObraControl" className="h-8 w-8 rounded-lg object-contain" />
+              </div>
+
               {showBack && (
                 <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => navigate(-1)}>
                   <ArrowLeft className="h-4 w-4" /> Voltar
@@ -83,10 +90,6 @@ export function AppLayout() {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-
-              {!showObraSelector && (
-                <h1 className="ml-2 text-lg font-semibold md:hidden">ObraControl</h1>
               )}
             </div>
 
