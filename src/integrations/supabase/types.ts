@@ -261,7 +261,7 @@ export type Database = {
           id: string
           nome: string
           status: string | null
-          tenant_id: string
+          tenant_id: string | null
           valor_previsto: number | null
           valor_real: number | null
         }
@@ -271,7 +271,7 @@ export type Database = {
           id?: string
           nome: string
           status?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           valor_previsto?: number | null
           valor_real?: number | null
         }
@@ -281,7 +281,7 @@ export type Database = {
           id?: string
           nome?: string
           status?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           valor_previsto?: number | null
           valor_real?: number | null
         }
@@ -291,6 +291,20 @@ export type Database = {
             columns: ["fase_id"]
             isOneToOne: false
             referencedRelation: "obra_fases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fase_itens_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fase_eficiencia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fase_itens_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fases_previsao"
             referencedColumns: ["id"]
           },
           {
@@ -360,6 +374,20 @@ export type Database = {
             columns: ["fase_id"]
             isOneToOne: false
             referencedRelation: "obra_fases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fase_eficiencia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_fases_previsao"
             referencedColumns: ["id"]
           },
           {
@@ -622,7 +650,7 @@ export type Database = {
           ordem: number | null
           progresso: number | null
           status: string | null
-          tenant_id: string
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -634,7 +662,7 @@ export type Database = {
           ordem?: number | null
           progresso?: number | null
           status?: string | null
-          tenant_id: string
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -646,7 +674,7 @@ export type Database = {
           ordem?: number | null
           progresso?: number | null
           status?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -897,6 +925,95 @@ export type Database = {
       }
     }
     Views: {
+      vw_fase_eficiencia: {
+        Row: {
+          eficiencia_percentual: number | null
+          id: string | null
+          nome: string | null
+          previsto: number | null
+          real: number | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_fases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_fases_previsao: {
+        Row: {
+          atrasado: boolean | null
+          data_fim: string | null
+          data_inicio: string | null
+          dias_decorridos: number | null
+          dias_planejados: number | null
+          diferenca_progresso: number | null
+          id: string | null
+          nome: string | null
+          obra_id: string | null
+          progresso: number | null
+          progresso_esperado: number | null
+          status: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          atrasado?: never
+          data_fim?: string | null
+          data_inicio?: string | null
+          dias_decorridos?: never
+          dias_planejados?: never
+          diferenca_progresso?: never
+          id?: string | null
+          nome?: string | null
+          obra_id?: string | null
+          progresso?: number | null
+          progresso_esperado?: never
+          status?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          atrasado?: never
+          data_fim?: string | null
+          data_inicio?: string | null
+          dias_decorridos?: never
+          dias_planejados?: never
+          diferenca_progresso?: never
+          id?: string | null
+          nome?: string | null
+          obra_id?: string | null
+          progresso?: number | null
+          progresso_esperado?: never
+          status?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_fases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_propostas_comparativo: {
         Row: {
           cotacao_id: string | null
@@ -936,6 +1053,15 @@ export type Database = {
       avaliar_fornecedor: { Args: { f_id: string }; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       expirar_cotacoes: { Args: never; Returns: undefined }
+      gerar_alertas_fase: {
+        Args: never
+        Returns: {
+          fase_id: string
+          mensagem: string
+          nome: string
+          tipo: string
+        }[]
+      }
     }
     Enums: {
       status_cotacao:
