@@ -27,6 +27,12 @@ const fmt = (v: number) =>
 const Hoje = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { status: voiceStatus, transcript, isSupported: voiceSupported, startListening, stopListening } = useVoiceCommand();
+
+  // Section refs for voice scroll
+  const alertasRef = useRef<HTMLDivElement>(null);
+  const atrasosRef = useRef<HTMLDivElement>(null);
+  const comprasRef = useRef<HTMLDivElement>(null);
 
   // Generate system alerts on load
   useEffect(() => {
