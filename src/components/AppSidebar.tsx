@@ -30,6 +30,7 @@ const items = [
   { title: "Cotações", url: "/cotacoes", icon: FileText },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
   { title: "Fornecedores", url: "/fornecedores", icon: Users },
+  { title: "Ranking", url: "/ranking", icon: Trophy },
   { title: "Perfil", url: "/perfil", icon: UserCircle },
 ];
 
