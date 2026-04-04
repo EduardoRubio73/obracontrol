@@ -4,6 +4,7 @@ import {
   FileText,
   DollarSign,
   Users,
+  Trophy,
   UserCircle,
   LogOut,
 } from "lucide-react";
