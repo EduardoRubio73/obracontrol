@@ -11,6 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeft,
   ArrowRight,
   Check,
@@ -25,6 +32,10 @@ import {
   Building2,
   Building,
   Star,
+  X,
+  Plus,
+  Phone,
+  Users,
 } from "lucide-react";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { profissionaisRecomendados, profissionalLabel, isRecomendado, ALL_CATEGORIAS } from "@/lib/regras-decisao";
