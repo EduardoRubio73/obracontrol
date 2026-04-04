@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,33 +30,20 @@ const statusLabel: Record<string, string> = {
   concluido: "Concluído",
 };
 
-export default function Etapas() {
+function EtapasContent() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-
-  const { data: obra } = useQuery({
-    queryKey: ["primeira-obra"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("obras")
-        .select("id, nome")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { obraAtivaId } = useObraAtiva();
 
   const { data: fases, isLoading } = useQuery({
-    queryKey: ["obra-fases", obra?.id],
-    enabled: !!obra?.id,
+    queryKey: ["obra-fases", obraAtivaId],
+    enabled: !!obraAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obra_fases")
         .select("*")
-        .eq("obra_id", obra!.id)
+        .eq("obra_id", obraAtivaId!)
         .order("ordem", { ascending: true });
       if (error) throw error;
       return data;
@@ -64,7 +53,7 @@ export default function Etapas() {
   const createFase = useMutation({
     mutationFn: async (nome: string) => {
       const { error } = await supabase.from("obra_fases").insert({
-        obra_id: obra!.id,
+        obra_id: obraAtivaId!,
         nome,
         status: "pendente",
         progresso: 0,
@@ -73,7 +62,7 @@ export default function Etapas() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obra-fases", obra?.id] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
       toast.success("Etapa criada!");
       setOpen(false);
     },
@@ -186,5 +175,13 @@ export default function Etapas() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function Etapas() {
+  return (
+    <RequireObra>
+      <EtapasContent />
+    </RequireObra>
   );
 }

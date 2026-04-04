@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, CheckCircle2 } from "lucide-react";
@@ -16,13 +18,17 @@ const acaoLabel: Record<string, string> = {
   renegociar: "Renegociar",
 };
 
-export default function Compras() {
+function ComprasContent() {
+  const { obraAtivaId } = useObraAtiva();
+
   const { data: compras, isLoading } = useQuery({
-    queryKey: ["sugestao-compra"],
+    queryKey: ["sugestao-compra", obraAtivaId],
+    enabled: !!obraAtivaId,
     queryFn: async () => {
       const { data, error } = (await supabase
         .from("vw_sugestao_compra" as any)
         .select("*")
+        .eq("obra_id", obraAtivaId!)
         .neq("acao", "ok")) as any;
       if (error) throw error;
       return data as {
@@ -65,7 +71,6 @@ export default function Compras() {
         </Card>
       ))}
 
-      {/* IA simples — sugestão */}
       {compras && compras.length > 0 && (
         <Card className="border-2 border-primary/20 bg-primary/5 shadow-sm">
           <CardContent className="p-6">
@@ -91,5 +96,13 @@ export default function Compras() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function Compras() {
+  return (
+    <RequireObra>
+      <ComprasContent />
+    </RequireObra>
   );
 }
