@@ -166,6 +166,15 @@ const Hoje = () => {
         <p className="text-lg text-muted-foreground">Vamos cuidar da sua obra hoje</p>
       </div>
 
+      {/* Mensagem do Dia */}
+      {mensagemDia && (
+        <Card className="bg-sky-50/80 border-sky-200 border-2">
+          <CardContent className="py-6 px-8 text-center">
+            <p className="text-xl font-bold text-sky-800">{mensagemDia}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {!hasContent && (
         <Card className="border-dashed border-2">
           <CardContent className="py-12 text-center text-muted-foreground">
