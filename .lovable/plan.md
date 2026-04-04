@@ -1,36 +1,35 @@
 
 
-# Simplificar Segurança para `user_id = auth.uid()`
+# Tela de Ranking de Fornecedores
 
-## Problema Atual
-Várias tabelas usam `tenant_id` com `current_tenant_id()` para RLS, mas o JWT não tem `tenant_id` configurado, o que bloqueia o acesso aos dados. O usuário quer simplificar para usar apenas `user_id = auth.uid()`.
+## O que será feito
+
+Criar uma nova página `/ranking` que exibe o ranking dos fornecedores baseado em métricas automáticas (taxa de resposta, vitórias e rapidez), com badges coloridos por faixa de score e RLS adequado.
 
 ## Plano
 
-### 1. Migração SQL — Ajustar tabelas e políticas
+### 1. Migração SQL -- RLS para `fornecedor_metricas`
+A tabela `fornecedor_metricas` existe mas não tem RLS policies. Criar policy para que o owner veja as métricas dos seus fornecedores (join com `fornecedores.user_id`).
 
-**Tabelas que precisam de `user_id`** (não têm ainda):
-- `financeiro` — adicionar coluna `user_id uuid not null default auth.uid()`
-- `cotacoes` — já tem RLS via join com `obras.user_id`, manter assim
-- `propostas` — já tem RLS via join com `obras.user_id`, manter assim
+### 2. Nova página `src/pages/Ranking.tsx`
+- Query: join `fornecedor_metricas` com `fornecedores` para obter nome, email, e métricas
+- Tabela ordenada por score desc com colunas: Fornecedor, Convites, Respostas, Vitórias, Tempo Médio (h), Score
+- Badge colorido por faixa:
+  - `> 0.8` → verde "Excelente"
+  - `> 0.5` → azul "Bom"  
+  - `> 0.3` → laranja "Regular"
+  - `≤ 0.3` → vermelho "Ruim"
+- Progress bar visual para o score
+- Estado vazio quando não há métricas
 
-**Remover políticas baseadas em tenant** de todas as tabelas:
-- `obras`: drop `obras_policy`, `tenant_only_obras` (manter `obras_all`)
-- `cotacoes`: drop `cotacoes_policy` (manter `cotacoes_all`)
-- `financeiro`: drop `financeiro_policy`, criar nova policy `user_id = auth.uid()`
-- `fornecedores`: drop `fornecedores_policy` (manter `fornecedores_all` ou `fornecedores_user`)
-- `propostas`: drop `propostas_policy` (manter `propostas_all`)
-- `auditoria`: drop `auditoria_policy`, criar policy `user_id = auth.uid()`
+### 3. Registrar rota e navegação
+- Adicionar `/ranking` em `App.tsx` (rota protegida dentro do AppLayout)
+- Adicionar item "Ranking" no `AppSidebar.tsx` e `MobileBottomNav.tsx` com ícone `Trophy`
 
-### 2. Código — Garantir `user_id` nos inserts
-
-- **Financeiro.tsx**: Adicionar `user_id: user!.id` no insert e importar `useAuth`
-- **Dashboard (Index.tsx)**: Nenhuma mudança necessária (só leitura, RLS filtra)
-- **Obras.tsx**: Já envia `user_id` ✓
-- **Fornecedores.tsx**: Já envia `user_id` ✓
-- **Cotacoes.tsx**: Sem insert direto, OK
-
-### Resumo das mudanças
-- 1 migração SQL (add `user_id` ao `financeiro`, drop ~6 tenant policies, criar 2 novas policies)
-- 1 arquivo editado: `src/pages/Financeiro.tsx` (adicionar `useAuth` e `user_id` no insert)
+### Arquivos modificados
+- 1 migração SQL (RLS `fornecedor_metricas`)
+- `src/pages/Ranking.tsx` (novo)
+- `src/App.tsx` (nova rota)
+- `src/components/AppSidebar.tsx` (nav item)
+- `src/components/MobileBottomNav.tsx` (nav item)
 
