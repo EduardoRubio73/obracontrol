@@ -838,6 +838,7 @@ export type Database = {
           nome: string
           status: Database["public"]["Enums"]["status_obra"] | null
           tenant_id: string | null
+          tipo_obra: string | null
           updated_at: string | null
           user_id: string
           valor_disponivel: number | null
@@ -853,6 +854,7 @@ export type Database = {
           nome: string
           status?: Database["public"]["Enums"]["status_obra"] | null
           tenant_id?: string | null
+          tipo_obra?: string | null
           updated_at?: string | null
           user_id: string
           valor_disponivel?: number | null
@@ -868,6 +870,7 @@ export type Database = {
           nome?: string
           status?: Database["public"]["Enums"]["status_obra"] | null
           tenant_id?: string | null
+          tipo_obra?: string | null
           updated_at?: string | null
           user_id?: string
           valor_disponivel?: number | null

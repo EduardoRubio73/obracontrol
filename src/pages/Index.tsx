@@ -17,6 +17,54 @@ import {
   Loader2,
 } from "lucide-react";
 
+/* ── theme config by tipo_obra ── */
+const obraThemes: Record<
+  string,
+  {
+    emoji: string;
+    subtitle: string;
+    highlightGradient: string;
+    highlightBorder: string;
+    okGradient: string;
+    okBorder: string;
+  }
+> = {
+  casa: {
+    emoji: "🏠",
+    subtitle: "Vamos cuidar da sua casa hoje",
+    highlightGradient: "from-orange-400/20 to-amber-300/15",
+    highlightBorder: "border-orange-200/60",
+    okGradient: "from-orange-300/10 to-amber-200/10",
+    okBorder: "border-orange-200/40",
+  },
+  reforma: {
+    emoji: "🔧",
+    subtitle: "Hora de avançar na reforma",
+    highlightGradient: "from-yellow-400/20 to-amber-300/15",
+    highlightBorder: "border-yellow-200/60",
+    okGradient: "from-yellow-300/10 to-amber-200/10",
+    okBorder: "border-yellow-200/40",
+  },
+  comercial: {
+    emoji: "🏢",
+    subtitle: "Gestão da obra em foco",
+    highlightGradient: "from-blue-400/20 to-slate-300/15",
+    highlightBorder: "border-blue-200/60",
+    okGradient: "from-blue-300/10 to-slate-200/10",
+    okBorder: "border-blue-200/40",
+  },
+  apartamento: {
+    emoji: "🏢",
+    subtitle: "Sua obra organizada e no prazo",
+    highlightGradient: "from-emerald-400/20 to-teal-300/15",
+    highlightBorder: "border-emerald-200/60",
+    okGradient: "from-emerald-300/10 to-teal-200/10",
+    okBorder: "border-emerald-200/40",
+  },
+};
+
+const defaultTheme = obraThemes.casa;
+
 /* ── gradient menu items ── */
 const menuItems = [
   {
@@ -61,6 +109,12 @@ const menuItems = [
   },
 ];
 
+/* ── animation style helper ── */
+const stagger = (step: number) => ({
+  opacity: 0,
+  animation: `menu-slide-up 0.45s ease-out ${step * 0.07}s forwards`,
+});
+
 const MenuPrincipal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -83,6 +137,20 @@ const MenuPrincipal = () => {
         .select("nome")
         .eq("id", user!.id)
         .single();
+      return data;
+    },
+  });
+
+  const { data: obra } = useQuery({
+    queryKey: ["primeira-obra"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("obras")
+        .select("id, nome, tipo_obra")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single();
+      if (error) throw error;
       return data;
     },
   });
@@ -136,14 +204,13 @@ const MenuPrincipal = () => {
   const firstName = profile?.nome?.split(" ")[0] ?? "";
   const hasAlerts = (alertas?.length ?? 0) > 0;
 
-  // Dynamic order: if alerts → Hoje first, else Etapas first
+  const tipoObra = (obra as any)?.tipo_obra ?? "casa";
+  const theme = obraThemes[tipoObra] ?? defaultTheme;
+
+  // Dynamic order: alerts → Hoje first, else Etapas first
   const orderedMenu = hasAlerts
     ? menuItems
-    : [
-        menuItems[1], // etapas
-        menuItems[0], // hoje
-        ...menuItems.slice(2),
-      ];
+    : [menuItems[1], menuItems[0], ...menuItems.slice(2)];
 
   /* ── voice ── */
   const handleVoiceCommand = useCallback(
@@ -159,12 +226,8 @@ const MenuPrincipal = () => {
             if (match) {
               toggleTask.mutate(match.id);
               toast.success(`"${match.nome}" concluída por voz!`);
-            } else {
-              toast.info("Não encontrei essa tarefa.");
-            }
-          } else {
-            toast.info("Sem tarefas pendentes.");
-          }
+            } else toast.info("Não encontrei essa tarefa.");
+          } else toast.info("Sem tarefas pendentes.");
           break;
         }
         case "ver_atrasos":
@@ -186,32 +249,37 @@ const MenuPrincipal = () => {
   );
 
   const handleVoiceClick = () => {
-    if (voiceStatus === "listening") {
-      stopListening();
-    } else {
-      startListening(handleVoiceCommand);
-    }
+    if (voiceStatus === "listening") stopListening();
+    else startListening(handleVoiceCommand);
   };
 
   return (
-    <div className="max-w-lg mx-auto pb-32 px-2">
+    <div className="max-w-lg mx-auto pb-32 px-3">
+      {/* ── CSS keyframes for staggered entry ── */}
+      <style>{`
+        @keyframes menu-slide-up {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {/* ── BLOCO 1: Header inteligente ── */}
-      <div className="pt-6 pb-2 animate-fade-in">
+      <div className="pt-6 pb-1" style={stagger(0)}>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           {greeting}
-          {firstName ? `, ${firstName}` : ""} 👋
+          {firstName ? `, ${firstName}` : ""} {theme.emoji}
         </h1>
         <p className="text-lg text-muted-foreground mt-2">
-          {hasAlerts
-            ? "⚠️ Você tem algo importante hoje"
-            : "Tudo em ordem por aqui 👌"}
+          {hasAlerts ? "⚠️ Você tem algo importante hoje" : theme.subtitle}
         </p>
       </div>
 
       {/* ── BLOCO 2: Destaque do dia ── */}
-      <div className="mt-5 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+      <div className="mt-5" style={stagger(1)}>
         {hasAlerts ? (
-          <div className="rounded-3xl bg-gradient-to-r from-red-400/20 to-orange-300/20 border border-red-200/60 p-6">
+          <div
+            className={`rounded-3xl bg-gradient-to-r ${theme.highlightGradient} border ${theme.highlightBorder} p-6`}
+          >
             <p className="text-xl font-bold text-foreground">
               🚨 Você tem etapas atrasadas
             </p>
@@ -219,14 +287,16 @@ const MenuPrincipal = () => {
               {alertas![0]?.mensagem}
             </p>
             <Button
-              className="mt-4 h-12 rounded-2xl font-bold text-base px-8 bg-red-500 hover:bg-red-600 text-white"
+              className="mt-4 h-12 rounded-2xl font-bold text-base px-8 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={() => navigate("/hoje")}
             >
               Resolver agora
             </Button>
           </div>
         ) : (
-          <div className="rounded-3xl bg-gradient-to-r from-emerald-400/15 to-teal-300/15 border border-emerald-200/60 p-6 text-center">
+          <div
+            className={`rounded-3xl bg-gradient-to-r ${theme.okGradient} border ${theme.okBorder} p-6 text-center`}
+          >
             <p className="text-2xl font-bold text-foreground">
               Tudo em dia 🎉
             </p>
@@ -241,26 +311,30 @@ const MenuPrincipal = () => {
       <div className="grid grid-cols-2 gap-5 mt-8">
         {orderedMenu.map((item, i) => {
           const Icon = item.icon;
-          const isFull = orderedMenu.length % 2 !== 0 && i === orderedMenu.length - 1;
+          const isFull =
+            orderedMenu.length % 2 !== 0 && i === orderedMenu.length - 1;
           return (
             <button
               key={item.key}
               onClick={() => navigate(item.url)}
+              style={stagger(i + 2)}
               className={`
                 group relative overflow-hidden rounded-[20px]
                 bg-gradient-to-br ${item.gradient} ${item.shadow}
                 flex flex-col items-center justify-center gap-3
                 h-[140px] text-white font-bold text-lg
                 transition-all duration-200 ease-out
-                active:scale-[0.97] hover:shadow-2xl hover:-translate-y-0.5
-                animate-fade-in
+                active:scale-[0.97]
+                hover:shadow-2xl hover:-translate-y-0.5
                 ${isFull ? "col-span-2" : ""}
               `}
-              style={{ animationDelay: `${0.08 + i * 0.06}s` }}
             >
-              {/* subtle glass overlay */}
+              {/* glass overlay on hover */}
               <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-              <Icon className="h-9 w-9 drop-shadow-md relative z-10" strokeWidth={2.2} />
+              <Icon
+                className="h-9 w-9 drop-shadow-md relative z-10"
+                strokeWidth={2.2}
+              />
               <span className="relative z-10 drop-shadow-sm text-[17px] tracking-wide">
                 {item.label}
               </span>
@@ -269,7 +343,7 @@ const MenuPrincipal = () => {
         })}
       </div>
 
-      {/* ── BLOCO 6: Voz (botão flutuante) ── */}
+      {/* ── Voz (botão flutuante) ── */}
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
           {voiceStatus !== "idle" && (
@@ -289,7 +363,7 @@ const MenuPrincipal = () => {
           )}
           <Button
             onClick={handleVoiceClick}
-            className={`h-16 w-16 rounded-full shadow-xl ${
+            className={`h-16 w-16 rounded-full shadow-xl transition-transform duration-100 active:scale-[0.93] ${
               voiceStatus === "listening"
                 ? "bg-destructive hover:bg-destructive/90 animate-pulse"
                 : "bg-primary hover:bg-primary/90"
