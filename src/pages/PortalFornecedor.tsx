@@ -101,10 +101,14 @@ const PortalFornecedor = () => {
         valor_unitario: Number(valores[item.id] || 0),
       }));
 
+      if (!propostaItens.length) {
+        throw new Error("Proposta sem itens — não é possível enviar.");
+      }
+
       const { error: itensError } = await supabase
         .from("proposta_itens")
         .insert(propostaItens);
-      if (itensError) throw itensError;
+      if (itensError) throw new Error(`Erro ao salvar itens: ${itensError.message}`);
       // 5. Update tracking status to "respondeu"
       await supabase
         .from("cotacao_fornecedores")

@@ -58,13 +58,15 @@ const Comparacao = () => {
   // Build comparison map: { itemName: { fornecedor: totalValue } }
   const montarTabela = (props: PropostaComItens[]) => {
     const mapa: Record<string, Record<string, number>> = {};
-    props.forEach((p) => {
-      const forn = (p.fornecedor as any)?.nome ?? "Sem nome";
-      p.itens?.forEach((item) => {
-        if (!mapa[item.nome]) mapa[item.nome] = {};
-        mapa[item.nome][forn] = item.valor_unitario * item.quantidade;
+    props
+      .filter((p) => p.itens && p.itens.length > 0)
+      .forEach((p) => {
+        const forn = (p.fornecedor as any)?.nome ?? "Sem nome";
+        p.itens.forEach((item) => {
+          if (!mapa[item.nome]) mapa[item.nome] = {};
+          mapa[item.nome][forn] = item.valor_unitario * item.quantidade;
+        });
       });
-    });
     return mapa;
   };
 

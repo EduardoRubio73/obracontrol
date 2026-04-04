@@ -367,6 +367,8 @@ export type Database = {
           endereco: string | null
           id: string
           nome: string
+          score: number | null
+          status: string | null
           telefone: string | null
           tenant_id: string | null
           tipo: string | null
@@ -380,6 +382,8 @@ export type Database = {
           endereco?: string | null
           id?: string
           nome: string
+          score?: number | null
+          status?: string | null
           telefone?: string | null
           tenant_id?: string | null
           tipo?: string | null
@@ -393,6 +397,8 @@ export type Database = {
           endereco?: string | null
           id?: string
           nome?: string
+          score?: number | null
+          status?: string | null
           telefone?: string | null
           tenant_id?: string | null
           tipo?: string | null
@@ -747,6 +753,7 @@ export type Database = {
         Args: { f_id: string }
         Returns: undefined
       }
+      avaliar_fornecedor: { Args: { f_id: string }; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       expirar_cotacoes: { Args: never; Returns: undefined }
     }
