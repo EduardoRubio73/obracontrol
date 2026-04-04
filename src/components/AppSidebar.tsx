@@ -8,6 +8,11 @@ import {
   Package,
   UserCircle,
   LogOut,
+  LayoutDashboard,
+  Building2,
+  BarChart3,
+  Settings,
+  Shield,
 } from "lucide-react";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
@@ -16,6 +21,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
@@ -24,14 +30,23 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Menu", url: "/", icon: Home },
-  { title: "Hoje", url: "/hoje", icon: Home },
+const mainItems = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Obras", url: "/obras", icon: Building2 },
   { title: "Etapas", url: "/etapas", icon: Layers },
   { title: "Compras", url: "/compras", icon: ShoppingCart },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
   { title: "Cotações", url: "/cotacoes", icon: FileText },
   { title: "Fornecedores", url: "/fornecedores", icon: Users },
+];
+
+const adminItems = [
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "Configurações", url: "/configuracoes", icon: Settings },
+  { title: "Auditoria", url: "/auditoria", icon: Shield },
+];
+
+const userItems = [
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Perfil", url: "/perfil", icon: UserCircle },
 ];
@@ -40,6 +55,23 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
+
+  const renderItems = (items: typeof mainItems) =>
+    items.map((item) => (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton asChild>
+          <NavLink
+            to={item.url}
+            end={item.url === "/"}
+            className="hover:bg-accent"
+            activeClassName="bg-primary/10 text-primary font-medium"
+          >
+            <item.icon className="mr-2 h-4 w-4" />
+            {!collapsed && <span>{item.title}</span>}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    ));
 
   return (
     <Sidebar collapsible="icon">
@@ -58,24 +90,23 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
+          <SidebarGroupLabel>{!collapsed && "Principal"}</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="hover:bg-accent"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <SidebarMenu>{renderItems(mainItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>{!collapsed && "Gestão"}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(adminItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>{!collapsed && "Conta"}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(userItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
