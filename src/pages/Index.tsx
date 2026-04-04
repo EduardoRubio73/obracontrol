@@ -15,6 +15,7 @@ import {
   Mic,
   MicOff,
   Loader2,
+  Plus,
 } from "lucide-react";
 
 /* ── theme config by tipo_obra ── */
