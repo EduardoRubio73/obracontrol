@@ -320,6 +320,7 @@ const MenuPrincipal = () => {
           const Icon = item.icon;
           const isFull =
             orderedMenu.length % 2 !== 0 && i === orderedMenu.length - 1;
+          const count = badgeCounts[item.key];
           return (
             <button
               key={item.key}
@@ -336,7 +337,11 @@ const MenuPrincipal = () => {
                 ${isFull ? "col-span-2" : ""}
               `}
             >
-              {/* glass overlay on hover */}
+              {count != null && count > 0 && (
+                <span className="absolute top-3 right-3 z-20 min-w-[24px] h-6 px-1.5 flex items-center justify-center rounded-full bg-white/25 backdrop-blur-sm text-white text-xs font-bold">
+                  {count}
+                </span>
+              )}
               <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               <Icon
                 className="h-9 w-9 drop-shadow-md relative z-10"
