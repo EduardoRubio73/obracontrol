@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Package, FolderOpen, Filter } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const Produtos = () => {
   const queryClient = useQueryClient();
@@ -24,6 +25,7 @@ const Produtos = () => {
   const [prodCatId, setProdCatId] = useState("");
 
   const [filterCat, setFilterCat] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "cat" | "prod"; id: string; nome: string } | null>(null);
 
   const { data: categorias } = useQuery({
     queryKey: ["categorias_produtos"],
@@ -216,7 +218,7 @@ const Produtos = () => {
                   variant="ghost"
                   size="icon"
                   className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => deleteCat.mutate(cat.id)}
+                  onClick={() => setDeleteConfirm({ type: "cat", id: cat.id, nome: cat.nome })}
                 >
                   <Trash2 className="h-3 w-3 text-destructive" />
                 </Button>
@@ -270,7 +272,7 @@ const Produtos = () => {
                         <Button variant="ghost" size="icon" onClick={() => openEditProd(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteProd.mutate(p.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ type: "prod", id: p.id, nome: p.nome })}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -359,6 +361,31 @@ const Produtos = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => { if (!v) setDeleteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteConfirm?.nome}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteConfirm?.type === "cat") deleteCat.mutate(deleteConfirm.id);
+                else if (deleteConfirm?.type === "prod") deleteProd.mutate(deleteConfirm.id);
+                setDeleteConfirm(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
