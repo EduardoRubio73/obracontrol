@@ -1,5 +1,7 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, Plus, Eye } from "lucide-react";
 
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -10,6 +12,7 @@ interface Props {
 }
 
 export const DashboardFinanceiroCard = ({ totalGasto, totalPrevisto }: Props) => {
+  const navigate = useNavigate();
   const saldo = totalPrevisto - totalGasto;
 
   return (
@@ -33,6 +36,14 @@ export const DashboardFinanceiroCard = ({ totalGasto, totalPrevisto }: Props) =>
           <span className={`font-bold ${saldo < 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}>
             {fmt(saldo)}
           </span>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => navigate("/financeiro")}>
+            <Eye className="h-3.5 w-3.5" /> Ver
+          </Button>
+          <Button size="sm" className="flex-1 gap-1" onClick={() => navigate("/financeiro")}>
+            <Plus className="h-3.5 w-3.5" /> Novo
+          </Button>
         </div>
       </CardContent>
     </Card>
