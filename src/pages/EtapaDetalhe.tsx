@@ -29,13 +29,15 @@ export default function EtapaDetalhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obra_fases")
-        .select("*")
+        .select("*, obras(id)")
         .eq("id", id!)
         .single();
       if (error) throw error;
       return data;
     },
   });
+
+  const obraId = (fase as any)?.obras?.id ?? (fase as any)?.obra_id;
 
   const { data: itens } = useQuery({
     queryKey: ["fase-itens", id],
