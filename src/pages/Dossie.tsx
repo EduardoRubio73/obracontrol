@@ -51,13 +51,14 @@ const Dossie = () => {
   const { data: eventos, isLoading } = useQuery({
     queryKey: ["dossie", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("obra_dossie")
+      const { data, error } = await (supabase
+        .from("obra_dossie" as any) as any)
         .select("*")
         .eq("obra_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as any[];
+    },
     },
   });
 
