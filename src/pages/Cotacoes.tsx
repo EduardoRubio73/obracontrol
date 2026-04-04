@@ -314,14 +314,27 @@ ObraControl`;
                   <PackagePlus className="h-4 w-4" />
                 </Button>
                 {(cotacao as any).token_publico && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Copiar link público"
-                    onClick={() => copyLink((cotacao as any).token_publico)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Enviar por email"
+                      onClick={() => {
+                        setEmailDialog(cotacao.id);
+                        setEmailList("");
+                      }}
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Copiar link público"
+                      onClick={() => copyLink((cotacao as any).token_publico)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
                 <ChevronRight
                   className="h-4 w-4 text-muted-foreground cursor-pointer"
