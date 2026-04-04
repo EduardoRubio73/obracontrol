@@ -212,6 +212,13 @@ const MenuPrincipal = () => {
     ? menuItems
     : [menuItems[1], menuItems[0], ...menuItems.slice(2)];
 
+  const badgeCounts: Record<string, number | undefined> = {
+    hoje: tarefas?.length,
+    etapas: etapasEmAndamento ?? undefined,
+    compras: comprasCount ?? undefined,
+    fornecedores: fornecedoresCount ?? undefined,
+  };
+
   /* ── voice ── */
   const handleVoiceCommand = useCallback(
     (cmd: VoiceCommand, raw: string) => {
