@@ -270,7 +270,7 @@ const CotacoesContent = () => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     createCotacao.mutate({
-      obra_id: fd.get("obra_id"),
+      obra_id: obraAtivaId!,
       descricao: fd.get("descricao"),
       data_expiracao: fd.get("data_expiracao") || null,
     });
