@@ -703,8 +703,8 @@ const NovaObra = () => {
               </>
             ) : step === 5 ? (
               <>
-                <Check className="h-5 w-5 mr-2" />
-                {selectedFornecedores.length > 0 ? "Criar Obra e Enviar" : "Criar Obra"}
+                <Send className="h-5 w-5 mr-2" />
+                {selectedFornecedores.length > 0 ? `Enviar Cotação (${selectedFornecedores.length})` : "Criar Obra"}
               </>
             ) : (
               <>
