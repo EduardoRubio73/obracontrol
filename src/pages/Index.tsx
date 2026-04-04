@@ -153,10 +153,6 @@ const MenuPrincipal = () => {
   });
 
   /* ── derived ── */
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-  const firstName = profile?.nome?.split(" ")[0] ?? "";
   const hasAlerts = (alertas?.length ?? 0) > 0;
 
 
