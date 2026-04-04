@@ -18,9 +18,7 @@ import {
   Plus,
 } from "lucide-react";
 
-/* ── status messages (professional tone) ── */
-const statusOk = "Tudo em dia. Obra evoluindo conforme o planejado.";
-const statusAlert = "Atenção: existem etapas em atraso.";
+/* ── status messages ── */
 
 /* ── gradient menu items ── */
 const menuItems = [
