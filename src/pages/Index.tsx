@@ -1,17 +1,69 @@
 import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceCommand, VoiceCommand } from "@/hooks/useVoiceCommand";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import {
+  Home,
+  Layers,
+  ShoppingCart,
+  DollarSign,
+  Users,
+  Mic,
+  MicOff,
+  Loader2,
+} from "lucide-react";
 
-const Hoje = () => {
+/* ── gradient menu items ── */
+const menuItems = [
+  {
+    key: "hoje",
+    label: "Hoje",
+    icon: Home,
+    gradient: "from-[#FF8A00] to-[#FFB347]",
+    shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]",
+    url: "/hoje",
+  },
+  {
+    key: "etapas",
+    label: "Etapas",
+    icon: Layers,
+    gradient: "from-[#4FACFE] to-[#00F2FE]",
+    shadow: "shadow-[0_8px_24px_-4px_rgba(79,172,254,0.35)]",
+    url: "/etapas",
+  },
+  {
+    key: "compras",
+    label: "Compras",
+    icon: ShoppingCart,
+    gradient: "from-[#43E97B] to-[#38F9D7]",
+    shadow: "shadow-[0_8px_24px_-4px_rgba(67,233,123,0.35)]",
+    url: "/compras",
+  },
+  {
+    key: "financeiro",
+    label: "Financeiro",
+    icon: DollarSign,
+    gradient: "from-[#667EEA] to-[#764BA2]",
+    shadow: "shadow-[0_8px_24px_-4px_rgba(102,126,234,0.35)]",
+    url: "/financeiro",
+  },
+  {
+    key: "fornecedores",
+    label: "Contatos",
+    icon: Users,
+    gradient: "from-[#BDC3C7] to-[#2C3E50]",
+    shadow: "shadow-[0_8px_24px_-4px_rgba(44,62,80,0.25)]",
+    url: "/fornecedores",
+  },
+];
+
+const MenuPrincipal = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     status: voiceStatus,
@@ -21,7 +73,7 @@ const Hoje = () => {
     stopListening,
   } = useVoiceCommand();
 
-  // Profile name
+  /* ── data ── */
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user?.id,
@@ -35,7 +87,6 @@ const Hoje = () => {
     },
   });
 
-  // Alerts (unresolved)
   const { data: alertas } = useQuery({
     queryKey: ["alertas-sistema"],
     queryFn: async () => {
@@ -50,7 +101,6 @@ const Hoje = () => {
     },
   });
 
-  // Pending tasks
   const { data: tarefas } = useQuery({
     queryKey: ["tarefas-pendentes"],
     queryFn: async () => {
@@ -64,24 +114,6 @@ const Hoje = () => {
     },
   });
 
-  // Progress
-  const { data: progresso } = useQuery({
-    queryKey: ["progresso-geral"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vw_progresso_obra" as any)
-        .select("*") as any;
-      if (error) throw error;
-      const rows = data as { progresso_geral: number }[];
-      if (!rows?.length) return 0;
-      const avg =
-        rows.reduce((a: number, r: any) => a + (r.progresso_geral ?? 0), 0) /
-        rows.length;
-      return Math.round(avg);
-    },
-  });
-
-  // Toggle task done
   const toggleTask = useMutation({
     mutationFn: async (itemId: string) => {
       const { error } = await supabase
@@ -97,16 +129,23 @@ const Hoje = () => {
     },
   });
 
-  // Greeting
+  /* ── derived ── */
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const firstName = profile?.nome?.split(" ")[0] ?? "";
-
   const hasAlerts = (alertas?.length ?? 0) > 0;
-  const hasTasks = (tarefas?.length ?? 0) > 0;
 
-  // Voice
+  // Dynamic order: if alerts → Hoje first, else Etapas first
+  const orderedMenu = hasAlerts
+    ? menuItems
+    : [
+        menuItems[1], // etapas
+        menuItems[0], // hoje
+        ...menuItems.slice(2),
+      ];
+
+  /* ── voice ── */
   const handleVoiceCommand = useCallback(
     (cmd: VoiceCommand, raw: string) => {
       switch (cmd.action) {
@@ -129,10 +168,13 @@ const Hoje = () => {
           break;
         }
         case "ver_atrasos":
+          navigate("/hoje");
+          break;
         case "ver_compras":
+          navigate("/compras");
+          break;
         case "ver_status":
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          toast.info("Mostrando resumo");
+          navigate("/etapas");
           break;
         default:
           toast.error(
@@ -140,7 +182,7 @@ const Hoje = () => {
           );
       }
     },
-    [tarefas, toggleTask]
+    [tarefas, toggleTask, navigate]
   );
 
   const handleVoiceClick = () => {
@@ -152,112 +194,87 @@ const Hoje = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-lg mx-auto pb-32 px-1">
-      {/* BLOCO 1 — Saudação */}
-      <div className="pt-4">
+    <div className="max-w-lg mx-auto pb-32 px-2">
+      {/* ── BLOCO 1: Header inteligente ── */}
+      <div className="pt-6 pb-2 animate-fade-in">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           {greeting}
           {firstName ? `, ${firstName}` : ""} 👋
         </h1>
         <p className="text-lg text-muted-foreground mt-2">
-          Vamos cuidar da sua obra hoje
+          {hasAlerts
+            ? "⚠️ Você tem algo importante hoje"
+            : "Tudo em ordem por aqui 👌"}
         </p>
       </div>
 
-      {/* BLOCO 2 — Alerta */}
-      {hasAlerts && (
-        <Card className="border-2 border-warning/40 bg-warning/10 shadow-sm">
-          <CardContent className="p-6">
+      {/* ── BLOCO 2: Destaque do dia ── */}
+      <div className="mt-5 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+        {hasAlerts ? (
+          <div className="rounded-3xl bg-gradient-to-r from-red-400/20 to-orange-300/20 border border-red-200/60 p-6">
             <p className="text-xl font-bold text-foreground">
-              ⚠️ Você tem etapas atrasadas
+              🚨 Você tem etapas atrasadas
             </p>
             <p className="text-base text-muted-foreground mt-1">
               {alertas![0]?.mensagem}
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* BLOCO 3 — Ação principal */}
-      {hasTasks && (
-        <Button
-          className="w-full h-16 text-xl font-bold rounded-2xl bg-warning text-warning-foreground hover:bg-warning/90 shadow-md"
-          onClick={() =>
-            document
-              .getElementById("secao-tarefas")
-              ?.scrollIntoView({ behavior: "smooth" })
-          }
-        >
-          Começar agora
-        </Button>
-      )}
-
-      {/* Se tudo estiver ok */}
-      {!hasAlerts && !hasTasks && (
-        <Card className="border-2 border-success/30 bg-success/10 shadow-sm">
-          <CardContent className="p-8 text-center">
-            <p className="text-2xl font-bold text-foreground">
-              Tudo em dia 👏
-            </p>
-            <p className="text-base text-muted-foreground mt-2">
-              Você não tem pendências hoje
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* BLOCO 4 — Progresso */}
-      <Card className="shadow-sm">
-        <CardContent className="p-6">
-          <p className="text-base font-semibold text-muted-foreground mb-4">
-            📊 Progresso da obra
-          </p>
-          <div className="flex items-end justify-between mb-3">
-            <span className="text-4xl font-black tabular-nums text-foreground">
-              {progresso ?? 0}%
-            </span>
+            <Button
+              className="mt-4 h-12 rounded-2xl font-bold text-base px-8 bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => navigate("/hoje")}
+            >
+              Resolver agora
+            </Button>
           </div>
-          <Progress
-            value={progresso ?? 0}
-            className="h-5 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
-          />
-        </CardContent>
-      </Card>
+        ) : (
+          <div className="rounded-3xl bg-gradient-to-r from-emerald-400/15 to-teal-300/15 border border-emerald-200/60 p-6 text-center">
+            <p className="text-2xl font-bold text-foreground">
+              Tudo em dia 🎉
+            </p>
+            <p className="text-base text-muted-foreground mt-1">
+              Sua obra está no caminho certo
+            </p>
+          </div>
+        )}
+      </div>
 
-      {/* BLOCO 5 — Tarefas do dia */}
-      {hasTasks && (
-        <div id="secao-tarefas" className="space-y-4">
-          <p className="text-base font-semibold text-muted-foreground">
-            ✅ Tarefas do dia
-          </p>
-          {tarefas!.map((t) => (
-            <Card key={t.id} className="shadow-sm">
-              <CardContent className="p-5 flex items-center gap-5">
-                <Checkbox
-                  checked={false}
-                  onCheckedChange={() => toggleTask.mutate(t.id)}
-                  className="h-7 w-7 rounded-lg border-2"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-lg text-foreground">
-                    {t.nome}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {(t.obra_fases as any)?.nome ?? ""}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* ── BLOCO 3: Menu grid premium ── */}
+      <div className="grid grid-cols-2 gap-5 mt-8">
+        {orderedMenu.map((item, i) => {
+          const Icon = item.icon;
+          const isFull = orderedMenu.length % 2 !== 0 && i === orderedMenu.length - 1;
+          return (
+            <button
+              key={item.key}
+              onClick={() => navigate(item.url)}
+              className={`
+                group relative overflow-hidden rounded-[20px]
+                bg-gradient-to-br ${item.gradient} ${item.shadow}
+                flex flex-col items-center justify-center gap-3
+                h-[140px] text-white font-bold text-lg
+                transition-all duration-200 ease-out
+                active:scale-[0.97] hover:shadow-2xl hover:-translate-y-0.5
+                animate-fade-in
+                ${isFull ? "col-span-2" : ""}
+              `}
+              style={{ animationDelay: `${0.08 + i * 0.06}s` }}
+            >
+              {/* subtle glass overlay */}
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              <Icon className="h-9 w-9 drop-shadow-md relative z-10" strokeWidth={2.2} />
+              <span className="relative z-10 drop-shadow-sm text-[17px] tracking-wide">
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      {/* BLOCO 6 — Voz (botão flutuante) */}
+      {/* ── BLOCO 6: Voz (botão flutuante) ── */}
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
           {voiceStatus !== "idle" && (
             <div
-              className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg ${
+              className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg animate-fade-in ${
                 voiceStatus === "listening"
                   ? "bg-primary text-primary-foreground"
                   : voiceStatus === "processing"
@@ -272,7 +289,7 @@ const Hoje = () => {
           )}
           <Button
             onClick={handleVoiceClick}
-            className={`h-16 w-16 rounded-full shadow-xl text-lg ${
+            className={`h-16 w-16 rounded-full shadow-xl ${
               voiceStatus === "listening"
                 ? "bg-destructive hover:bg-destructive/90 animate-pulse"
                 : "bg-primary hover:bg-primary/90"
@@ -292,4 +309,4 @@ const Hoje = () => {
   );
 };
 
-export default Hoje;
+export default MenuPrincipal;

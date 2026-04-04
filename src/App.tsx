@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
+import Hoje from "./pages/Hoje";
 import Etapas from "./pages/Etapas";
 import EtapaDetalhe from "./pages/EtapaDetalhe";
 import Compras from "./pages/Compras";
@@ -69,6 +70,7 @@ const App = () => (
               }
             >
               <Route path="/" element={<Index />} />
+              <Route path="/hoje" element={<Hoje />} />
               <Route path="/etapas" element={<Etapas />} />
               <Route path="/etapas/:id" element={<EtapaDetalhe />} />
               <Route path="/compras" element={<Compras />} />
