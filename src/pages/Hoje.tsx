@@ -104,6 +104,10 @@ const Hoje = () => {
   const handleVoiceCommand = useCallback(
     (cmd: VoiceCommand, raw: string) => {
       switch (cmd.action) {
+        case "criar_obra":
+          toast.success("Vamos criar uma nova obra!");
+          navigate("/nova-obra");
+          break;
         case "concluir_tarefa": {
           if (tarefas?.length) {
             const match = cmd.target
@@ -119,16 +123,36 @@ const Hoje = () => {
           break;
         }
         case "ver_atrasos":
-        case "ver_compras":
-        case "ver_status":
+        case "ver_hoje":
           window.scrollTo({ top: 0, behavior: "smooth" });
-          toast.info("Mostrando resumo");
+          toast.info("Mostrando resumo do dia");
+          break;
+        case "ver_compras":
+          navigate("/compras");
+          break;
+        case "ver_status":
+          navigate("/dashboard");
+          break;
+        case "ver_financeiro":
+          navigate("/financeiro");
+          break;
+        case "ver_etapas":
+          navigate("/etapas");
+          break;
+        case "ajuda":
+          toast("Você pode dizer:", {
+            description: "• \"Concluir tarefa\"\n• \"Nova obra\"\n• \"Ver atrasos\"\n• \"Status\"\n• \"Financeiro\"",
+            duration: 6000,
+          });
           break;
         default:
-          toast.error(`Não entendi: "${raw}". Tente: concluir, atrasos, status.`);
+          toast("Não entendi. Tente:", {
+            description: "• Concluir tarefa\n• Nova obra\n• Ver atrasos\n• Status\n• Ajuda",
+            duration: 5000,
+          });
       }
     },
-    [tarefas, toggleTask]
+    [tarefas, toggleTask, navigate]
   );
 
   const handleVoiceClick = () => {
