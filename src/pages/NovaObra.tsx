@@ -184,7 +184,7 @@ const NovaObra = () => {
         }
 
         // Dossie entry
-        await supabase.from("obra_dossie").insert({
+        await (supabase.from("obra_dossie" as any) as any).insert({
           obra_id: newObraId,
           tipo: "solicitacao_enviada",
           titulo: "Solicitação enviada para profissionais",
