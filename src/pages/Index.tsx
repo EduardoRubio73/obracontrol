@@ -18,53 +18,9 @@ import {
   Plus,
 } from "lucide-react";
 
-/* ── theme config by tipo_obra ── */
-const obraThemes: Record<
-  string,
-  {
-    emoji: string;
-    subtitle: string;
-    highlightGradient: string;
-    highlightBorder: string;
-    okGradient: string;
-    okBorder: string;
-  }
-> = {
-  casa: {
-    emoji: "🏠",
-    subtitle: "Vamos cuidar da sua casa hoje",
-    highlightGradient: "from-orange-400/20 to-amber-300/15",
-    highlightBorder: "border-orange-200/60",
-    okGradient: "from-orange-300/10 to-amber-200/10",
-    okBorder: "border-orange-200/40",
-  },
-  reforma: {
-    emoji: "🔧",
-    subtitle: "Hora de avançar na reforma",
-    highlightGradient: "from-yellow-400/20 to-amber-300/15",
-    highlightBorder: "border-yellow-200/60",
-    okGradient: "from-yellow-300/10 to-amber-200/10",
-    okBorder: "border-yellow-200/40",
-  },
-  comercial: {
-    emoji: "🏢",
-    subtitle: "Gestão da obra em foco",
-    highlightGradient: "from-blue-400/20 to-slate-300/15",
-    highlightBorder: "border-blue-200/60",
-    okGradient: "from-blue-300/10 to-slate-200/10",
-    okBorder: "border-blue-200/40",
-  },
-  apartamento: {
-    emoji: "🏢",
-    subtitle: "Sua obra organizada e no prazo",
-    highlightGradient: "from-emerald-400/20 to-teal-300/15",
-    highlightBorder: "border-emerald-200/60",
-    okGradient: "from-emerald-300/10 to-teal-200/10",
-    okBorder: "border-emerald-200/40",
-  },
-};
-
-const defaultTheme = obraThemes.casa;
+/* ── status messages (professional tone) ── */
+const statusOk = "Tudo em dia. Obra evoluindo conforme o planejado.";
+const statusAlert = "Atenção: existem etapas em atraso.";
 
 /* ── gradient menu items ── */
 const menuItems = [
