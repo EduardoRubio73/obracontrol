@@ -19,7 +19,7 @@ function useCrudTab(table: string) {
     queryFn: async () => {
       const { data, error } = await supabase.from(table as any).select("*").order("nome");
       if (error) throw error;
-      return (data ?? []) as { id: string; nome: string }[];
+      return (data ?? []) as unknown as { id: string; nome: string }[];
     },
   });
 
