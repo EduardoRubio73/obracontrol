@@ -1,5 +1,18 @@
 import { useState, useRef, useCallback } from "react";
 
+function limparTextoParaVoz(texto: string): string {
+  return texto
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/_/g, ' ')
+    .replace(/`/g, '')
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n+/g, '. ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export type VoiceLoopStatus = "idle" | "listening" | "processing" | "speaking";
 
 interface SpeechRecognitionEvent {
