@@ -161,7 +161,7 @@ const MenuPrincipal = () => {
   };
 
   return (
-    <div className="max-w-lg mx-auto pb-32 px-3">
+    <div className="max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto pb-32 px-3">
       {/* ── CSS keyframes for staggered entry ── */}
       <style>{`
         @keyframes menu-slide-up {
