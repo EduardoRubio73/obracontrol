@@ -88,7 +88,7 @@ function CrudTabContent({ table }: { table: string }) {
 
 const Configuracoes = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold">Configurações</h1>
 
       <Tabs defaultValue="categorias">

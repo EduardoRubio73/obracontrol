@@ -76,7 +76,7 @@ function EtapasContent() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto pb-28 px-1">
+    <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-4">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           Etapas da obra
@@ -94,6 +94,7 @@ function EtapasContent() {
         Nova etapa
       </Button>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {fases?.map((f) => {
         const st = f.status ?? "pendente";
         return (
@@ -128,6 +129,7 @@ function EtapasContent() {
           </Card>
         );
       })}
+      </div>
 
       {!isLoading && !fases?.length && (
         <Card className="border-dashed border-2 shadow-none">

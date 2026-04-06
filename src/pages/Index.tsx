@@ -161,7 +161,7 @@ const MenuPrincipal = () => {
   };
 
   return (
-    <div className="max-w-lg mx-auto pb-32 px-3">
+    <div className="max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto pb-32 px-3">
       {/* ── CSS keyframes for staggered entry ── */}
       <style>{`
         @keyframes menu-slide-up {
@@ -209,7 +209,7 @@ const MenuPrincipal = () => {
       </div>
 
       {/* ── BLOCO 4: Menu grid premium ── */}
-      <div className="grid grid-cols-2 gap-5 mt-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mt-8">
         {orderedMenu.map((item, i) => {
           const Icon = item.icon;
           const isFull =
@@ -228,7 +228,7 @@ const MenuPrincipal = () => {
                 transition-all duration-200 ease-out
                 active:scale-[0.97]
                 hover:shadow-2xl hover:-translate-y-0.5
-                ${isFull ? "col-span-2" : ""}
+                ${isFull ? "col-span-2 md:col-span-1" : ""}
               `}
             >
               {count != null && count > 0 && (
