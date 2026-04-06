@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, ChevronRight } from "lucide-react";
+import { useQuery as useQ2 } from "@tanstack/react-query";
 
 const statusDot: Record<string, string> = {
   pendente: "bg-muted-foreground/40",
