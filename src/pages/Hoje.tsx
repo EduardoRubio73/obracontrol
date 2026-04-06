@@ -132,6 +132,7 @@ const Hoje = () => {
     (cmd: VoiceCommand, raw: string) => {
       switch (cmd.action) {
         case "criar_obra":
+          falar("Vamos criar uma nova obra!");
           toast.success("Vamos criar uma nova obra!");
           navigate("/nova-obra");
           break;
@@ -144,42 +145,56 @@ const Hoje = () => {
               : tarefas[0];
             if (match) {
               toggleTask.mutate(match.id);
+              falar(`Tarefa "${match.nome}" concluída!`);
               toast.success(`"${match.nome}" concluída por voz!`);
-            } else toast.info("Não encontrei essa tarefa.");
-          } else toast.info("Sem tarefas pendentes.");
+            } else {
+              falar("Não encontrei essa tarefa.");
+              toast.info("Não encontrei essa tarefa.");
+            }
+          } else {
+            falar("Sem tarefas pendentes.");
+            toast.info("Sem tarefas pendentes.");
+          }
           break;
         }
         case "ver_atrasos":
         case "ver_hoje":
           window.scrollTo({ top: 0, behavior: "smooth" });
+          falar("Mostrando o resumo do seu dia.");
           toast.info("Mostrando resumo do dia");
           break;
         case "ver_compras":
+          falar("Abrindo compras.");
           navigate("/compras");
           break;
         case "ver_status":
+          falar("Abrindo o painel geral.");
           navigate("/dashboard");
           break;
         case "ver_financeiro":
+          falar("Abrindo o financeiro.");
           navigate("/financeiro");
           break;
         case "ver_etapas":
+          falar("Abrindo as etapas.");
           navigate("/etapas");
           break;
         case "ajuda":
+          falar("Você pode dizer: concluir tarefa, nova obra, ver atrasos, status, ou financeiro.");
           toast("Você pode dizer:", {
             description: "• \"Concluir tarefa\"\n• \"Nova obra\"\n• \"Ver atrasos\"\n• \"Status\"\n• \"Financeiro\"",
             duration: 6000,
           });
           break;
         default:
+          falar("Não entendi. Tente dizer: concluir tarefa, nova obra, ou ajuda.");
           toast("Não entendi. Tente:", {
             description: "• Concluir tarefa\n• Nova obra\n• Ver atrasos\n• Status\n• Ajuda",
             duration: 5000,
           });
       }
     },
-    [tarefas, toggleTask, navigate]
+    [tarefas, toggleTask, navigate, falar]
   );
 
   const handleVoiceClick = () => {
