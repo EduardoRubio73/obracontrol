@@ -228,7 +228,7 @@ const MenuPrincipal = () => {
                 transition-all duration-200 ease-out
                 active:scale-[0.97]
                 hover:shadow-2xl hover:-translate-y-0.5
-                ${isFull ? "col-span-2" : ""}
+                ${isFull ? "col-span-2 md:col-span-1" : ""}
               `}
             >
               {count != null && count > 0 && (
