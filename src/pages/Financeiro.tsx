@@ -65,15 +65,30 @@ function FinanceiroContent() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    let comprovante_url: string | null = null;
+
+    const file = (fd.get("comprovante") as File);
+    if (file && file.size > 0) {
+      const path = `comprovantes/${user!.id}/${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from("documentos").upload(path, file);
+      if (upErr) {
+        toast.error("Erro no upload: " + upErr.message);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+      comprovante_url = urlData.publicUrl;
+    }
+
     create.mutate({
       obra_id: obraAtivaId!,
       valor: Number(fd.get("valor")),
       tipo: fd.get("tipo"),
       descricao: fd.get("descricao") || null,
       data_transacao: fd.get("data_transacao") || null,
+      comprovante_url,
       user_id: user!.id,
     });
   };
