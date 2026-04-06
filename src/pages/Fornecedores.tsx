@@ -182,9 +182,9 @@ export default function Fornecedores() {
                         {f.tipo}
                       </Badge>
                     )}
-                    {(f as any).categoria && (
+                    {f.categoria && (
                       <Badge variant="outline" className="text-xs">
-                        {categoriaLabel((f as any).categoria)}
+                        {categoriaLabel(f.categoria)}
                       </Badge>
                     )}
                   </div>
