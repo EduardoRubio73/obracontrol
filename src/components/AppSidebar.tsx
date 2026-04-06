@@ -45,7 +45,6 @@ const mainItems = [
 const adminItems = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
-  { title: "Auditoria", url: "/auditoria", icon: Shield },
 ];
 
 const userItems = [
