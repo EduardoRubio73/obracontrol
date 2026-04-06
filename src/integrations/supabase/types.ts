@@ -133,6 +133,94 @@ export type Database = {
         }
         Relationships: []
       }
+      compras: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          fornecedor_id: string | null
+          id: string
+          obra_id: string
+          observacao: string | null
+          produto_id: string | null
+          quantidade: number | null
+          status: string | null
+          user_id: string
+          valor_total: number | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          obra_id: string
+          observacao?: string | null
+          produto_id?: string | null
+          quantidade?: number | null
+          status?: string | null
+          user_id?: string
+          valor_total?: number | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          obra_id?: string
+          observacao?: string | null
+          produto_id?: string | null
+          quantidade?: number | null
+          status?: string | null
+          user_id?: string
+          valor_total?: number | null
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compras_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "compras_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "compras_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotacao_fornecedores: {
         Row: {
           cotacao_id: string
@@ -359,6 +447,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      etapas_padrao: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       fase_fotos: {
         Row: {
