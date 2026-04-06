@@ -94,6 +94,7 @@ function EtapasContent() {
         Nova etapa
       </Button>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {fases?.map((f) => {
         const st = f.status ?? "pendente";
         return (
