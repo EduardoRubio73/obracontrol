@@ -412,14 +412,18 @@ export default function Chat() {
             type="button"
             size="icon"
             variant={voiceLoop.isActive ? "destructive" : "outline"}
-            className={`shrink-0 h-11 w-11 rounded-full transition-all ${
-              voiceLoop.status === "listening" ? "animate-pulse ring-2 ring-destructive/50" : ""
+            className={`shrink-0 h-12 w-12 rounded-full transition-all ${
+              voiceLoop.status === "listening"
+                ? "ring-2 ring-destructive/50 shadow-[0_0_12px_hsl(var(--destructive)/0.4)]"
+                : voiceLoop.status === "speaking"
+                ? "ring-2 ring-primary/50 shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                : ""
             }`}
             onClick={toggleVoiceLoop}
             disabled={isTyping}
           >
-            {voiceLoop.status === "speaking" ? (
-              <Volume2 className="h-5 w-5" />
+            {voiceLoop.isActive ? (
+              <MicOff className="h-5 w-5" />
             ) : (
               <Mic className="h-5 w-5" />
             )}
