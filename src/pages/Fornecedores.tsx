@@ -318,7 +318,7 @@ export default function Fornecedores() {
                 <Label>Categoria</Label>
                 <select
                   name="categoria"
-                  defaultValue={(editing as any)?.categoria ?? ""}
+                  defaultValue={editing?.categoria ?? ""}
                   className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="">Selecionar...</option>
