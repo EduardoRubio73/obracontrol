@@ -233,7 +233,9 @@ export default function Fornecedores() {
             </CardContent>
           </Card>
         );
+        );
       })}
+      </div>
 
       {isLoading && (
         <Card>

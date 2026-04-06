@@ -128,7 +128,9 @@ function EtapasContent() {
             </CardContent>
           </Card>
         );
+        );
       })}
+      </div>
 
       {!isLoading && !fases?.length && (
         <Card className="border-dashed border-2 shadow-none">

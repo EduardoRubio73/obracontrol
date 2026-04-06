@@ -86,7 +86,7 @@ function FinanceiroContent() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="shadow-sm border-2 border-destructive/20 bg-destructive/5">
           <CardContent className="p-5 text-center">
             <p className="text-sm text-muted-foreground mb-1">💸 Total gasto</p>
