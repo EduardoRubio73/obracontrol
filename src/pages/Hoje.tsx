@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,13 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, Mic, MicOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, Loader2, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+function limparTextoParaVoz(texto: string): string {
+  return texto
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/_/g, ' ')
+    .replace(/`/g, '')
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n+/g, '. ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 const Hoje = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [falando, setFalando] = useState(false);
   const {
     status: voiceStatus,
     transcript,
@@ -22,6 +36,19 @@ const Hoje = () => {
     startListening,
     stopListening,
   } = useVoiceCommand();
+
+  const falar = useCallback((texto: string) => {
+    speechSynthesis.cancel();
+    const textoLimpo = limparTextoParaVoz(texto);
+    const utterance = new SpeechSynthesisUtterance(textoLimpo);
+    utterance.lang = "pt-BR";
+    utterance.rate = 0.85;
+    utterance.pitch = 1;
+    utterance.onend = () => setFalando(false);
+    utterance.onerror = () => setFalando(false);
+    setFalando(true);
+    speechSynthesis.speak(utterance);
+  }, []);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -105,6 +132,7 @@ const Hoje = () => {
     (cmd: VoiceCommand, raw: string) => {
       switch (cmd.action) {
         case "criar_obra":
+          falar("Vamos criar uma nova obra!");
           toast.success("Vamos criar uma nova obra!");
           navigate("/nova-obra");
           break;
@@ -117,42 +145,56 @@ const Hoje = () => {
               : tarefas[0];
             if (match) {
               toggleTask.mutate(match.id);
+              falar(`Tarefa "${match.nome}" concluída!`);
               toast.success(`"${match.nome}" concluída por voz!`);
-            } else toast.info("Não encontrei essa tarefa.");
-          } else toast.info("Sem tarefas pendentes.");
+            } else {
+              falar("Não encontrei essa tarefa.");
+              toast.info("Não encontrei essa tarefa.");
+            }
+          } else {
+            falar("Sem tarefas pendentes.");
+            toast.info("Sem tarefas pendentes.");
+          }
           break;
         }
         case "ver_atrasos":
         case "ver_hoje":
           window.scrollTo({ top: 0, behavior: "smooth" });
+          falar("Mostrando o resumo do seu dia.");
           toast.info("Mostrando resumo do dia");
           break;
         case "ver_compras":
+          falar("Abrindo compras.");
           navigate("/compras");
           break;
         case "ver_status":
+          falar("Abrindo o painel geral.");
           navigate("/dashboard");
           break;
         case "ver_financeiro":
+          falar("Abrindo o financeiro.");
           navigate("/financeiro");
           break;
         case "ver_etapas":
+          falar("Abrindo as etapas.");
           navigate("/etapas");
           break;
         case "ajuda":
+          falar("Você pode dizer: concluir tarefa, nova obra, ver atrasos, status, ou financeiro.");
           toast("Você pode dizer:", {
             description: "• \"Concluir tarefa\"\n• \"Nova obra\"\n• \"Ver atrasos\"\n• \"Status\"\n• \"Financeiro\"",
             duration: 6000,
           });
           break;
         default:
+          falar("Não entendi. Tente dizer: concluir tarefa, nova obra, ou ajuda.");
           toast("Não entendi. Tente:", {
             description: "• Concluir tarefa\n• Nova obra\n• Ver atrasos\n• Status\n• Ajuda",
             duration: 5000,
           });
       }
     },
-    [tarefas, toggleTask, navigate]
+    [tarefas, toggleTask, navigate, falar]
   );
 
   const handleVoiceClick = () => {
@@ -262,30 +304,37 @@ const Hoje = () => {
       {/* Voice FAB */}
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
-          {voiceStatus !== "idle" && (
+          {(voiceStatus !== "idle" || falando) && (
             <div
               className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg animate-fade-in ${
-                voiceStatus === "listening"
+                falando
+                  ? "bg-accent text-accent-foreground"
+                  : voiceStatus === "listening"
                   ? "bg-primary text-primary-foreground"
                   : voiceStatus === "processing"
                   ? "bg-success text-success-foreground"
                   : "bg-destructive text-destructive-foreground"
               }`}
             >
-              {voiceStatus === "listening" && "🎤 Estou ouvindo..."}
-              {voiceStatus === "processing" && `"${transcript}"`}
-              {voiceStatus === "error" && "Não entendi, tente de novo"}
+              {falando && "🔊 Respondendo..."}
+              {!falando && voiceStatus === "listening" && "🎤 Estou ouvindo..."}
+              {!falando && voiceStatus === "processing" && `"${transcript}"`}
+              {!falando && voiceStatus === "error" && "Não entendi, tente de novo"}
             </div>
           )}
           <Button
             onClick={handleVoiceClick}
             className={`h-16 w-16 rounded-full shadow-xl ${
-              voiceStatus === "listening"
+              falando
+                ? "bg-accent hover:bg-accent/90 animate-pulse"
+                : voiceStatus === "listening"
                 ? "bg-destructive hover:bg-destructive/90 animate-pulse"
                 : "bg-primary hover:bg-primary/90"
             }`}
           >
-            {voiceStatus === "listening" ? (
+            {falando ? (
+              <Volume2 className="h-7 w-7 text-accent-foreground" />
+            ) : voiceStatus === "listening" ? (
               <MicOff className="h-7 w-7 text-primary-foreground" />
             ) : voiceStatus === "processing" ? (
               <Loader2 className="h-7 w-7 text-primary-foreground animate-spin" />
