@@ -114,8 +114,8 @@ export default function Fornecedores() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[150px]">
           <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
@@ -124,16 +124,25 @@ export default function Fornecedores() {
             className="pl-9 h-12 rounded-xl"
           />
         </div>
-        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-          <SelectTrigger className="w-[140px] h-12 rounded-xl">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="profissional">Profissionais</SelectItem>
-            <SelectItem value="loja">Lojas</SelectItem>
-          </SelectContent>
-        </Select>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { value: "todos", label: "Todos" },
+          { value: "profissional", label: "Profissionais" },
+          { value: "loja", label: "Lojas" },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setFiltroTipo(opt.value)}
+            className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+              filtroTipo === opt.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       <Button

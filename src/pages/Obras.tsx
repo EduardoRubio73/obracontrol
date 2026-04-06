@@ -182,19 +182,28 @@ const Obras = () => {
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar obra..." value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas</SelectItem>
-            <SelectItem value="planejamento">Planejamento</SelectItem>
-            <SelectItem value="execução">Execução</SelectItem>
-            <SelectItem value="concluído">Concluído</SelectItem>
-            <SelectItem value="pausado">Pausado</SelectItem>
-            <SelectItem value="cancelado">Arquivado</SelectItem>
-          </SelectContent>
-        </Select>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { value: "todas", label: "Todas" },
+          { value: "planejamento", label: "Planejamento" },
+          { value: "execução", label: "Execução" },
+          { value: "concluído", label: "Concluído" },
+          { value: "pausado", label: "Pausado" },
+          { value: "cancelado", label: "Arquivado" },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setFiltroStatus(opt.value)}
+            className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+              filtroStatus === opt.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Desktop table */}
