@@ -449,7 +449,15 @@ ObraControl`;
               </div>
               <div className="space-y-2">
                 <Label>Descrição</Label>
-                <Input name="descricao" required placeholder="Ex: Material elétrico" />
+                <Input name="descricao" required placeholder="Ex: Material elétrico" list="desc-sugestoes" />
+                <datalist id="desc-sugestoes">
+                  <option value="Reforma geral" />
+                  <option value="Reforma piscina" />
+                  <option value="Construção" />
+                  <option value="Manutenção" />
+                  <option value="Material elétrico" />
+                  <option value="Material hidráulico" />
+                </datalist>
               </div>
               <div className="space-y-2">
                 <Label>Data de Expiração</Label>

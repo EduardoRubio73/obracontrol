@@ -65,15 +65,30 @@ function FinanceiroContent() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    let comprovante_url: string | null = null;
+
+    const file = (fd.get("comprovante") as File);
+    if (file && file.size > 0) {
+      const path = `comprovantes/${user!.id}/${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from("documentos").upload(path, file);
+      if (upErr) {
+        toast.error("Erro no upload: " + upErr.message);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+      comprovante_url = urlData.publicUrl;
+    }
+
     create.mutate({
       obra_id: obraAtivaId!,
       valor: Number(fd.get("valor")),
       tipo: fd.get("tipo"),
       descricao: fd.get("descricao") || null,
       data_transacao: fd.get("data_transacao") || null,
+      comprovante_url,
       user_id: user!.id,
     });
   };
@@ -135,11 +150,23 @@ function FinanceiroContent() {
               <p className="text-base text-muted-foreground mt-2">
                 {t.descricao ?? "—"}
               </p>
-              {t.data_transacao && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
-                </p>
-              )}
+              <div className="flex items-center justify-between mt-1">
+                {t.data_transacao && (
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+                {t.comprovante_url && (
+                  <a
+                    href={t.comprovante_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    📎 Comprovante
+                  </a>
+                )}
+              </div>
             </CardContent>
           </Card>
         );
@@ -193,6 +220,10 @@ function FinanceiroContent() {
             <div className="space-y-2">
               <Label>Data</Label>
               <Input name="data_transacao" type="date" className="h-12 text-base" />
+            </div>
+            <div className="space-y-2">
+              <Label>Comprovante / NF</Label>
+              <Input name="comprovante" type="file" accept="image/*,.pdf" className="h-12 text-base" />
             </div>
             <Button
               type="submit"
