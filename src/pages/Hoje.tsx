@@ -304,6 +304,52 @@ const Hoje = () => {
       {/* Voice FAB */}
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
+          {(voiceStatus !== "idle" || falando) && (
+            <div
+              className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg animate-fade-in ${
+                falando
+                  ? "bg-accent text-accent-foreground"
+                  : voiceStatus === "listening"
+                  ? "bg-primary text-primary-foreground"
+                  : voiceStatus === "processing"
+                  ? "bg-success text-success-foreground"
+                  : "bg-destructive text-destructive-foreground"
+              }`}
+            >
+              {falando && "🔊 Respondendo..."}
+              {!falando && voiceStatus === "listening" && "🎤 Estou ouvindo..."}
+              {!falando && voiceStatus === "processing" && `"${transcript}"`}
+              {!falando && voiceStatus === "error" && "Não entendi, tente de novo"}
+            </div>
+          )}
+          <Button
+            onClick={handleVoiceClick}
+            className={`h-16 w-16 rounded-full shadow-xl ${
+              falando
+                ? "bg-accent hover:bg-accent/90 animate-pulse"
+                : voiceStatus === "listening"
+                ? "bg-destructive hover:bg-destructive/90 animate-pulse"
+                : "bg-primary hover:bg-primary/90"
+            }`}
+          >
+            {falando ? (
+              <Volume2 className="h-7 w-7 text-accent-foreground" />
+            ) : voiceStatus === "listening" ? (
+              <MicOff className="h-7 w-7 text-primary-foreground" />
+            ) : voiceStatus === "processing" ? (
+              <Loader2 className="h-7 w-7 text-primary-foreground animate-spin" />
+            ) : (
+              <Mic className="h-7 w-7 text-primary-foreground" />
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Hoje;
+        <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
           {voiceStatus !== "idle" && (
             <div
               className={`mb-3 rounded-2xl px-5 py-3 text-base font-semibold shadow-lg animate-fade-in ${
