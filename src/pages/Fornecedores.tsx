@@ -105,7 +105,7 @@ export default function Fornecedores() {
   const categoriaOptions = formTipo === "loja" ? CATEGORIAS_LOJA : CATEGORIAS_PROFISSIONAL;
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto pb-28 px-1">
+    <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-5xl mx-auto pb-28 px-1">
       <div className="pt-4">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           Fornecedores

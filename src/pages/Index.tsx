@@ -209,7 +209,7 @@ const MenuPrincipal = () => {
       </div>
 
       {/* ── BLOCO 4: Menu grid premium ── */}
-      <div className="grid grid-cols-2 gap-5 mt-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mt-8">
         {orderedMenu.map((item, i) => {
           const Icon = item.icon;
           const isFull =
