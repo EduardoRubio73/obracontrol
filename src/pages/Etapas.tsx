@@ -128,7 +128,6 @@ function EtapasContent() {
             </CardContent>
           </Card>
         );
-        );
       })}
       </div>
 
