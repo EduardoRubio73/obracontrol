@@ -1,51 +1,57 @@
 
 
-# Plano: Modo Voz Contínua (Tipo Alexa)
+# Plano: 4 Correções
 
-## Resumo
-Adicionar modo de conversa contínua por voz no Chat: o usuário ativa uma vez, fala, a IA responde com TTS (Web Speech API), e o sistema volta a ouvir automaticamente — loop infinito até desativar.
+## 1. Chat mostrando `<button>` como texto
+A IA está retornando `<button>` tags no markdown. A solução é ajustar o system prompt da edge function para instruir a IA a retornar botões como `acoes[]` JSON, nunca como HTML. Também adicionar `rehypeRaw` no ReactMarkdown para caso a IA ainda envie HTML, e/ou sanitizar removendo tags `<button>` do conteúdo.
 
-## Solução
+**Arquivo:** `supabase/functions/chat-assistente/index.ts` — adicionar ao SYSTEM_PROMPT: "Nunca use tags HTML como `<button>`. Para ações clicáveis, use a ferramenta responder_texto com botões no campo acoes."
 
-### 1. Criar hook `useVoiceLoop`
+Também adicionar uma tool `responder_texto` que aceita `resposta` e `botoes[]` para a IA poder retornar ações formatadas corretamente.
 
-Novo arquivo `src/hooks/useVoiceLoop.ts`:
+## 2. Perfil — Avatar clicável para trocar foto
+A tabela `profiles` já tem campo `avatar_url`. Adicionar:
+- Input file oculto para selecionar imagem
+- Click no Avatar abre file picker
+- Upload para bucket `documentos` (path `avatars/{user_id}`)
+- Atualiza `avatar_url` no profile
+- Exibir a imagem no Avatar via `AvatarImage`
 
-- Estados: `idle` | `listening` | `processing` | `speaking`
-- Usa `webkitSpeechRecognition` (pt-BR, continuous=false)
-- Usa `SpeechSynthesisUtterance` para TTS (pt-BR)
-- Loop: ouvir → callback com texto → aguardar TTS terminar → ouvir novamente
-- `start()` / `stop()` controlam o loop
-- Auto-stop após 3 erros consecutivos ou silêncio prolongado
-- Vibração leve ao iniciar/parar (navigator.vibrate)
+**Arquivo:** `src/pages/Perfil.tsx`
 
-### 2. Integrar no Chat.tsx
+## 3. Configurações — CRUD completo nas guias
+Atualmente "Tipos de Obra" e "Unidades" são listas estáticas hardcoded. Converter para CRUD dinâmico com tabelas no Supabase.
 
-- Adicionar botão "Conversar" (grande, visível) na área de chat
-- Quando ativo: cada resultado de voz chama `sendMessage(texto)`
-- Após receber resposta da IA (`data.resposta`), chamar TTS para falar a resposta
-- Quando TTS termina (`utterance.onend`), o hook volta a ouvir
-- Mensagens de voz aparecem normalmente no histórico do chat
-- Indicadores visuais:
-  - 🔴 pulsando = "Fale agora..."
-  - 🔊 = "Respondendo..."
-  - Estado exibido acima do input
+Criar 2 novas tabelas via migration:
+- `tipos_obra` (id, nome, user_id, created_at)
+- `unidades_medida` (id, nome, user_id, created_at)
 
-### 3. Modificação no `sendMessage`
+Refatorar `Configuracoes.tsx` para:
+- Cada aba ter input + botão adicionar + lista com delete (igual "Categorias")
+- Query/mutation para cada tabela
 
-- Extrair a lógica para retornar a resposta da IA (atualmente só seta state)
-- Permitir que o voice loop receba o texto da resposta para falar via TTS
+**Arquivos:** migration SQL + `src/pages/Configuracoes.tsx`
 
-## Arquivos
+## 4. Fornecedores — Mensagem "Nenhum fornecedor encontrado"
+O código já tem a mensagem na linha 228-238. O problema pode ser que a query não retorna dados (RLS). Verificar se a query filtra por `user_id`. Atualmente não filtra — a query faz `select("*").order("nome")` sem `.eq("user_id", ...)`. Se o RLS exige `user_id = auth.uid()`, deveria funcionar. Mas a mensagem "Nenhum fornecedor encontrado" já está no código.
+
+Verificar se o card "Nenhum fornecedor" está aparecendo corretamente. O componente parece correto — talvez o `isLoading` nunca termina ou há um erro silencioso. Adicionar estado de erro e skeleton de loading.
+
+## Arquivos alterados
 
 | Arquivo | Ação |
 |---|---|
-| `src/hooks/useVoiceLoop.ts` | Criar — hook com STT + TTS + loop contínuo |
-| `src/pages/Chat.tsx` | Editar — integrar voice loop, botão conversar, indicadores visuais |
+| `supabase/functions/chat-assistente/index.ts` | Editar — system prompt + tool responder_texto |
+| `src/pages/Perfil.tsx` | Editar — avatar clicável com upload |
+| `src/pages/Configuracoes.tsx` | Reescrever — CRUD em todas as abas |
+| `src/pages/Fornecedores.tsx` | Editar — melhorar estado vazio/loading/erro |
+| Migration SQL | Criar — tabelas `tipos_obra` e `unidades_medida` |
 
-## Notas técnicas
-- Usa Web Speech API nativa (sem dependência externa) — funciona em Chrome/Edge/Safari
-- TTS com `speechSynthesis` nativo (pt-BR)
-- Não usa ElevenLabs (seria upgrade futuro)
-- `sendMessage` será refatorado para retornar `string` da resposta, permitindo o TTS encadear
+## Detalhes técnicos
+
+**Chat buttons fix:** Adicionar ao system prompt: `"NUNCA retorne HTML. Para botões de ação, retorne no campo acoes: [{label, route}]. Use apenas markdown para formatação."` E fazer post-processing no frontend para strip HTML tags do conteúdo.
+
+**Avatar upload:** Usar bucket `documentos` com path `avatars/{user_id}.jpg`. Após upload, pegar public URL e fazer update no profile.
+
+**Configurações CRUD:** Pattern idêntico ao já usado na aba "Categorias" — replicar para tipos_obra e unidades_medida com suas respectivas tabelas.
 
