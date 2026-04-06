@@ -163,15 +163,7 @@ const Hoje = () => {
   return (
     <div className="space-y-8 max-w-lg mx-auto pb-32 px-1">
       {/* Header */}
-      <div className="pt-4 flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/")}
-          className="h-12 w-12 rounded-xl shrink-0"
-        >
-          <ArrowLeft className="h-6 w-6" />
-        </Button>
+      <div className="pt-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             {greeting}

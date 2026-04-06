@@ -50,6 +50,24 @@ export type Database = {
         }
         Relationships: []
       }
+      Atualização_Automatica_n8n: {
+        Row: {
+          created_at: string
+          id: number
+          update_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          update_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          update_at?: string | null
+        }
+        Relationships: []
+      }
       auditoria: {
         Row: {
           acao: string | null
