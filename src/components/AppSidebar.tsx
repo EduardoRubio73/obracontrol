@@ -12,7 +12,7 @@ import {
   Building2,
   BarChart3,
   Settings,
-  Shield,
+  
   Bot,
 } from "lucide-react";
 import logoImg from "@/assets/logo-obracontrol.png";

@@ -156,17 +156,7 @@ function EtapasContent() {
           <DialogHeader>
             <DialogTitle>Nova etapa</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome da etapa</Label>
-              <Input
-                name="nome"
-                required
-                placeholder="Ex: Fundação"
-                autoFocus
-                className="h-12 text-base"
-              />
-            </div>
+          <EtapaForm onSubmit={handleSubmit} isPending={createFase.isPending} />
             <Button
               type="submit"
               className="w-full h-14 rounded-2xl font-bold text-lg"

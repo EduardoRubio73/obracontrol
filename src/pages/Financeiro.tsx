@@ -150,11 +150,23 @@ function FinanceiroContent() {
               <p className="text-base text-muted-foreground mt-2">
                 {t.descricao ?? "—"}
               </p>
-              {t.data_transacao && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
-                </p>
-              )}
+              <div className="flex items-center justify-between mt-1">
+                {t.data_transacao && (
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+                {t.comprovante_url && (
+                  <a
+                    href={t.comprovante_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    📎 Comprovante
+                  </a>
+                )}
+              </div>
             </CardContent>
           </Card>
         );
