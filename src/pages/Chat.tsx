@@ -336,15 +336,17 @@ export default function Chat() {
       {/* Voice loop status bar */}
       {voiceLoop.isActive && (
         <div
-          className={`px-4 py-2.5 text-center text-sm font-medium shrink-0 transition-colors ${
+          className={`px-4 py-3 flex items-center justify-center gap-3 text-sm font-medium shrink-0 transition-colors ${
             voiceLoop.status === "listening"
-              ? "bg-destructive/10 text-destructive animate-pulse"
+              ? "bg-destructive/10 text-destructive"
               : voiceLoop.status === "speaking"
               ? "bg-primary/10 text-primary"
               : "bg-muted text-muted-foreground"
           }`}
         >
-          {voiceStatusLabel[voiceLoop.status]}
+          <VoiceWaveform status={voiceLoop.status === "idle" ? "listening" : voiceLoop.status} />
+          <span>{voiceStatusLabel[voiceLoop.status]}</span>
+          <VoiceWaveform status={voiceLoop.status === "idle" ? "listening" : voiceLoop.status} />
         </div>
       )}
 
