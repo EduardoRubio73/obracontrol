@@ -144,6 +144,7 @@ export type Database = {
           produto_id: string | null
           quantidade: number | null
           status: string | null
+          tenant_id: string | null
           user_id: string
           valor_total: number | null
           valor_unitario: number | null
@@ -158,6 +159,7 @@ export type Database = {
           produto_id?: string | null
           quantidade?: number | null
           status?: string | null
+          tenant_id?: string | null
           user_id?: string
           valor_total?: number | null
           valor_unitario?: number | null
@@ -172,6 +174,7 @@ export type Database = {
           produto_id?: string | null
           quantidade?: number | null
           status?: string | null
+          tenant_id?: string | null
           user_id?: string
           valor_total?: number | null
           valor_unitario?: number | null
