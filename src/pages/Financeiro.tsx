@@ -194,6 +194,10 @@ function FinanceiroContent() {
               <Label>Data</Label>
               <Input name="data_transacao" type="date" className="h-12 text-base" />
             </div>
+            <div className="space-y-2">
+              <Label>Comprovante / NF</Label>
+              <Input name="comprovante" type="file" accept="image/*,.pdf" className="h-12 text-base" />
+            </div>
             <Button
               type="submit"
               className="w-full h-14 rounded-2xl font-bold text-lg"
