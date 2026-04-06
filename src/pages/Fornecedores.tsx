@@ -35,7 +35,7 @@ export default function Fornecedores() {
   const [busca, setBusca] = useState("");
   const [formTipo, setFormTipo] = useState<string>("profissional");
 
-  const { data: fornecedores, isLoading } = useQuery({
+  const { data: fornecedores, isLoading, isError } = useQuery({
     queryKey: ["fornecedores"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,7 +43,7 @@ export default function Fornecedores() {
         .select("*")
         .order("nome");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -225,7 +225,24 @@ export default function Fornecedores() {
         );
       })}
 
-      {!isLoading && !filtered?.length && (
+      {isLoading && (
+        <Card>
+          <CardContent className="py-14 text-center text-muted-foreground">
+            <p className="text-lg font-medium">Carregando fornecedores...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isError && !isLoading && (
+        <Card className="border-destructive">
+          <CardContent className="py-14 text-center text-destructive">
+            <p className="text-lg font-medium">Erro ao carregar fornecedores</p>
+            <p className="text-sm mt-1">Verifique sua conexão e tente novamente</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && !isError && !filtered?.length && (
         <Card className="border-dashed border-2 shadow-none">
           <CardContent className="py-14 text-center text-muted-foreground">
             <p className="text-lg font-medium">

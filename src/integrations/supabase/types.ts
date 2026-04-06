@@ -1335,6 +1335,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tipos_obra: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      unidades_medida: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       voz_comandos_log: {
         Row: {
           comando: string | null
