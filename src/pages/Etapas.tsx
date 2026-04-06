@@ -17,7 +17,66 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, ChevronRight } from "lucide-react";
-import { useQuery as useQ2 } from "@tanstack/react-query";
+
+function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; isPending: boolean }) {
+  const [nomeCustom, setNomeCustom] = useState("");
+  
+  const { data: etapasPadrao } = useQuery({
+    queryKey: ["etapas-padrao"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("etapas_padrao" as any)
+        .select("*")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
+
+  const defaults = ["Fundação", "Estrutura", "Acabamento", "Reforma"];
+  const allOptions = [
+    ...defaults,
+    ...(etapasPadrao?.map((e) => e.nome) ?? []).filter((n) => !defaults.includes(n)),
+  ];
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Etapa padrão</Label>
+        <select
+          className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
+          onChange={(e) => {
+            if (e.target.value) setNomeCustom(e.target.value);
+          }}
+          defaultValue=""
+        >
+          <option value="">Selecione ou digite abaixo</option>
+          {allOptions.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-2">
+        <Label>Nome da etapa</Label>
+        <Input
+          name="nome"
+          required
+          placeholder="Ex: Fundação"
+          value={nomeCustom}
+          onChange={(e) => setNomeCustom(e.target.value)}
+          className="h-12 text-base"
+        />
+      </div>
+      <Button
+        type="submit"
+        className="w-full h-14 rounded-2xl font-bold text-lg"
+        disabled={isPending}
+      >
+        {isPending ? "Criando..." : "Criar etapa"}
+      </Button>
+    </form>
+  );
+}
 
 const statusDot: Record<string, string> = {
   pendente: "bg-muted-foreground/40",
