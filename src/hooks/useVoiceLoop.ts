@@ -45,7 +45,7 @@ export function useVoiceLoop({ onTranscript, lang = "pt-BR", maxErrors = 3 }: Us
         // Cancel any ongoing speech
         speechSynthesis.cancel();
 
-        const utterance = new SpeechSynthesisUtterance(text);
+        const utterance = new SpeechSynthesisUtterance(limparTextoParaVoz(text));
         utterance.lang = lang;
         utterance.rate = 1.05;
         utterance.onend = () => resolve();
