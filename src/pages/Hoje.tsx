@@ -28,6 +28,7 @@ const Hoje = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [falando, setFalando] = useState(false);
   const {
     status: voiceStatus,
     transcript,
@@ -35,6 +36,19 @@ const Hoje = () => {
     startListening,
     stopListening,
   } = useVoiceCommand();
+
+  const falar = useCallback((texto: string) => {
+    speechSynthesis.cancel();
+    const textoLimpo = limparTextoParaVoz(texto);
+    const utterance = new SpeechSynthesisUtterance(textoLimpo);
+    utterance.lang = "pt-BR";
+    utterance.rate = 0.85;
+    utterance.pitch = 1;
+    utterance.onend = () => setFalando(false);
+    utterance.onerror = () => setFalando(false);
+    setFalando(true);
+    speechSynthesis.speak(utterance);
+  }, []);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
