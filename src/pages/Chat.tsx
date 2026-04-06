@@ -284,7 +284,7 @@ export default function Chat() {
               )}
 
               <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ReactMarkdown>{msg.content.replace(/<\/?[^>]+(>|$)/g, "")}</ReactMarkdown>
               </div>
 
               {msg.acoes && msg.acoes.length > 0 && (

@@ -35,7 +35,7 @@ export default function Fornecedores() {
   const [busca, setBusca] = useState("");
   const [formTipo, setFormTipo] = useState<string>("profissional");
 
-  const { data: fornecedores, isLoading } = useQuery({
+  const { data: fornecedores, isLoading, isError } = useQuery({
     queryKey: ["fornecedores"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,7 +43,7 @@ export default function Fornecedores() {
         .select("*")
         .order("nome");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
