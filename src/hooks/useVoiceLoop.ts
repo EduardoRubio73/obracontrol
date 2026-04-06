@@ -1,5 +1,18 @@
 import { useState, useRef, useCallback } from "react";
 
+function limparTextoParaVoz(texto: string): string {
+  return texto
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/_/g, ' ')
+    .replace(/`/g, '')
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n+/g, '. ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export type VoiceLoopStatus = "idle" | "listening" | "processing" | "speaking";
 
 interface SpeechRecognitionEvent {
@@ -32,7 +45,7 @@ export function useVoiceLoop({ onTranscript, lang = "pt-BR", maxErrors = 3 }: Us
         // Cancel any ongoing speech
         speechSynthesis.cancel();
 
-        const utterance = new SpeechSynthesisUtterance(text);
+        const utterance = new SpeechSynthesisUtterance(limparTextoParaVoz(text));
         utterance.lang = lang;
         utterance.rate = 1.05;
         utterance.onend = () => resolve();
