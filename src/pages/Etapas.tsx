@@ -24,10 +24,10 @@ function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTML
   const { data: etapasPadrao } = useQuery({
     queryKey: ["etapas-padrao"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("etapas_padrao" as any)
         .select("*")
-        .order("nome");
+        .order("nome")) as any;
       if (error) throw error;
       return (data ?? []) as { id: string; nome: string }[];
     },
