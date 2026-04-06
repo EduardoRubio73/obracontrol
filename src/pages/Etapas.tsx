@@ -157,14 +157,6 @@ function EtapasContent() {
             <DialogTitle>Nova etapa</DialogTitle>
           </DialogHeader>
           <EtapaForm onSubmit={handleSubmit} isPending={createFase.isPending} />
-            <Button
-              type="submit"
-              className="w-full h-14 rounded-2xl font-bold text-lg"
-              disabled={createFase.isPending}
-            >
-              {createFase.isPending ? "Criando..." : "Criar etapa"}
-            </Button>
-          </form>
         </DialogContent>
       </Dialog>
     </div>
