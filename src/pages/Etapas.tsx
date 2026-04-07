@@ -154,7 +154,7 @@ function EtapasContent() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const { obraAtivaId } = useObraAtiva();
+  const { obraAtivaId, obraAtiva } = useObraAtiva();
 
   const { data: fases, isLoading } = useQuery({
     queryKey: ["obra-fases", obraAtivaId],
@@ -202,7 +202,7 @@ function EtapasContent() {
     <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-4">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Etapas da obra
+          Etapas {obraAtiva ? `— ${obraAtiva.nome}` : "da obra"}
         </h1>
         <p className="text-lg text-muted-foreground mt-1">
           Divida sua obra em partes
