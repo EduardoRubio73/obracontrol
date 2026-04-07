@@ -30,7 +30,7 @@ const routeLabels: Record<string, string> = {
   "/cotacoes": "Cotações",
   "/fornecedores": "Fornecedores",
   "/produtos": "Produtos",
-  "/hoje": "Hoje",
+  "/hoje": "Início",
   "/dashboard": "Dashboard",
   "/obras": "Obras",
   "/relatorios": "Relatórios",

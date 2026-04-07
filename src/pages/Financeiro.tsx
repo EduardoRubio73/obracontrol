@@ -22,7 +22,7 @@ const fmt = (v: number | null) =>
 
 function FinanceiroContent() {
   const { user } = useAuth();
-  const { obraAtivaId } = useObraAtiva();
+  const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -97,7 +97,7 @@ function FinanceiroContent() {
     <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-4">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Financeiro
+          Financeiro {obraAtiva ? `— ${obraAtiva.nome}` : ""}
         </h1>
       </div>
 

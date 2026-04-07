@@ -2,7 +2,15 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Home,
@@ -10,16 +18,14 @@ import {
   ShoppingCart,
   DollarSign,
   Users,
-  Plus,
   LayoutDashboard,
   Bot,
+  Building2,
 } from "lucide-react";
-
-/* ── status messages ── */
 
 /* ── gradient menu items ── */
 const menuItems = [
-  { key: "hoje", label: "Hoje", icon: Home, gradient: "from-[#FF8A00] to-[#FFB347]", shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]", url: "/hoje" },
+  { key: "inicio", label: "Início", icon: Home, gradient: "from-[#FF8A00] to-[#FFB347]", shadow: "shadow-[0_8px_24px_-4px_rgba(255,138,0,0.35)]", url: "/hoje" },
   { key: "etapas", label: "Etapas", icon: Layers, gradient: "from-[#4FACFE] to-[#00F2FE]", shadow: "shadow-[0_8px_24px_-4px_rgba(79,172,254,0.35)]", url: "/etapas" },
   { key: "compras", label: "Compras", icon: ShoppingCart, gradient: "from-[#43E97B] to-[#38F9D7]", shadow: "shadow-[0_8px_24px_-4px_rgba(67,233,123,0.35)]", url: "/compras" },
   { key: "financeiro", label: "Financeiro", icon: DollarSign, gradient: "from-[#667EEA] to-[#764BA2]", shadow: "shadow-[0_8px_24px_-4px_rgba(102,126,234,0.35)]", url: "/financeiro" },
@@ -36,6 +42,7 @@ const MenuPrincipal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { obraAtiva, obraAtivaId, setObraAtivaId, obras } = useObraAtiva();
 
   /* ── data ── */
   const { data: profile } = useQuery({
@@ -47,20 +54,6 @@ const MenuPrincipal = () => {
         .select("nome")
         .eq("id", user!.id)
         .single();
-      return data;
-    },
-  });
-
-  const { data: obra } = useQuery({
-    queryKey: ["primeira-obra"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("obras")
-        .select("id, nome, tipo_obra")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-      if (error) throw error;
       return data;
     },
   });
@@ -145,16 +138,13 @@ const MenuPrincipal = () => {
   /* ── derived ── */
   const hasAlerts = (alertas?.length ?? 0) > 0;
 
-
-
-
-  // Dynamic order: alerts → Hoje first, else Etapas first
+  // Dynamic order: alerts → Início first, else Etapas first
   const orderedMenu = hasAlerts
     ? menuItems
     : [menuItems[1], menuItems[0], ...menuItems.slice(2)];
 
   const badgeCounts: Record<string, number | undefined> = {
-    hoje: tarefas?.length,
+    inicio: tarefas?.length,
     etapas: etapasEmAndamento ?? undefined,
     compras: comprasCount ?? undefined,
     fornecedores: fornecedoresCount ?? undefined,
@@ -180,9 +170,28 @@ const MenuPrincipal = () => {
         </p>
       </div>
 
-      {/* ── BLOCO 2: Alerta (só se houver) ── */}
+      {/* ── BLOCO 2: Obra selector ── */}
+      {obras.length > 0 && (
+        <div className="mt-4" style={stagger(1)}>
+          <div className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-muted-foreground shrink-0" />
+            <Select value={obraAtivaId ?? ""} onValueChange={(v) => setObraAtivaId(v)}>
+              <SelectTrigger className="w-full h-12 rounded-xl text-base font-medium">
+                <SelectValue placeholder="Selecionar obra" />
+              </SelectTrigger>
+              <SelectContent>
+                {obras.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* ── BLOCO 3: Alerta (só se houver) ── */}
       {hasAlerts && (
-        <div className="mt-5" style={stagger(1)}>
+        <div className="mt-5" style={stagger(2)}>
           <div className="rounded-3xl bg-destructive/10 border border-destructive/30 p-6">
             <p className="text-base text-foreground font-semibold">
               {alertas![0]?.mensagem}
@@ -197,17 +206,6 @@ const MenuPrincipal = () => {
         </div>
       )}
 
-      {/* ── BLOCO 3: Nova Obra CTA ── */}
-      <div className="mt-6" style={stagger(2)}>
-        <button
-          onClick={() => navigate("/nova-obra")}
-          className="w-full h-16 rounded-2xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-bold text-lg flex items-center justify-center gap-3 shadow-lg transition-all duration-200 active:scale-[0.97] hover:shadow-xl"
-        >
-          <Plus className="h-6 w-6" />
-          Nova Obra
-        </button>
-      </div>
-
       {/* ── BLOCO 4: Menu grid premium ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mt-8">
         {orderedMenu.map((item, i) => {
@@ -219,7 +217,7 @@ const MenuPrincipal = () => {
             <button
               key={item.key}
               onClick={() => navigate(item.url)}
-              style={stagger(i + 2)}
+              style={stagger(i + 3)}
               className={`
                 group relative overflow-hidden rounded-[20px]
                 bg-gradient-to-br ${item.gradient} ${item.shadow}
@@ -250,7 +248,7 @@ const MenuPrincipal = () => {
       </div>
 
       {/* ── BLOCO 5: Abrir painel completo ── */}
-      <div className="mt-6" style={stagger(8)}>
+      <div className="mt-6" style={stagger(9)}>
         <button
           onClick={() => navigate("/dashboard")}
           className="w-full h-12 rounded-2xl border-2 border-border bg-card text-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.97] hover:bg-muted"

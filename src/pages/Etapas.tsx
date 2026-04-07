@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,55 +18,119 @@ import {
 import { toast } from "sonner";
 import { Plus, ChevronRight } from "lucide-react";
 
-function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; isPending: boolean }) {
+function EtapaCombobox({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setSearch(value); }, [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = options.filter((o) =>
+    o.toLowerCase().includes(search.toLowerCase())
+  );
+  const exactMatch = options.some((o) => o.toLowerCase() === search.toLowerCase());
+
+  return (
+    <div ref={ref} className="relative">
+      <Input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Digite ou selecione..."
+        className="h-12 text-base"
+        autoComplete="off"
+      />
+      {open && (filtered.length > 0 || (search.trim() && !exactMatch)) && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border bg-popover shadow-lg max-h-48 overflow-auto">
+          {filtered.map((o) => (
+            <button
+              key={o}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+              onClick={() => { onChange(o); setSearch(o); setOpen(false); }}
+            >
+              {o}
+            </button>
+          ))}
+          {search.trim() && !exactMatch && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm text-primary font-medium hover:bg-accent transition-colors border-t"
+              onClick={() => { onChange(search.trim()); setOpen(false); }}
+            >
+              + Adicionar "{search.trim()}" como etapa padrão
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EtapaForm({ onSubmit, isPending }: { onSubmit: (nome: string, isNew: boolean) => void; isPending: boolean }) {
   const [nomeCustom, setNomeCustom] = useState("");
-  
+
   const { data: etapasPadrao } = useQuery({
     queryKey: ["etapas-padrao"],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("etapas_padrao" as any)
+      const { data, error } = await supabase
+        .from("etapas_padrao")
         .select("*")
-        .order("nome")) as any;
+        .order("nome");
       if (error) throw error;
       return (data ?? []) as { id: string; nome: string }[];
     },
   });
 
   const allOptions = etapasPadrao?.map((e) => e.nome) ?? [];
+  const isNewOption = nomeCustom.trim() !== "" && !allOptions.some((o) => o.toLowerCase() === nomeCustom.toLowerCase());
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!nomeCustom.trim()) return;
+    onSubmit(nomeCustom.trim(), isNewOption);
+  };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Etapa padrão</Label>
-        <select
-          className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
-          onChange={(e) => {
-            if (e.target.value) setNomeCustom(e.target.value);
-          }}
-          defaultValue=""
-        >
-          <option value="">{allOptions.length ? "Selecione ou digite abaixo" : "Nenhuma etapa padrão cadastrada"}</option>
-          {allOptions.map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
-      </div>
+    <form onSubmit={handleFormSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label>Nome da etapa</Label>
-        <Input
-          name="nome"
-          required
-          placeholder="Ex: Fundação"
+        <EtapaCombobox
           value={nomeCustom}
-          onChange={(e) => setNomeCustom(e.target.value)}
-          className="h-12 text-base"
+          onChange={setNomeCustom}
+          options={allOptions}
         />
+        {isNewOption && nomeCustom.trim() && (
+          <p className="text-xs text-primary">
+            Esta etapa será adicionada às etapas padrão automaticamente.
+          </p>
+        )}
       </div>
+      <input type="hidden" name="nome" value={nomeCustom} />
       <Button
         type="submit"
         className="w-full h-14 rounded-2xl font-bold text-lg"
-        disabled={isPending}
+        disabled={isPending || !nomeCustom.trim()}
       >
         {isPending ? "Criando..." : "Criar etapa"}
       </Button>
@@ -90,7 +154,7 @@ function EtapasContent() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const { obraAtivaId } = useObraAtiva();
+  const { obraAtivaId, obraAtiva } = useObraAtiva();
 
   const { data: fases, isLoading } = useQuery({
     queryKey: ["obra-fases", obraAtivaId],
@@ -107,7 +171,11 @@ function EtapasContent() {
   });
 
   const createFase = useMutation({
-    mutationFn: async (nome: string) => {
+    mutationFn: async ({ nome, isNew }: { nome: string; isNew: boolean }) => {
+      // Auto-insert into etapas_padrao if new
+      if (isNew) {
+        await supabase.from("etapas_padrao").insert({ nome } as any);
+      }
       const { error } = await supabase.from("obra_fases").insert({
         obra_id: obraAtivaId!,
         nome,
@@ -119,23 +187,22 @@ function EtapasContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["etapas-padrao"] });
       toast.success("Etapa criada!");
       setOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    createFase.mutate(fd.get("nome") as string);
+  const handleSubmit = (nome: string, isNew: boolean) => {
+    createFase.mutate({ nome, isNew });
   };
 
   return (
     <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-4">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Etapas da obra
+          Etapas {obraAtiva ? `— ${obraAtiva.nome}` : "da obra"}
         </h1>
         <p className="text-lg text-muted-foreground mt-1">
           Divida sua obra em partes

@@ -431,7 +431,7 @@ ObraControl`;
   return (
     <div className="space-y-6 max-w-lg md:max-w-4xl lg:max-w-6xl mx-auto pb-28">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Cotações</h1>
+        <h1 className="text-2xl font-bold">Cotações {obraAtiva ? `— ${obraAtiva.nome}` : ""}</h1>
         <Dialog open={newCotacao} onOpenChange={setNewCotacao}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />Nova Cotação</Button>

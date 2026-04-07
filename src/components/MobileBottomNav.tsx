@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 const tabs = [
-  { title: "Menu", url: "/", icon: Home },
+  { title: "Início", url: "/", icon: Home },
   { title: "Etapas", url: "/etapas", icon: Layers },
   { title: "Compras", url: "/compras", icon: ShoppingCart },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
