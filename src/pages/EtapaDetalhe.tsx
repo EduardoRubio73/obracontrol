@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -14,15 +12,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import { toast } from "sonner";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, ChevronsUpDown, Check } from "lucide-react";
 import { FasePhotos } from "@/components/FasePhotos";
+import { z } from "zod";
+import { cn } from "@/lib/utils";
+
+const tarefaSchema = z.object({
+  nome: z.string().min(1, "Obrigatório"),
+});
 
 export default function EtapaDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [comboOpen, setComboOpen] = useState(false);
+  const [selectedNome, setSelectedNome] = useState("");
+  const [searchValue, setSearchValue] = useState("");
 
   const { data: fase } = useQuery({
     queryKey: ["fase", id],
@@ -52,12 +72,32 @@ export default function EtapaDetalhe() {
     },
   });
 
+  const { data: etapasPadrao } = useQuery({
+    queryKey: ["etapas-padrao"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("etapas_padrao")
+        .select("id, nome")
+        .order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const total = itens?.length ?? 0;
   const done = itens?.filter((i) => i.status === "concluido").length ?? 0;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const createItem = useMutation({
     mutationFn: async (nome: string) => {
+      // Auto-insert into etapas_padrao if new
+      const exists = etapasPadrao?.some(
+        (e) => e.nome.toLowerCase() === nome.toLowerCase()
+      );
+      if (!exists) {
+        await supabase.from("etapas_padrao").insert({ nome } as any);
+      }
+
       const { error } = await supabase.from("fase_itens").insert({
         fase_id: id!,
         nome,
@@ -67,8 +107,11 @@ export default function EtapaDetalhe() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
+      queryClient.invalidateQueries({ queryKey: ["etapas-padrao"] });
       toast.success("Tarefa adicionada!");
       setOpen(false);
+      setSelectedNome("");
+      setSearchValue("");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -98,9 +141,19 @@ export default function EtapaDetalhe() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    createItem.mutate(fd.get("nome") as string);
+    const result = tarefaSchema.safeParse({ nome: selectedNome });
+    if (!result.success) {
+      toast.error("Preencha o nome da tarefa");
+      return;
+    }
+    createItem.mutate(result.data.nome);
   };
+
+  const isNewValue =
+    searchValue.trim().length > 0 &&
+    !etapasPadrao?.some(
+      (e) => e.nome.toLowerCase() === searchValue.trim().toLowerCase()
+    );
 
   return (
     <div className="space-y-6 max-w-lg mx-auto pb-28 px-1">
@@ -192,31 +245,105 @@ export default function EtapaDetalhe() {
       </div>
 
       {/* Photos */}
-      {obraId && id && (
-        <FasePhotos faseId={id} obraId={obraId} />
-      )}
+      {obraId && id && <FasePhotos faseId={id} obraId={obraId} />}
 
       {/* Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) {
+            setSelectedNome("");
+            setSearchValue("");
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nova tarefa</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome da tarefa</Label>
-              <Input
-                name="nome"
-                required
-                placeholder="Ex: Cavar vala"
-                autoFocus
-                className="h-12 text-base"
-              />
+              <label className="text-sm font-medium leading-none">
+                Nome da tarefa
+              </label>
+              <Popover open={comboOpen} onOpenChange={setComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={comboOpen}
+                    className="w-full h-12 justify-between text-base font-normal"
+                  >
+                    {selectedNome || "Selecione ou digite..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Buscar etapa..."
+                      value={searchValue}
+                      onValueChange={setSearchValue}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {searchValue.trim() ? null : "Nenhuma etapa cadastrada"}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {etapasPadrao
+                          ?.filter((e) =>
+                            e.nome
+                              .toLowerCase()
+                              .includes(searchValue.toLowerCase())
+                          )
+                          .map((e) => (
+                            <CommandItem
+                              key={e.id}
+                              onSelect={() => {
+                                setSelectedNome(e.nome);
+                                setSearchValue(e.nome);
+                                setComboOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedNome === e.nome
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {e.nome}
+                            </CommandItem>
+                          ))}
+                        {isNewValue && (
+                          <CommandItem
+                            onSelect={() => {
+                              setSelectedNome(searchValue.trim());
+                              setComboOpen(false);
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4 text-primary" />
+                            <span>
+                              Adicionar "
+                              <span className="font-semibold">
+                                {searchValue.trim()}
+                              </span>
+                              " como nova etapa padrão
+                            </span>
+                          </CommandItem>
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <Button
               type="submit"
               className="w-full h-14 rounded-2xl font-bold text-lg"
-              disabled={createItem.isPending}
+              disabled={createItem.isPending || !selectedNome.trim()}
             >
               {createItem.isPending ? "Adicionando..." : "Adicionar tarefa"}
             </Button>
