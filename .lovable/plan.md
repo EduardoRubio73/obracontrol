@@ -1,55 +1,62 @@
 
 
-# Plano: Reestruturação de Navegação e Filtragem por Obra
+# Plano: Combobox com Zod, Ordem do Dashboard, Título Dinâmico e Lançamento Financeiro Automático
 
 ## Resumo
 
-Adicionar seletor de obra na tela inicial, renomear "Hoje" para "Início", tornar títulos dinâmicos com nome da obra, dividir Fornecedores em "vinculados à obra" e "todos", e substituir categorias estáticas por dados da tabela `tipos_fornecedor`.
+4 frentes: (1) Combobox com validação Zod no modal de Nova Tarefa (EtapaDetalhe), (2) reordenar botões do Dashboard para Início primeiro sempre, (3) garantir títulos dinâmicos, (4) "Marcar comprado" cria lançamento no financeiro via RPC transacional.
 
 ---
 
-## 1. Tela Inicial (`src/pages/Index.tsx`)
+## 1. Migration: RPC `marcar_comprado`
 
-- Remover botão "Nova Obra" (bloco 3)
-- Adicionar Select de obra no topo (usando `useObraAtiva()` — já existe e persiste no localStorage)
-- Renomear "Hoje" → "Início" no array `menuItems`
-- Manter os 5 botões: Início, Etapas, Compras, Financeiro, Contatos
+Criar function SQL transacional que:
+- Atualiza `compras.status = 'comprado'`
+- Insere registro em `financeiro` com tipo `despesa`, valor total, `obra_id`, `user_id`
+- Se qualquer operação falhar, faz rollback
 
-## 2. Bottom Nav (`src/components/MobileBottomNav.tsx`)
+```sql
+CREATE OR REPLACE FUNCTION public.marcar_comprado(p_compra_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE
+  v_compra RECORD;
+BEGIN
+  SELECT * INTO v_compra FROM compras WHERE id = p_compra_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Compra não encontrada'; END IF;
 
-- Renomear "Menu" → "Início"
+  UPDATE compras SET status = 'comprado' WHERE id = p_compra_id;
 
-## 3. Títulos Dinâmicos nas Páginas
+  INSERT INTO financeiro (obra_id, user_id, tenant_id, descricao, valor, tipo, data_transacao)
+  VALUES (
+    v_compra.obra_id, v_compra.user_id, v_compra.tenant_id,
+    'Compra: ' || COALESCE(v_compra.descricao, 'Material'),
+    COALESCE(v_compra.valor_total, 0), 'despesa', CURRENT_DATE
+  );
+END; $$;
+```
 
-Nas páginas Etapas, Compras, Financeiro, Cotações: adicionar título `"[Página] — {obraAtiva.nome}"` no topo, usando `useObraAtiva()`.
+## 2. `src/pages/EtapaDetalhe.tsx` — Combobox + Zod no modal Nova Tarefa
 
-Arquivos: `Etapas.tsx`, `Compras.tsx`, `Financeiro.tsx`, `Cotacoes.tsx`
+- Substituir `<Input name="nome">` por `EtapaCombobox` (reutilizar do Etapas.tsx ou extrair componente compartilhado)
+- Query `etapas_padrao` para alimentar opções
+- Zod schema: `z.object({ nome: z.string().min(1, "Obrigatório") })`
+- Se valor novo, inserir em `etapas_padrao` antes de criar `fase_itens`
+- Botão desabilitado enquanto campo vazio
 
-## 4. Fornecedores (`src/pages/Fornecedores.tsx`)
+## 3. `src/pages/Index.tsx` — Reordenar botões
 
-Dividir a listagem em duas seções:
+- Remover lógica condicional `orderedMenu` (linhas 142-144) que coloca Etapas primeiro quando não há alertas
+- Sempre usar `menuItems` na ordem original: Início, Etapas, Compras, Financeiro, Contatos
 
-- **Vinculados à Obra**: query que busca `fornecedor_id` distintos das tabelas `financeiro` e `compras` onde `obra_id = obraAtivaId`, e cruza com `fornecedores`
-- **Todos os Fornecedores**: listagem atual completa
+## 4. `src/pages/Compras.tsx` — Marcar comprado com financeiro
 
-Substituir `CATEGORIAS_PROFISSIONAL` e `CATEGORIAS_LOJA` estáticas por query à tabela `tipos_fornecedor`. Adicionar máscara no campo telefone.
+- Substituir `toggleStatus.mutate({ id, status: "comprado" })` por chamada RPC `marcar_comprado`
+- Toast: "Compra registrada e lançada no financeiro com sucesso!"
+- Invalidar queries de `compras` e `financeiro`
 
-## 5. Combobox com Auto-cadastro
+## 5. Títulos dinâmicos (já implementados)
 
-### 5.1 Etapas (`src/pages/Etapas.tsx`)
-- Substituir `<select>` por combobox que permite digitar
-- Se valor não existe em `etapas_padrao`, mostrar opção "Adicionar '[valor]' como etapa padrão"
-- Ao salvar, inserir na tabela `etapas_padrao` primeiro, depois criar a fase
-
-### 5.2 Fornecedores — campo Categoria
-- Substituir select estático por combobox consumindo `tipos_fornecedor`
-- Lógica de cadastro rápido: se valor novo, inserir em `tipos_fornecedor` antes de salvar fornecedor
-
-## 6. Telefone com Máscara (`src/pages/Fornecedores.tsx`)
-- Aplicar máscara `(XX) XXXXX-XXXX` no campo telefone via `onChange` handler
-
-## 7. Sidebar (`src/components/AppSidebar.tsx`)
-- Renomear "Hoje" → "Início" se existir
+Os títulos em Etapas, Compras, Financeiro, Cotações já mostram `— {obraAtiva.nome}`. Nenhuma mudança necessária.
 
 ---
 
@@ -57,15 +64,8 @@ Substituir `CATEGORIAS_PROFISSIONAL` e `CATEGORIAS_LOJA` estáticas por query à
 
 | Arquivo | Ação |
 |---|---|
-| `src/pages/Index.tsx` | Remover "Nova Obra", adicionar select obra, renomear Hoje→Início |
-| `src/components/MobileBottomNav.tsx` | Renomear Menu→Início |
-| `src/components/AppSidebar.tsx` | Renomear Hoje→Início |
-| `src/pages/Etapas.tsx` | Título dinâmico, combobox com auto-cadastro |
-| `src/pages/Compras.tsx` | Título dinâmico |
-| `src/pages/Financeiro.tsx` | Título dinâmico |
-| `src/pages/Cotacoes.tsx` | Título dinâmico |
-| `src/pages/Fornecedores.tsx` | Seções vinculados/todos, categorias dinâmicas, máscara telefone, combobox categoria |
-| `src/components/AppLayout.tsx` | Atualizar `routeLabels` (Hoje→Início) |
-
-Nenhuma migration necessária — todas as tabelas já existem.
+| Migration SQL | Criar RPC `marcar_comprado` |
+| `src/pages/EtapaDetalhe.tsx` | Combobox + Zod no modal Nova Tarefa |
+| `src/pages/Index.tsx` | Remover reordenação condicional dos botões |
+| `src/pages/Compras.tsx` | Usar RPC `marcar_comprado` + toast + invalidar financeiro |
 
