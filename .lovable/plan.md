@@ -1,68 +1,55 @@
 
 
-# Plano: Reestruturar Configurações com CRUD Dinâmico e Descrições
+# Plano: Reestruturação de Navegação e Filtragem por Obra
 
 ## Resumo
 
-Criar tabela `tipos_fornecedor` para CRUD independente, adicionar coluna `descricao` em todas as 5 tabelas de configuração, atualizar UI para suportar descrições e tornar dropdown de etapas 100% dinâmico.
+Adicionar seletor de obra na tela inicial, renomear "Hoje" para "Início", tornar títulos dinâmicos com nome da obra, dividir Fornecedores em "vinculados à obra" e "todos", e substituir categorias estáticas por dados da tabela `tipos_fornecedor`.
 
 ---
 
-## 1. Migration SQL
+## 1. Tela Inicial (`src/pages/Index.tsx`)
 
-### 1.1 Criar tabela `tipos_fornecedor`
+- Remover botão "Nova Obra" (bloco 3)
+- Adicionar Select de obra no topo (usando `useObraAtiva()` — já existe e persiste no localStorage)
+- Renomear "Hoje" → "Início" no array `menuItems`
+- Manter os 5 botões: Início, Etapas, Compras, Financeiro, Contatos
 
-```sql
-CREATE TABLE public.tipos_fornecedor (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  nome text NOT NULL,
-  descricao text,
-  user_id uuid NOT NULL DEFAULT auth.uid(),
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.tipos_fornecedor ENABLE ROW LEVEL SECURITY;
-CREATE POLICY tipos_fornecedor_user ON tipos_fornecedor FOR ALL TO authenticated
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-```
+## 2. Bottom Nav (`src/components/MobileBottomNav.tsx`)
 
-### 1.2 Adicionar coluna `descricao` nas 4 tabelas existentes
+- Renomear "Menu" → "Início"
 
-```sql
-ALTER TABLE categorias_produtos ADD COLUMN IF NOT EXISTS descricao text;
-ALTER TABLE tipos_obra ADD COLUMN IF NOT EXISTS descricao text;
-ALTER TABLE unidades_medida ADD COLUMN IF NOT EXISTS descricao text;
-ALTER TABLE etapas_padrao ADD COLUMN IF NOT EXISTS descricao text;
-```
+## 3. Títulos Dinâmicos nas Páginas
 
-### 1.3 Adicionar FK com RESTRICT em `produtos.categoria_id`
+Nas páginas Etapas, Compras, Financeiro, Cotações: adicionar título `"[Página] — {obraAtiva.nome}"` no topo, usando `useObraAtiva()`.
 
-```sql
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_produtos_categoria') THEN
-    ALTER TABLE produtos ADD CONSTRAINT fk_produtos_categoria
-      FOREIGN KEY (categoria_id) REFERENCES categorias_produtos(id) ON DELETE RESTRICT;
-  END IF;
-END $$;
-```
+Arquivos: `Etapas.tsx`, `Compras.tsx`, `Financeiro.tsx`, `Cotacoes.tsx`
 
-## 2. Atualizar `src/integrations/supabase/types.ts`
+## 4. Fornecedores (`src/pages/Fornecedores.tsx`)
 
-Adicionar tipos para `tipos_fornecedor` e campos `descricao` nas tabelas existentes.
+Dividir a listagem em duas seções:
 
-## 3. Refazer `src/pages/Configuracoes.tsx`
+- **Vinculados à Obra**: query que busca `fornecedor_id` distintos das tabelas `financeiro` e `compras` onde `obra_id = obraAtivaId`, e cruza com `fornecedores`
+- **Todos os Fornecedores**: listagem atual completa
 
-### Mudanças:
+Substituir `CATEGORIAS_PROFISSIONAL` e `CATEGORIAS_LOJA` estáticas por query à tabela `tipos_fornecedor`. Adicionar máscara no campo telefone.
 
-- **`CrudItem`** passa a ter `descricao?: string`
-- **`useCrudTab`**: insert e update incluem `descricao`
-- **`CrudTabContent`**: formulário com campo nome + descrição; listagem mostra descrição em `text-sm text-muted-foreground` abaixo do nome; edição inclui campo descrição
-- **`FornecedorTiposTab`**: substituída por `<CrudTabContent table="tipos_fornecedor" label="tipo de fornecedor" />`
+## 5. Combobox com Auto-cadastro
 
-## 4. Atualizar `src/pages/Etapas.tsx`
+### 5.1 Etapas (`src/pages/Etapas.tsx`)
+- Substituir `<select>` por combobox que permite digitar
+- Se valor não existe em `etapas_padrao`, mostrar opção "Adicionar '[valor]' como etapa padrão"
+- Ao salvar, inserir na tabela `etapas_padrao` primeiro, depois criar a fase
 
-- Remover lista estática `["Fundação", "Estrutura", "Acabamento", "Reforma"]`
-- Dropdown consome apenas dados da tabela `etapas_padrao`
-- Se tabela vazia, dropdown mostra "Nenhuma etapa padrão cadastrada"
+### 5.2 Fornecedores — campo Categoria
+- Substituir select estático por combobox consumindo `tipos_fornecedor`
+- Lógica de cadastro rápido: se valor novo, inserir em `tipos_fornecedor` antes de salvar fornecedor
+
+## 6. Telefone com Máscara (`src/pages/Fornecedores.tsx`)
+- Aplicar máscara `(XX) XXXXX-XXXX` no campo telefone via `onChange` handler
+
+## 7. Sidebar (`src/components/AppSidebar.tsx`)
+- Renomear "Hoje" → "Início" se existir
 
 ---
 
@@ -70,8 +57,15 @@ Adicionar tipos para `tipos_fornecedor` e campos `descricao` nas tabelas existen
 
 | Arquivo | Ação |
 |---|---|
-| Migration SQL | Criar `tipos_fornecedor`, adicionar `descricao` em 4 tabelas, FK restrict |
-| `src/integrations/supabase/types.ts` | Adicionar tipos novos |
-| `src/pages/Configuracoes.tsx` | CRUD com descrição, Tipos Fornecedor como CRUD real |
-| `src/pages/Etapas.tsx` | Dropdown 100% dinâmico |
+| `src/pages/Index.tsx` | Remover "Nova Obra", adicionar select obra, renomear Hoje→Início |
+| `src/components/MobileBottomNav.tsx` | Renomear Menu→Início |
+| `src/components/AppSidebar.tsx` | Renomear Hoje→Início |
+| `src/pages/Etapas.tsx` | Título dinâmico, combobox com auto-cadastro |
+| `src/pages/Compras.tsx` | Título dinâmico |
+| `src/pages/Financeiro.tsx` | Título dinâmico |
+| `src/pages/Cotacoes.tsx` | Título dinâmico |
+| `src/pages/Fornecedores.tsx` | Seções vinculados/todos, categorias dinâmicas, máscara telefone, combobox categoria |
+| `src/components/AppLayout.tsx` | Atualizar `routeLabels` (Hoje→Início) |
+
+Nenhuma migration necessária — todas as tabelas já existem.
 
