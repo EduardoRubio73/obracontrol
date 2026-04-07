@@ -33,11 +33,7 @@ function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTML
     },
   });
 
-  const defaults = ["Fundação", "Estrutura", "Acabamento", "Reforma"];
-  const allOptions = [
-    ...defaults,
-    ...(etapasPadrao?.map((e) => e.nome) ?? []).filter((n) => !defaults.includes(n)),
-  ];
+  const allOptions = etapasPadrao?.map((e) => e.nome) ?? [];
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -50,7 +46,7 @@ function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTML
           }}
           defaultValue=""
         >
-          <option value="">Selecione ou digite abaixo</option>
+          <option value="">{allOptions.length ? "Selecione ou digite abaixo" : "Nenhuma etapa padrão cadastrada"}</option>
           {allOptions.map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}

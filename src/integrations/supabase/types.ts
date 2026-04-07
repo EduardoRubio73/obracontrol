@@ -115,18 +115,21 @@ export type Database = {
       categorias_produtos: {
         Row: {
           created_at: string | null
+          descricao: string | null
           id: string
           nome: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome: string
           user_id?: string
         }
         Update: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome?: string
           user_id?: string
@@ -454,18 +457,21 @@ export type Database = {
       etapas_padrao: {
         Row: {
           created_at: string | null
+          descricao: string | null
           id: string
           nome: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome: string
           user_id?: string
         }
         Update: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome?: string
           user_id?: string
@@ -1272,6 +1278,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_produtos_categoria"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_produtos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "produtos_categoria_id_fkey"
             columns: ["categoria_id"]
             isOneToOne: false
@@ -1447,21 +1460,48 @@ export type Database = {
         }
         Relationships: []
       }
-      tipos_obra: {
+      tipos_fornecedor: {
         Row: {
           created_at: string | null
+          descricao: string | null
           id: string
           nome: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome: string
           user_id?: string
         }
         Update: {
           created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tipos_obra: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
           id?: string
           nome?: string
           user_id?: string
@@ -1471,18 +1511,21 @@ export type Database = {
       unidades_medida: {
         Row: {
           created_at: string | null
+          descricao: string | null
           id: string
           nome: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome: string
           user_id?: string
         }
         Update: {
           created_at?: string | null
+          descricao?: string | null
           id?: string
           nome?: string
           user_id?: string
