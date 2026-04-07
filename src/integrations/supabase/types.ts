@@ -1829,6 +1829,7 @@ export type Database = {
       gerar_alertas_sistema: { Args: { p_user_id: string }; Returns: undefined }
       interpretar_comando_voz: { Args: { p_texto: string }; Returns: string }
       is_admin_global: { Args: never; Returns: boolean }
+      marcar_comprado: { Args: { p_compra_id: string }; Returns: undefined }
       mensagem_dia: { Args: { p_obra: string }; Returns: string }
       processar_alertas: { Args: never; Returns: undefined }
     }
