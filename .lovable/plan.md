@@ -1,136 +1,77 @@
 
 
-# Plano: Refatoracao Completa do Sistema
+# Plano: Reestruturar Configurações com CRUD Dinâmico e Descrições
 
 ## Resumo
-Corrigir CRUD quebrado, criar tabela de compras, expandir Configuracoes, adicionar upload no Financeiro, melhorar UX de Cotacoes/Etapas, e aplicar regra global de obra obrigatoria.
+
+Criar tabela `tipos_fornecedor` para CRUD independente, adicionar coluna `descricao` em todas as 5 tabelas de configuração, atualizar UI para suportar descrições e tornar dropdown de etapas 100% dinâmico.
 
 ---
 
-## 1. Criar tabela `compras` no banco (Migration SQL)
+## 1. Migration SQL
 
-Nao existe tabela `compras` -- a pagina atual le de uma view `vw_sugestao_compra` que e somente leitura.
-
-```sql
-CREATE TABLE public.compras (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  obra_id uuid NOT NULL REFERENCES obras(id) ON DELETE CASCADE,
-  fornecedor_id uuid REFERENCES fornecedores(id),
-  produto_id uuid REFERENCES produtos(id),
-  descricao text,
-  quantidade numeric DEFAULT 1,
-  valor_unitario numeric,
-  valor_total numeric,
-  status text DEFAULT 'pendente',
-  observacao text,
-  user_id uuid NOT NULL DEFAULT auth.uid(),
-  created_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE public.compras ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY compras_select ON compras FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY compras_insert ON compras FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY compras_update ON compras FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-CREATE POLICY compras_delete ON compras FOR DELETE TO authenticated USING (user_id = auth.uid());
-```
-
-## 2. Criar tabela `etapas_padrao` (Migration SQL)
+### 1.1 Criar tabela `tipos_fornecedor`
 
 ```sql
-CREATE TABLE public.etapas_padrao (
+CREATE TABLE public.tipos_fornecedor (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   nome text NOT NULL,
+  descricao text,
   user_id uuid NOT NULL DEFAULT auth.uid(),
   created_at timestamptz DEFAULT now()
 );
-
-ALTER TABLE public.etapas_padrao ENABLE ROW LEVEL SECURITY;
-CREATE POLICY etapas_padrao_user ON etapas_padrao FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+ALTER TABLE public.tipos_fornecedor ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tipos_fornecedor_user ON tipos_fornecedor FOR ALL TO authenticated
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 ```
 
-## 3. Refazer `src/pages/Compras.tsx`
+### 1.2 Adicionar coluna `descricao` nas 4 tabelas existentes
 
-**Antes**: Pagina read-only lendo de view inexistente.
-**Depois**: CRUD completo com:
-- Botao "+ Nova Compra" abrindo modal
-- Modal com: fornecedor (select), produto (select), quantidade, observacao
-- `obra_id` automatico via `useObraAtiva()`
-- Lista de compras com status (pendente, comprado, cancelado)
-- Envolvido por `<RequireObra>` (ja esta)
-- Botoes editar/excluir em cada item
+```sql
+ALTER TABLE categorias_produtos ADD COLUMN IF NOT EXISTS descricao text;
+ALTER TABLE tipos_obra ADD COLUMN IF NOT EXISTS descricao text;
+ALTER TABLE unidades_medida ADD COLUMN IF NOT EXISTS descricao text;
+ALTER TABLE etapas_padrao ADD COLUMN IF NOT EXISTS descricao text;
+```
 
-## 4. Expandir `src/pages/Configuracoes.tsx`
+### 1.3 Adicionar FK com RESTRICT em `produtos.categoria_id`
 
-**Antes**: 3 tabs (Categorias, Tipos de Obra, Unidades).
-**Depois**: 5 tabs:
-- Categorias (`categorias_produtos`)
-- Tipos de Obra (`tipos_obra`)
-- Unidades (`unidades_medida`)
-- Tipos de Fornecedor (usar campo `tipo` em `fornecedores` -- criar tab com valores comuns editaveis, ou uma nova tabela simples)
-- Etapas Padrao (`etapas_padrao` -- nova tabela)
+```sql
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_produtos_categoria') THEN
+    ALTER TABLE produtos ADD CONSTRAINT fk_produtos_categoria
+      FOREIGN KEY (categoria_id) REFERENCES categorias_produtos(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+```
 
-Manter o mesmo `CrudTabContent` reutilizavel. Ajustar grid de tabs para 5 colunas (ou scroll horizontal em mobile).
+## 2. Atualizar `src/integrations/supabase/types.ts`
 
-## 5. Financeiro -- Upload de comprovante/NF
+Adicionar tipos para `tipos_fornecedor` e campos `descricao` nas tabelas existentes.
 
-**O campo `comprovante_url` ja existe na tabela `financeiro`.**
+## 3. Refazer `src/pages/Configuracoes.tsx`
 
-Adicionar no modal de criacao:
-- Botao "Anexar comprovante" que faz upload para bucket `documentos`
-- Preview do arquivo anexado
-- Salvar URL no campo `comprovante_url`
-- Exibir icone de anexo na lista de transacoes
+### Mudanças:
 
-## 6. Cotacoes -- Dropdown de descricao
+- **`CrudItem`** passa a ter `descricao?: string`
+- **`useCrudTab`**: insert e update incluem `descricao`
+- **`CrudTabContent`**: formulário com campo nome + descrição; listagem mostra descrição em `text-sm text-muted-foreground` abaixo do nome; edição inclui campo descrição
+- **`FornecedorTiposTab`**: substituída por `<CrudTabContent table="tipos_fornecedor" label="tipo de fornecedor" />`
 
-Substituir o `<Input>` de descricao no modal "Nova Cotacao" por um combo (datalist ou combobox) com sugestoes:
-- Reforma geral
-- Reforma piscina
-- Construcao
-- Manutencao
-- Permitir digitar valor custom
+## 4. Atualizar `src/pages/Etapas.tsx`
 
-## 7. Etapas -- Select de etapas padrao
-
-No modal "Nova Etapa":
-- Adicionar select com etapas padrao da tabela `etapas_padrao`
-- Manter campo de texto para etapa customizada
-- Ao selecionar padrao, preenche o nome automaticamente
-
-## 8. Remover Auditoria do menu
-
-**Arquivo**: `src/components/AppSidebar.tsx`
-- Remover `{ title: "Auditoria", url: "/auditoria", icon: Shield }` de `adminItems`
-- Manter a rota no App.tsx (acessivel por URL direto)
-
-## 9. Chat/Assistente -- Limitar altura
-
-**Arquivo**: `src/pages/Chat.tsx`
-- Adicionar `max-h-[70vh]` ao container de mensagens
-- Garantir `overflow-y-auto` no container
-
-## 10. Regra global obra obrigatoria
-
-Ja existe `<RequireObra>` envolvendo Compras, Financeiro, Etapas, Cotacoes. Verificar e adicionar em todas as paginas que dependem de `obra_id`:
-- Dashboard
-- Relatorios
-- Documentos
-- Galeria
-- Materiais
+- Remover lista estática `["Fundação", "Estrutura", "Acabamento", "Reforma"]`
+- Dropdown consome apenas dados da tabela `etapas_padrao`
+- Se tabela vazia, dropdown mostra "Nenhuma etapa padrão cadastrada"
 
 ---
 
 ## Arquivos a editar
 
-| Arquivo | Acao |
+| Arquivo | Ação |
 |---|---|
-| Migration SQL | Criar tabelas `compras` e `etapas_padrao` com RLS |
-| `src/pages/Compras.tsx` | Reescrever com CRUD completo |
-| `src/pages/Configuracoes.tsx` | Adicionar 2 tabs (Tipos Fornecedor, Etapas Padrao) |
-| `src/pages/Financeiro.tsx` | Adicionar upload de comprovante no modal |
-| `src/pages/Cotacoes.tsx` | Dropdown com sugestoes na descricao |
-| `src/pages/Etapas.tsx` | Select de etapas padrao no modal |
-| `src/components/AppSidebar.tsx` | Remover Auditoria do menu |
-| `src/pages/Chat.tsx` | Limitar altura do container |
+| Migration SQL | Criar `tipos_fornecedor`, adicionar `descricao` em 4 tabelas, FK restrict |
+| `src/integrations/supabase/types.ts` | Adicionar tipos novos |
+| `src/pages/Configuracoes.tsx` | CRUD com descrição, Tipos Fornecedor como CRUD real |
+| `src/pages/Etapas.tsx` | Dropdown 100% dinâmico |
 
