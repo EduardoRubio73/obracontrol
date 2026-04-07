@@ -114,12 +114,16 @@ function ComprasContent() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const toggleStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("compras" as any).update({ status }).eq("id", id);
+  const marcarComprado = useMutation({
+    mutationFn: async (compraId: string) => {
+      const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: compraId } as any);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+      toast.success("Compra registrada e lançada no financeiro com sucesso!");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -214,7 +218,7 @@ function ComprasContent() {
                       size="sm"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => toggleStatus.mutate({ id: c.id, status: "comprado" })}
+                      onClick={() => marcarComprado.mutate(c.id)}
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar comprado
                     </Button>

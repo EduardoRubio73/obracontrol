@@ -138,10 +138,7 @@ const MenuPrincipal = () => {
   /* ── derived ── */
   const hasAlerts = (alertas?.length ?? 0) > 0;
 
-  // Dynamic order: alerts → Início first, else Etapas first
-  const orderedMenu = hasAlerts
-    ? menuItems
-    : [menuItems[1], menuItems[0], ...menuItems.slice(2)];
+  const orderedMenu = menuItems;
 
   const badgeCounts: Record<string, number | undefined> = {
     inicio: tarefas?.length,
