@@ -33,11 +33,7 @@ function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTML
     },
   });
 
-  const defaults = ["Fundação", "Estrutura", "Acabamento", "Reforma"];
-  const allOptions = [
-    ...defaults,
-    ...(etapasPadrao?.map((e) => e.nome) ?? []).filter((n) => !defaults.includes(n)),
-  ];
+  const allOptions = etapasPadrao?.map((e) => e.nome) ?? [];
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">

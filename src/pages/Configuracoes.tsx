@@ -5,12 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 
-type CrudItem = { id: string; nome: string };
+type CrudItem = { id: string; nome: string; descricao?: string | null };
 
 function useCrudTab(table: string) {
   const { user } = useAuth();
@@ -30,24 +31,30 @@ function useCrudTab(table: string) {
   });
 
   const add = useMutation({
-    mutationFn: async (nome: string) => {
+    mutationFn: async ({ nome, descricao }: { nome: string; descricao?: string }) => {
       const { error } = await supabase
         .from(table as any)
-        .insert({ nome, user_id: user!.id } as any);
+        .insert({ nome, descricao: descricao || null, user_id: user!.id } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [table, user?.id] });
       toast.success("Adicionado!");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message?.includes("violates foreign key") || e.message?.includes("RESTRICT")) {
+        toast.error("Não é possível: este item está sendo usado em outro cadastro.");
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
   const update = useMutation({
-    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
+    mutationFn: async ({ id, nome, descricao }: { id: string; nome: string; descricao?: string }) => {
       const { error } = await supabase
         .from(table as any)
-        .update({ nome } as any)
+        .update({ nome, descricao: descricao || null } as any)
         .eq("id", id);
       if (error) throw error;
     },
@@ -70,7 +77,13 @@ function useCrudTab(table: string) {
       queryClient.invalidateQueries({ queryKey: [table, user?.id] });
       toast.success("Removido!");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message?.includes("violates foreign key") || e.message?.includes("RESTRICT") || e.code === "23503") {
+        toast.error("Não é possível excluir: este item está sendo usado em outro cadastro.");
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
   return { items, isLoading, add, update, del };
@@ -79,42 +92,55 @@ function useCrudTab(table: string) {
 function CrudTabContent({ table, label }: { table: string; label: string }) {
   const { items, isLoading, add, update, del } = useCrudTab(table);
   const [novoNome, setNovoNome] = useState("");
+  const [novaDescricao, setNovaDescricao] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNome, setEditingNome] = useState("");
+  const [editingDescricao, setEditingDescricao] = useState("");
 
   const handleAdd = () => {
     if (!novoNome.trim()) return;
-    add.mutate(novoNome.trim(), { onSuccess: () => setNovoNome("") });
+    add.mutate(
+      { nome: novoNome.trim(), descricao: novaDescricao.trim() },
+      { onSuccess: () => { setNovoNome(""); setNovaDescricao(""); } }
+    );
   };
 
   const startEdit = (item: CrudItem) => {
     setEditingId(item.id);
     setEditingNome(item.nome);
+    setEditingDescricao(item.descricao ?? "");
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditingNome("");
+    setEditingDescricao("");
   };
 
   const saveEdit = () => {
     if (!editingNome.trim() || !editingId) return;
     update.mutate(
-      { id: editingId, nome: editingNome.trim() },
+      { id: editingId, nome: editingNome.trim(), descricao: editingDescricao.trim() },
       { onSuccess: () => cancelEdit() }
     );
   };
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex gap-2">
+      <div className="space-y-2">
         <Input
           placeholder={`Novo(a) ${label}...`}
           value={novoNome}
           onChange={(e) => setNovoNome(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
-        <Button onClick={handleAdd} disabled={!novoNome.trim() || add.isPending}>
+        <Input
+          placeholder="Descrição (opcional)"
+          value={novaDescricao}
+          onChange={(e) => setNovaDescricao(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <Button onClick={handleAdd} disabled={!novoNome.trim() || add.isPending} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-1" />
           Adicionar
         </Button>
@@ -135,10 +161,10 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
           {items?.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between py-3 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors"
+              className="flex items-start justify-between py-3 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors"
             >
               {editingId === item.id ? (
-                <div className="flex items-center gap-2 flex-1">
+                <div className="flex flex-col gap-2 flex-1 mr-2">
                   <Input
                     value={editingNome}
                     onChange={(e) => setEditingNome(e.target.value)}
@@ -148,18 +174,36 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
                     }}
                     className="h-9"
                     autoFocus
+                    placeholder="Nome"
                   />
-                  <Button variant="ghost" size="icon" onClick={saveEdit} disabled={!editingNome.trim()} className="text-primary shrink-0">
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={cancelEdit} className="shrink-0">
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <Input
+                    value={editingDescricao}
+                    onChange={(e) => setEditingDescricao(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    className="h-9"
+                    placeholder="Descrição (opcional)"
+                  />
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={saveEdit} disabled={!editingNome.trim()} className="text-primary shrink-0">
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={cancelEdit} className="shrink-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <>
-                  <span className="font-medium text-foreground">{item.nome}</span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex-1">
+                    <span className="font-medium text-foreground">{item.nome}</span>
+                    {item.descricao && (
+                      <p className="text-sm text-muted-foreground mt-0.5">{item.descricao}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" onClick={() => startEdit(item)} className="h-8 w-8">
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
@@ -204,7 +248,7 @@ const Configuracoes = () => {
           <CrudTabContent table="unidades_medida" label="unidade" />
         </TabsContent>
         <TabsContent value="fornecedor_tipos">
-          <FornecedorTiposTab />
+          <CrudTabContent table="tipos_fornecedor" label="tipo de fornecedor" />
         </TabsContent>
         <TabsContent value="etapas_padrao">
           <CrudTabContent table="etapas_padrao" label="etapa padrão" />
@@ -213,48 +257,5 @@ const Configuracoes = () => {
     </div>
   );
 };
-
-function FornecedorTiposTab() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [novoTipo, setNovoTipo] = useState("");
-
-  const { data: tipos, isLoading } = useQuery({
-    queryKey: ["fornecedor-tipos-config", user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fornecedores")
-        .select("tipo")
-        .not("tipo", "is", null);
-      if (error) throw error;
-      const unique = [...new Set((data ?? []).map((d: any) => d.tipo).filter(Boolean))].sort();
-      return unique as string[];
-    },
-  });
-
-  return (
-    <div className="mt-4 space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Os tipos de fornecedor são extraídos dos fornecedores cadastrados. Adicione novos tipos ao criar fornecedores.
-      </p>
-      <Card>
-        <CardContent className="p-4 space-y-1">
-          {isLoading && <p className="text-muted-foreground text-sm text-center py-6">Carregando...</p>}
-          {!isLoading && !tipos?.length && (
-            <p className="text-muted-foreground text-sm text-center py-6">
-              Nenhum tipo cadastrado. Adicione tipos nos fornecedores.
-            </p>
-          )}
-          {tipos?.map((t) => (
-            <div key={t} className="flex items-center py-3 px-2 border-b last:border-0">
-              <span className="font-medium text-foreground">{t}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 export default Configuracoes;
