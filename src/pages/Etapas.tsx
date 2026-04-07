@@ -46,7 +46,7 @@ function EtapaForm({ onSubmit, isPending }: { onSubmit: (e: React.FormEvent<HTML
           }}
           defaultValue=""
         >
-          <option value="">Selecione ou digite abaixo</option>
+          <option value="">{allOptions.length ? "Selecione ou digite abaixo" : "Nenhuma etapa padrão cadastrada"}</option>
           {allOptions.map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
