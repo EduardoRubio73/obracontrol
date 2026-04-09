@@ -11,11 +11,16 @@ interface Obra {
 }
 
 interface ObraAtivaContextType {
+  /** The selected obra id, or "all" for all obras, or null if loading */
   obraAtivaId: string | null;
   setObraAtivaId: (id: string | null) => void;
   obraAtiva: Obra | null;
   obras: Obra[];
   isLoading: boolean;
+  /** Convenience: true when viewing all obras (obraAtivaId === "all") */
+  isAll: boolean;
+  /** The effective filter id: null when "all", otherwise the obra id */
+  filtroObraId: string | null;
 }
 
 const ObraAtivaContext = createContext<ObraAtivaContextType>({
@@ -24,13 +29,15 @@ const ObraAtivaContext = createContext<ObraAtivaContextType>({
   obraAtiva: null,
   obras: [],
   isLoading: true,
+  isAll: false,
+  filtroObraId: null,
 });
 
 export function ObraAtivaProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [obraAtivaId, setObraAtivaIdState] = useState<string | null>(() => {
     try {
-      return localStorage.getItem("obra_ativa_id");
+      return localStorage.getItem("obra_ativa_id") || null;
     } catch {
       return null;
     }
@@ -54,8 +61,14 @@ export function ObraAtivaProvider({ children }: { children: React.ReactNode }) {
     if (!isLoading && obras.length > 0 && !obraAtivaId) {
       setObraAtivaId(obras[0].id);
     }
-    // Clear selection if stored id doesn't exist in user's obras
-    if (!isLoading && obras.length > 0 && obraAtivaId && !obras.find((o) => o.id === obraAtivaId)) {
+    // Clear selection if stored id doesn't exist in user's obras (but allow "all")
+    if (
+      !isLoading &&
+      obras.length > 0 &&
+      obraAtivaId &&
+      obraAtivaId !== "all" &&
+      !obras.find((o) => o.id === obraAtivaId)
+    ) {
       setObraAtivaId(obras[0].id);
     }
   }, [obras, isLoading, obraAtivaId]);
@@ -68,10 +81,12 @@ export function ObraAtivaProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   };
 
-  const obraAtiva = obras.find((o) => o.id === obraAtivaId) ?? null;
+  const isAll = obraAtivaId === "all";
+  const obraAtiva = isAll ? null : (obras.find((o) => o.id === obraAtivaId) ?? null);
+  const filtroObraId = isAll ? null : obraAtivaId;
 
   return (
-    <ObraAtivaContext.Provider value={{ obraAtivaId, setObraAtivaId, obraAtiva, obras, isLoading }}>
+    <ObraAtivaContext.Provider value={{ obraAtivaId, setObraAtivaId, obraAtiva, obras, isLoading, isAll, filtroObraId }}>
       {children}
     </ObraAtivaContext.Provider>
   );
