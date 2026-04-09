@@ -137,12 +137,12 @@ const Obras = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Obras</h1>
+    <div className="space-y-4 sm:space-y-6 px-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold">Obras</h1>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Nova Obra</Button>
+            <Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" />Nova Obra</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -157,7 +157,7 @@ const Obras = () => {
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea id="descricao" name="descricao" defaultValue={editing?.descricao ?? ""} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="valor_previsto">Valor Previsto</Label>
                   <Input id="valor_previsto" name="valor_previsto" type="number" step="0.01" defaultValue={editing?.valor_previsto ?? ""} />
@@ -173,7 +173,7 @@ const Obras = () => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="data_inicio">Data Início</Label>
                   <Input id="data_inicio" name="data_inicio" type="date" defaultValue={editing?.data_inicio ?? ""} />
