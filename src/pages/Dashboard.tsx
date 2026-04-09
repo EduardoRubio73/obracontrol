@@ -235,6 +235,8 @@ const Dashboard = () => {
 
   const dashTitle = obraAtiva ? `Dashboard — ${obraAtiva.nome}` : "Dashboard — Todas as Obras";
   const obraAtualStatus = obraAtiva?.status ?? null;
+  const obraAtual = obras?.find((o) => o.id === filtroId);
+  const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-24">
