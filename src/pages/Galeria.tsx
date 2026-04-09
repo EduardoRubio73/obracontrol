@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,10 +56,12 @@ const getStoragePathFromUrl = (url: string) => {
 const getFotoFaseNome = (foto: Foto) => foto.obra_fases?.nome ?? "Sem fase";
 
 const Galeria = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { obraAtivaId } = useObraAtiva();
+  const obraId = routeId ?? (obraAtivaId && obraAtivaId !== "all" ? obraAtivaId : null);
 
   const [filtro, setFiltro] = useState<string>("todos");
   const [lightbox, setLightbox] = useState<Foto | null>(null);
@@ -67,23 +71,23 @@ const Galeria = () => {
   const [editingFoto, setEditingFoto] = useState<Foto | null>(null);
 
   const { data: obra } = useQuery({
-    queryKey: ["obra", id],
-    enabled: !!id,
+    queryKey: ["obra", obraId],
+    enabled: !!obraId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("obras").select("nome").eq("id", id!).single();
+      const { data, error } = await supabase.from("obras").select("nome").eq("id", obraId!).single();
       if (error) throw error;
       return data;
     },
   });
 
   const { data: fases } = useQuery({
-    queryKey: ["galeria-fases", id],
-    enabled: !!id,
+    queryKey: ["galeria-fases", obraId],
+    enabled: !!obraId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obra_fases")
         .select("id, nome")
-        .eq("obra_id", id!)
+        .eq("obra_id", obraId!)
         .order("ordem", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Fase[];
@@ -91,13 +95,13 @@ const Galeria = () => {
   });
 
   const { data: fotos, isLoading } = useQuery({
-    queryKey: ["galeria", id],
-    enabled: !!id,
+    queryKey: ["galeria", obraId],
+    enabled: !!obraId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("fase_fotos")
         .select("id, url, tipo, descricao, fase_id, created_at, obra_fases(nome)")
-        .eq("obra_id", id!)
+        .eq("obra_id", obraId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Foto[];
@@ -112,20 +116,20 @@ const Galeria = () => {
   const resetForm = () => setForm({ ...initialForm, fase_id: fases?.[0]?.id ?? "" });
 
   const refreshGaleria = () => {
-    queryClient.invalidateQueries({ queryKey: ["galeria", id] });
-    queryClient.invalidateQueries({ queryKey: ["obra-carousel-fotos", id] });
-    queryClient.invalidateQueries({ queryKey: ["fase-fotos-thumbs", id] });
+    queryClient.invalidateQueries({ queryKey: ["galeria", obraId] });
+    queryClient.invalidateQueries({ queryKey: ["obra-carousel-fotos", obraId] });
+    queryClient.invalidateQueries({ queryKey: ["fase-fotos-thumbs", obraId] });
     queryClient.invalidateQueries({ queryKey: ["obras-list-thumbs"] });
   };
 
   const createFoto = useMutation({
     mutationFn: async () => {
-      if (!id || !user) throw new Error("Usuário não autenticado.");
+      if (!obraId || !user) throw new Error("Usuário não autenticado.");
       if (!form.file) throw new Error("Selecione uma imagem.");
       if (!form.fase_id) throw new Error("Selecione uma fase.");
 
       const ext = form.file.name.split(".").pop() || "jpg";
-      const path = `fase-fotos/${id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `fase-fotos/${obraId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage.from("obras").upload(path, form.file);
       if (uploadError) throw uploadError;
@@ -133,7 +137,7 @@ const Galeria = () => {
       const { data: publicUrlData } = supabase.storage.from("obras").getPublicUrl(path);
 
       const { error: insertError } = await supabase.from("fase_fotos").insert({
-        obra_id: id,
+        obra_id: obraId,
         fase_id: form.fase_id,
         user_id: user.id,
         tipo: form.tipo,
@@ -210,6 +214,14 @@ const Galeria = () => {
     });
     setEditOpen(true);
   };
+
+  if (!obraId) {
+    return (
+      <RequireObra pageName="Galeria">
+        <></>
+      </RequireObra>
+    );
+  }
 
   return (
     <div className="space-y-6">
