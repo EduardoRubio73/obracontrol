@@ -198,9 +198,9 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
               ) : (
                 <>
                   <div className="flex-1">
-                    <span className="font-medium text-foreground">{item.nome}</span>
+                    <span className="font-semibold text-base text-foreground">{item.nome}</span>
                     {item.descricao && (
-                      <p className="text-sm text-muted-foreground mt-0.5">{item.descricao}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{item.descricao}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
