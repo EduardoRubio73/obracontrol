@@ -40,13 +40,15 @@ const configItems = [
 ];
 
 export function AppSidebar() {
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const { obraAtiva, obraAtivaId } = useObraAtiva();
 
   const hasObraSelected = !!obraAtiva && obraAtivaId !== "all";
+
+  const handleNav = () => { if (isMobile) setOpenMobile(false); };
 
   const renderItems = (items: typeof principalItems, highlight = false) =>
     items.map((item) => (
@@ -57,6 +59,7 @@ export function AppSidebar() {
             end={item.url === "/"}
             className={`flex items-center gap-3 hover:bg-accent ${highlight && hasObraSelected ? "border-l-2 border-primary/60" : ""}`}
             activeClassName="bg-primary/10 text-primary font-medium"
+            onClick={handleNav}
           >
             <span className="w-6 text-center text-base shrink-0">{item.emoji}</span>
             {!collapsed && <span>{item.title}</span>}

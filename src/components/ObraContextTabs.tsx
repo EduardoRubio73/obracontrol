@@ -1,4 +1,3 @@
-import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 
 const obraTabs = [
@@ -12,13 +11,13 @@ const obraTabs = [
 
 export function ObraContextTabs() {
   return (
-    <div className="w-full overflow-x-auto border-b bg-card">
-      <nav className="flex flex-nowrap gap-1 px-4 py-1 min-w-max">
+    <div className="w-full border-b bg-card">
+      <nav className="flex flex-wrap gap-2 px-4 py-2">
         {obraTabs.map((tab) => (
           <NavLink
             key={tab.url}
             to={tab.url}
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+            className="flex items-center gap-1.5 rounded-lg px-4 py-2 min-h-[44px] text-sm text-muted-foreground transition-colors hover:bg-accent"
             activeClassName="bg-primary/10 text-primary font-medium"
           >
             <span>{tab.emoji}</span>

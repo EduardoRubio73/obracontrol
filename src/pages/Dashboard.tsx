@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { FileSearch, ArrowLeft, History } from "lucide-react";
+import { FileSearch, History } from "lucide-react";
 import { toast } from "sonner";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
@@ -238,22 +238,47 @@ const Dashboard = () => {
   const obraAtual = obras?.find((o) => o.id === filtroId);
   const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
+  const comprasCount = 0; // compras query not present, show 0
+
+  const shortcutCards = [
+    { emoji: "📋", title: "Etapas", summary: `${fasesEmAndamento} em andamento`, route: "/etapas", bg: "bg-blue-50 dark:bg-blue-950/30" },
+    { emoji: "🛒", title: "Compras", summary: `${comprasCount} pendentes`, route: "/compras", bg: "bg-orange-50 dark:bg-orange-950/30" },
+    { emoji: "💰", title: "Financeiro", summary: fmt(totalGasto) + " gasto", route: "/financeiro", bg: "bg-green-50 dark:bg-green-950/30" },
+    { emoji: "📝", title: "Cotações", summary: `${cotacoesAbertas} abertas`, route: "/cotacoes", bg: "bg-purple-50 dark:bg-purple-950/30" },
+    { emoji: "🖼️", title: "Galeria", summary: "Fotos da obra", route: "/galeria", bg: "bg-pink-50 dark:bg-pink-950/30" },
+    { emoji: "📁", title: "Documentos", summary: `${documentos?.length ?? 0} arquivos`, route: "/documentos", bg: "bg-amber-50 dark:bg-amber-950/30" },
+  ];
+
   return (
     <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 pb-24 px-4">
       {/* Header */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Início</span>
-          </Button>
-          <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{dashTitle}</h1>
-        </div>
+        <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{dashTitle}</h1>
         {filtroId && (
           <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full sm:w-auto" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
             <FileSearch className="h-4 w-4" /> Gerar Dossiê
           </Button>
         )}
       </div>
+
+      {/* Shortcut Cards — when obra selected */}
+      {filtroId && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {shortcutCards.map((c) => (
+            <Card
+              key={c.route}
+              className={`rounded-2xl cursor-pointer transition-shadow hover:shadow-md ${c.bg}`}
+              onClick={() => navigate(c.route)}
+            >
+              <CardContent className="p-4 flex flex-col items-start gap-1">
+                <span className="text-2xl">{c.emoji}</span>
+                <span className="font-semibold text-sm">{c.title}</span>
+                <span className="text-xs text-muted-foreground">{c.summary}</span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filtroId && obraAtualStatus && (
         <TooltipProvider delayDuration={300}>
