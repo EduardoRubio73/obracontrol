@@ -177,9 +177,17 @@ const MenuPrincipal = () => {
                 <SelectValue placeholder="Selecionar obra" />
               </SelectTrigger>
               <SelectContent>
-                {obras.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
-                ))}
+                {obras.map((o) => {
+                  const statusLabel = o.status ? o.status.charAt(0).toUpperCase() + o.status.slice(1) : "Planejamento";
+                  return (
+                    <SelectItem key={o.id} value={o.id}>
+                      <span className="flex items-center gap-2">
+                        {o.nome}
+                        <span className="text-xs text-muted-foreground">• {statusLabel}</span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
