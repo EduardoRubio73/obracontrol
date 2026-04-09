@@ -1192,6 +1192,7 @@ export type Database = {
           descricao: string | null
           escopo_ia: string | null
           id: string
+          justificativa_status: string | null
           localizacao: string | null
           nome: string
           profissional_recomendado: string | null
@@ -1211,6 +1212,7 @@ export type Database = {
           descricao?: string | null
           escopo_ia?: string | null
           id?: string
+          justificativa_status?: string | null
           localizacao?: string | null
           nome: string
           profissional_recomendado?: string | null
@@ -1230,6 +1232,7 @@ export type Database = {
           descricao?: string | null
           escopo_ia?: string | null
           id?: string
+          justificativa_status?: string | null
           localizacao?: string | null
           nome?: string
           profissional_recomendado?: string | null

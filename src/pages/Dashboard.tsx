@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, FileSearch, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +51,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { obraAtiva, filtroObraId, isAll } = useObraAtiva();
+  const [statusModal, setStatusModal] = useState<{ open: boolean; status: string }>({ open: false, status: "" });
+  const [justificativa, setJustificativa] = useState("");
 
   const filtroId = filtroObraId;
 
@@ -56,7 +62,7 @@ const Dashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obras")
-        .select("id, nome, status, valor_previsto, created_at")
+        .select("id, nome, status, valor_previsto, created_at, justificativa_status")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -191,8 +197,11 @@ const Dashboard = () => {
 
   /* ── Status mutation ── */
   const changeStatus = useMutation({
-    mutationFn: async ({ obraId, status }: { obraId: string; status: string }) => {
-      const { error } = await supabase.from("obras").update({ status: status as any }).eq("id", obraId);
+    mutationFn: async ({ obraId, status, justificativa }: { obraId: string; status: string; justificativa?: string }) => {
+      const { error } = await supabase.from("obras").update({
+        status: status as any,
+        justificativa_status: justificativa || null,
+      } as any).eq("id", obraId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -226,6 +235,8 @@ const Dashboard = () => {
 
   const dashTitle = obraAtiva ? `Dashboard — ${obraAtiva.nome}` : "Dashboard — Todas as Obras";
   const obraAtualStatus = obraAtiva?.status ?? null;
+  const obraAtual = obras?.find((o) => o.id === filtroId);
+  const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-24">
@@ -249,28 +260,87 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Status pills — only when a specific obra is selected */}
       {filtroId && obraAtualStatus && (
-        <div className="flex flex-wrap gap-2">
-          {allStatuses.map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                if (obraAtualStatus !== s) {
-                  changeStatus.mutate({ obraId: filtroId, status: s });
-                }
-              }}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
-                obraAtualStatus === s
-                  ? `${statusColor[s]} border-current ring-2 ring-current/20`
-                  : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
-              }`}
-            >
-              {statusLabels[s]}
-            </button>
-          ))}
-        </div>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex flex-wrap gap-2">
+            {allStatuses.map((s) => {
+              const isActive = obraAtualStatus === s;
+              const pill = (
+                <button
+                  key={s}
+                  onClick={() => {
+                    if (!isActive) {
+                      setJustificativa("");
+                      setStatusModal({ open: true, status: s });
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                    isActive
+                      ? `${statusColor[s]} border-current ring-2 ring-current/20`
+                      : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                  }`}
+                >
+                  {statusLabels[s]}
+                </button>
+              );
+
+              if (isActive && justificativaAtual) {
+                return (
+                  <Tooltip key={s}>
+                    <TooltipTrigger asChild>{pill}</TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="text-xs font-medium">Justificativa:</p>
+                      <p className="text-xs">{justificativaAtual}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              return pill;
+            })}
+          </div>
+        </TooltipProvider>
       )}
+
+      {/* Modal justificativa de status */}
+      <Dialog open={statusModal.open} onOpenChange={(v) => !v && setStatusModal({ open: false, status: "" })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar para {statusLabels[statusModal.status] ?? statusModal.status}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Justificativa / Observação (opcional)</label>
+              <Textarea
+                placeholder="Explique o motivo da alteração..."
+                value={justificativa}
+                onChange={(e) => setJustificativa(e.target.value)}
+                className="mt-1.5"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setStatusModal({ open: false, status: "" })}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (filtroId) {
+                    changeStatus.mutate({
+                      obraId: filtroId,
+                      status: statusModal.status,
+                      justificativa: justificativa.trim(),
+                    });
+                  }
+                  setStatusModal({ open: false, status: "" });
+                }}
+                disabled={changeStatus.isPending}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Summary Cards */}
       <DashboardSummaryCards
