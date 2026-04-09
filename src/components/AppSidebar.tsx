@@ -1,21 +1,3 @@
-import {
-  Layers,
-  ShoppingCart,
-  DollarSign,
-  FileText,
-  Users,
-  Package,
-  UserCircle,
-  LogOut,
-  LayoutDashboard,
-  Building2,
-  BarChart3,
-  Settings,
-  PanelLeft,
-  Bot,
-  Image,
-  FolderOpen,
-} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
@@ -35,26 +17,26 @@ import {
 } from "@/components/ui/sidebar";
 
 const principalItems = [
-  { title: "📊 Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "🏗️ Obras", url: "/obras", icon: Building2 },
+  { title: "Dashboard", url: "/dashboard", emoji: "📊" },
+  { title: "Obras", url: "/obras", emoji: "🏗️" },
 ];
 
 const gestaoObraItems = [
-  { title: "📋 Etapas", url: "/etapas", icon: Layers },
-  { title: "🛒 Compras", url: "/compras", icon: ShoppingCart },
-  { title: "💰 Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "📝 Cotações", url: "/cotacoes", icon: FileText },
-  { title: "🖼️ Galeria", url: "/galeria", icon: Image },
-  { title: "📁 Documentos", url: "/documentos", icon: FolderOpen },
+  { title: "Etapas", url: "/etapas", emoji: "📋" },
+  { title: "Compras", url: "/compras", emoji: "🛒" },
+  { title: "Financeiro", url: "/financeiro", emoji: "💰" },
+  { title: "Cotações", url: "/cotacoes", emoji: "📝" },
+  { title: "Galeria", url: "/galeria", emoji: "🖼️" },
+  { title: "Documentos", url: "/documentos", emoji: "📁" },
 ];
 
 const configItems = [
-  { title: "👥 Fornecedores", url: "/fornecedores", icon: Users },
-  { title: "📦 Produtos", url: "/produtos", icon: Package },
-  { title: "📈 Relatórios", url: "/relatorios", icon: BarChart3 },
-  { title: "⚙️ Configurações", url: "/configuracoes", icon: Settings },
-  { title: "🤖 Assistente IA", url: "/chat", icon: Bot },
-  { title: "👤 Perfil", url: "/perfil", icon: UserCircle },
+  { title: "Fornecedores", url: "/fornecedores", emoji: "👥" },
+  { title: "Produtos", url: "/produtos", emoji: "📦" },
+  { title: "Relatórios", url: "/relatorios", emoji: "📈" },
+  { title: "Configurações", url: "/configuracoes", emoji: "⚙️" },
+  { title: "Assistente IA", url: "/chat", emoji: "🤖" },
+  { title: "Perfil", url: "/perfil", emoji: "👤" },
 ];
 
 export function AppSidebar() {
@@ -73,10 +55,10 @@ export function AppSidebar() {
           <NavLink
             to={item.url}
             end={item.url === "/"}
-            className={`hover:bg-accent ${highlight && hasObraSelected ? "border-l-2 border-primary/60" : ""}`}
+            className={`flex items-center gap-3 hover:bg-accent ${highlight && hasObraSelected ? "border-l-2 border-primary/60" : ""}`}
             activeClassName="bg-primary/10 text-primary font-medium"
           >
-            <item.icon className="mr-2 h-4 w-4" />
+            <span className="w-6 text-center text-base shrink-0">{item.emoji}</span>
             {!collapsed && <span>{item.title}</span>}
           </NavLink>
         </SidebarMenuButton>
@@ -137,19 +119,19 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={toggleSidebar}
-              className="text-muted-foreground hover:bg-accent"
+              className="flex items-center gap-3 text-muted-foreground hover:bg-accent"
             >
-              <PanelLeft className="mr-2 h-4 w-4" />
+              <span className="w-6 text-center text-base shrink-0">📐</span>
               {!collapsed && <span>Recolher menu</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={signOut}
-              className="text-destructive hover:bg-destructive/10"
+              className="flex items-center gap-3 text-destructive hover:bg-destructive/10"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              {!collapsed && <span>🚪 Sair</span>}
+              <span className="w-6 text-center text-base shrink-0">🚪</span>
+              {!collapsed && <span>Sair</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
