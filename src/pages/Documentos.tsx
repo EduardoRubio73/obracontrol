@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, FileText, Trash2, Download } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Trash2, ExternalLink } from "lucide-react";
 
 const Documentos = () => {
   const { id: routeId } = useParams<{ id: string }>();
@@ -106,37 +106,35 @@ const Documentos = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Documentos</h1>
-          <p className="text-sm text-muted-foreground">{obra?.nome}</p>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">Documentos</h1>
+          <p className="text-sm text-muted-foreground truncate">{obra?.nome}</p>
         </div>
       </div>
 
       {/* Upload */}
-      <div className="flex gap-3">
-        <label className="flex-1">
-          <Input
-            type="file"
-            className="hidden"
-            onChange={handleUpload}
-            disabled={uploading}
-          />
-          <Button variant="outline" className="w-full" disabled={uploading} asChild>
-            <span className="cursor-pointer">
-              <Upload className="h-4 w-4 mr-2" />
-              {uploading ? "Enviando..." : "Enviar Documento"}
-            </span>
-          </Button>
-        </label>
-      </div>
+      <label className="block">
+        <Input
+          type="file"
+          className="hidden"
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+        <Button variant="outline" className="w-full" disabled={uploading} asChild>
+          <span className="cursor-pointer">
+            <Upload className="h-4 w-4 mr-2" />
+            {uploading ? "Enviando..." : "Enviar Documento"}
+          </span>
+        </Button>
+      </label>
 
-      {/* List */}
-      {!docs?.length ? (
+      {/* Empty state */}
+      {!docs?.length && !isLoading ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
@@ -144,41 +142,79 @@ const Documentos = () => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Tamanho</TableHead>
-                <TableHead className="w-24"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {docs.map((doc) => (
-                <TableRow key={doc.id}>
-                  <TableCell className="font-medium">{doc.nome}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{doc.tipo}</TableCell>
-                  <TableCell className="text-sm">{fmtSize(doc.tamanho_bytes)}</TableCell>
-                  <TableCell className="flex gap-1">
-                    <Button variant="ghost" size="icon" asChild>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Tamanho</TableHead>
+                    <TableHead className="w-32">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {docs?.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.nome}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{doc.tipo}</TableCell>
+                      <TableCell className="text-sm">{fmtSize(doc.tamanho_bytes)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" title="Visualizar" asChild>
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Excluir"
+                            onClick={() => deleteMut.mutate(doc.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="space-y-2 md:hidden">
+            {docs?.map((doc) => (
+              <Card key={doc.id}>
+                <CardContent className="p-3 flex items-center gap-3">
+                  <FileText className="h-8 w-8 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{doc.nome}</p>
+                    <p className="text-xs text-muted-foreground">{doc.tipo ?? "—"} · {fmtSize(doc.tamanho_bytes)}</p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                       <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                        <Download className="h-4 w-4" />
+                        <ExternalLink className="h-4 w-4" />
                       </a>
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
                       onClick={() => deleteMut.mutate(doc.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
