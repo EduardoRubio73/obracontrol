@@ -692,18 +692,18 @@ const CotacoesContent = () => {
 
       {/* Detail Dialog with Tracking + Propostas */}
       <Dialog open={!!selectedId} onOpenChange={(v) => !v && setSelectedId(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{selected?.descricao}</DialogTitle>
           </DialogHeader>
 
           {(selected as any)?.token_publico && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
-              <Link2 className="h-4 w-4 text-muted-foreground" />
-              <code className="flex-1 text-xs truncate">
+            <div className="flex items-center gap-2 rounded-lg bg-muted p-3 min-w-0">
+              <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <code className="flex-1 text-xs truncate min-w-0 block overflow-hidden">
                 {window.location.origin}/cotacao/{(selected as any).token_publico}
               </code>
-              <Button size="sm" variant="outline" onClick={() => copyLink((selected as any).token_publico)}>
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink((selected as any).token_publico)}>
                 <Copy className="mr-1 h-3 w-3" /> Copiar
               </Button>
             </div>
@@ -781,36 +781,61 @@ const CotacoesContent = () => {
           <div>
             <h3 className="mb-3 font-semibold">Propostas</h3>
             {propostas?.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fornecedor</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Prazo (dias)</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Prazo (dias)</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {propostas.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell>{(p.fornecedores as any)?.nome ?? "—"}</TableCell>
+                          <TableCell className="whitespace-nowrap">{fmt(p.valor)}</TableCell>
+                          <TableCell>{p.prazo_dias ?? "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{p.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {p.status !== "aceita" && (
+                              <Button variant="ghost" size="icon" onClick={() => aceitar.mutate(p.id)} title="Aceitar proposta">
+                                <Check className="h-4 w-4 text-success" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile cards */}
+                <div className="space-y-2 md:hidden">
                   {propostas.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>{(p.fornecedores as any)?.nome ?? "—"}</TableCell>
-                      <TableCell>{fmt(p.valor)}</TableCell>
-                      <TableCell>{p.prazo_dias ?? "—"}</TableCell>
-                      <TableCell>
+                    <div key={p.id} className="rounded-lg border p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{(p.fornecedores as any)?.nome ?? "—"}</span>
                         <Badge variant="secondary">{p.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {p.status !== "aceita" && (
-                          <Button variant="ghost" size="icon" onClick={() => aceitar.mutate(p.id)} title="Aceitar proposta">
-                            <Check className="h-4 w-4 text-success" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-primary font-semibold">{fmt(p.valor)}</span>
+                        <span className="text-muted-foreground">{p.prazo_dias ? `${p.prazo_dias} dias` : "—"}</span>
+                      </div>
+                      {p.status !== "aceita" && (
+                        <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => aceitar.mutate(p.id)}>
+                          <Check className="mr-1 h-3 w-3" /> Aceitar
+                        </Button>
+                      )}
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             ) : (
               <p className="text-muted-foreground text-sm">Nenhuma proposta recebida</p>
             )}
