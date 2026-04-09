@@ -285,11 +285,22 @@ const Obras = () => {
         {filtered?.map((obra) => (
           <Card key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{obra.nome}</span>
-                <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
+              <div className="flex items-center gap-3">
+                {fotoMap?.[obra.id] ? (
+                  <img src={fotoMap[obra.id]} alt="" className="h-12 w-12 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium truncate">{obra.nome}</span>
+                    <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{fmt(obra.valor_previsto)}</p>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{fmt(obra.valor_previsto)}</p>
             </CardContent>
           </Card>
         ))}
