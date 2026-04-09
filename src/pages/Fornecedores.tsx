@@ -95,31 +95,31 @@ function FornecedorCard({ f, onEdit }: { f: Fornecedor; onEdit: () => void }) {
   const phoneDigits = f.telefone?.replace(/\D/g, "") || null;
   return (
     <Card className="shadow-sm">
-      <CardContent className="p-6 space-y-4">
-        <div className="flex items-center gap-4 cursor-pointer" onClick={onEdit}>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-            <User className="h-6 w-6 text-primary" />
+      <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={onEdit}>
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+            <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-xl text-foreground">{f.nome}</p>
+            <p className="font-bold text-base sm:text-xl text-foreground truncate">{f.nome}</p>
             <div className="flex gap-2 mt-1 flex-wrap">
               {f.tipo && <Badge variant="secondary" className="capitalize text-xs">{f.tipo}</Badge>}
               {f.categoria && <Badge variant="outline" className="text-xs">{f.categoria}</Badge>}
             </div>
-            {f.telefone && <p className="text-base text-muted-foreground mt-1">📞 {f.telefone}</p>}
-            {f.email && <p className="text-sm text-muted-foreground">📧 {f.email}</p>}
+            {f.telefone && <p className="text-sm sm:text-base text-muted-foreground mt-1 truncate">📞 {f.telefone}</p>}
+            {f.email && <p className="text-xs sm:text-sm text-muted-foreground truncate">📧 {f.email}</p>}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           {phoneDigits && (
-            <Button variant="outline" className="flex-1 h-12 rounded-xl font-semibold text-base gap-2" asChild>
-              <a href={`tel:+55${phoneDigits}`}><Phone className="h-5 w-5" />Ligar</a>
+            <Button variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-semibold text-sm sm:text-base gap-1 sm:gap-2" asChild>
+              <a href={`tel:+55${phoneDigits}`}><Phone className="h-4 w-4 sm:h-5 sm:w-5" />Ligar</a>
             </Button>
           )}
           {phoneDigits && (
-            <Button className="flex-1 h-12 rounded-xl font-semibold text-base gap-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
+            <Button className="flex-1 h-10 sm:h-12 rounded-xl font-semibold text-sm sm:text-base gap-1 sm:gap-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
               <a href={`https://wa.me/55${phoneDigits}`} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="h-5 w-5" />WhatsApp
+                <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />WhatsApp
               </a>
             </Button>
           )}

@@ -244,30 +244,30 @@ function EtapasContent() {
             className="shadow-sm cursor-pointer hover:border-primary/30 transition-colors"
             onClick={() => navigate(`/etapas/${f.id}`)}
           >
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                    {faseFotos?.[f.id] ? (
-                     <img src={faseFotos[f.id]} alt="" className="h-12 w-12 rounded-lg object-cover flex-shrink-0" />
+                     <img src={faseFotos[f.id]} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover flex-shrink-0" />
                    ) : (
-                     <div className={`h-3.5 w-3.5 rounded-full ${statusDot[st]}`} />
+                     <div className={`h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full shrink-0 ${statusDot[st]}`} />
                    )}
-                   <h3 className="text-xl font-bold text-foreground">
+                   <h3 className="text-base sm:text-xl font-bold text-foreground truncate">
                      {f.nome}
                    </h3>
                  </div>
-                <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground shrink-0" />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Progress
                   value={f.progresso ?? 0}
-                  className="h-4 flex-1 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
+                  className="h-3 sm:h-4 flex-1 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
                 />
-                <span className="text-lg font-black tabular-nums w-14 text-right text-foreground">
+                <span className="text-sm sm:text-lg font-black tabular-nums w-12 sm:w-14 text-right text-foreground">
                   {f.progresso ?? 0}%
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {statusLabel[st] ?? st}
               </p>
             </CardContent>
