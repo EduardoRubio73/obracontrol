@@ -282,9 +282,6 @@ const Dashboard = () => {
               <FileSearch className="h-4 w-4" /> Gerar Dossiê
             </Button>
           )}
-          <Button onClick={() => navigate("/nova-obra")} className="rounded-xl gap-2">
-            <Plus className="h-4 w-4" /> Nova Obra
-          </Button>
         </div>
       </div>
 
