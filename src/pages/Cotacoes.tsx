@@ -461,13 +461,37 @@ const CotacoesContent = () => {
     }
   };
 
-  const handlePrintEspelho = () => {
+  const handlePrintEspelho = async () => {
     const cotacao = selected;
     if (!cotacao || !printItens?.length) {
       toast.error("Adicione itens antes de gerar o espelho");
       return;
     }
     const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
+
+    // Fetch profile data
+    let profileData: any = {};
+    if (user) {
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      if (data) profileData = data;
+    }
+
+    // Convert logo to base64 for print
+    let logoBase64 = "";
+    try {
+      const resp = await fetch(logoImg);
+      const blob = await resp.blob();
+      logoBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch { /* fallback without logo */ }
+
+    const profileName = profileData.nome || user?.email || "";
+    const profileEmail = profileData.email || user?.email || "";
+    const profilePhone = profileData.telefone || "";
+
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(`
@@ -477,6 +501,7 @@ const CotacoesContent = () => {
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a1a; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
+          .header img { height: 60px; margin-bottom: 8px; }
           .header h1 { font-size: 24px; color: #2563eb; margin: 0; }
           .header p { margin: 4px 0; color: #666; font-size: 14px; }
           .info { margin-bottom: 20px; }
@@ -485,14 +510,16 @@ const CotacoesContent = () => {
           th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
           th { background: #f0f4ff; font-weight: 600; }
           tr:nth-child(even) { background: #fafafa; }
-          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #999; }
+          .footer { margin-top: 40px; border-top: 2px solid #e5e7eb; padding-top: 16px; text-align: center; font-size: 12px; color: #666; }
+          .footer p { margin: 2px 0; }
           .price-col { width: 150px; border-bottom: 1px dotted #999; }
           @media print { body { margin: 20px; } }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>🏗️ ObraControl</h1>
+          ${logoBase64 ? `<img src="${logoBase64}" alt="ObraControl" />` : ""}
+          <h1>ObraControl</h1>
           <p>Espelho do Orçamento</p>
         </div>
         <div class="info">
@@ -529,7 +556,10 @@ const CotacoesContent = () => {
           <p><strong>Total: ________________</strong></p>
         </div>
         <div class="footer">
-          <p>Documento gerado por ObraControl em ${new Date().toLocaleString("pt-BR")}</p>
+          ${profileName ? `<p><strong>${profileName}</strong></p>` : ""}
+          ${profileEmail ? `<p>${profileEmail}</p>` : ""}
+          ${profilePhone ? `<p>${profilePhone}</p>` : ""}
+          <p style="margin-top: 8px; color: #999;">Documento gerado por ObraControl em ${new Date().toLocaleString("pt-BR")}</p>
         </div>
       </body>
       </html>
