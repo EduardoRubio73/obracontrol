@@ -80,7 +80,7 @@ export default function EtapaDetalhe() {
         .select("id, nome")
         .order("nome");
       if (error) throw error;
-      return (data ?? []) as { id: string; nome: string }[];
+      return (data ?? []) as unknown as { id: string; nome: string }[];
     },
   });
 
