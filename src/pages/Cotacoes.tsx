@@ -698,12 +698,12 @@ const CotacoesContent = () => {
           </DialogHeader>
 
           {(selected as any)?.token_publico && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
-              <Link2 className="h-4 w-4 text-muted-foreground" />
-              <code className="flex-1 text-xs truncate">
+            <div className="flex items-center gap-2 rounded-lg bg-muted p-3 min-w-0">
+              <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <code className="flex-1 text-xs truncate min-w-0 block overflow-hidden">
                 {window.location.origin}/cotacao/{(selected as any).token_publico}
               </code>
-              <Button size="sm" variant="outline" onClick={() => copyLink((selected as any).token_publico)}>
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink((selected as any).token_publico)}>
                 <Copy className="mr-1 h-3 w-3" /> Copiar
               </Button>
             </div>
