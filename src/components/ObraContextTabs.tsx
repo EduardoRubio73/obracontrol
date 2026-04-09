@@ -12,12 +12,12 @@ const obraTabs = [
 export function ObraContextTabs() {
   return (
     <div className="w-full border-b bg-card">
-      <nav className="flex flex-wrap gap-2 px-4 py-2">
+      <nav className="flex flex-nowrap gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
         {obraTabs.map((tab) => (
           <NavLink
             key={tab.url}
             to={tab.url}
-            className="flex items-center gap-1.5 rounded-lg px-4 py-2 min-h-[44px] text-sm text-muted-foreground transition-colors hover:bg-accent"
+            className="flex items-center gap-1.5 rounded-lg px-4 py-2 min-h-[44px] text-sm text-muted-foreground transition-colors hover:bg-accent whitespace-nowrap shrink-0"
             activeClassName="bg-primary/10 text-primary font-medium"
           >
             <span>{tab.emoji}</span>
