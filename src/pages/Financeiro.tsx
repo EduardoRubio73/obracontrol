@@ -217,7 +217,7 @@ function FinanceiroContent() {
                       href={t.comprovante_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     >
                       📎 Comprovante
                     </a>
