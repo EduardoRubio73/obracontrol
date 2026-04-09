@@ -217,12 +217,12 @@ function EtapasContent() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
-      <div className="pt-4">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+    <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
+      <div className="pt-2 sm:pt-4">
+        <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
           Etapas {obraAtiva ? `— ${obraAtiva.nome}` : "da obra"}
         </h1>
-        <p className="text-lg text-muted-foreground mt-1">
+        <p className="text-sm sm:text-lg text-muted-foreground mt-1">
           Divida sua obra em partes
         </p>
       </div>
