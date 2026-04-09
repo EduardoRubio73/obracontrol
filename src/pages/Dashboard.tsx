@@ -260,28 +260,87 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Status pills — only when a specific obra is selected */}
       {filtroId && obraAtualStatus && (
-        <div className="flex flex-wrap gap-2">
-          {allStatuses.map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                if (obraAtualStatus !== s) {
-                  changeStatus.mutate({ obraId: filtroId, status: s });
-                }
-              }}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
-                obraAtualStatus === s
-                  ? `${statusColor[s]} border-current ring-2 ring-current/20`
-                  : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
-              }`}
-            >
-              {statusLabels[s]}
-            </button>
-          ))}
-        </div>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex flex-wrap gap-2">
+            {allStatuses.map((s) => {
+              const isActive = obraAtualStatus === s;
+              const pill = (
+                <button
+                  key={s}
+                  onClick={() => {
+                    if (!isActive) {
+                      setJustificativa("");
+                      setStatusModal({ open: true, status: s });
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                    isActive
+                      ? `${statusColor[s]} border-current ring-2 ring-current/20`
+                      : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                  }`}
+                >
+                  {statusLabels[s]}
+                </button>
+              );
+
+              if (isActive && justificativaAtual) {
+                return (
+                  <Tooltip key={s}>
+                    <TooltipTrigger asChild>{pill}</TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="text-xs font-medium">Justificativa:</p>
+                      <p className="text-xs">{justificativaAtual}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              return pill;
+            })}
+          </div>
+        </TooltipProvider>
       )}
+
+      {/* Modal justificativa de status */}
+      <Dialog open={statusModal.open} onOpenChange={(v) => !v && setStatusModal({ open: false, status: "" })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar para {statusLabels[statusModal.status] ?? statusModal.status}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Justificativa / Observação (opcional)</label>
+              <Textarea
+                placeholder="Explique o motivo da alteração..."
+                value={justificativa}
+                onChange={(e) => setJustificativa(e.target.value)}
+                className="mt-1.5"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setStatusModal({ open: false, status: "" })}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (filtroId) {
+                    changeStatus.mutate({
+                      obraId: filtroId,
+                      status: statusModal.status,
+                      justificativa: justificativa.trim(),
+                    });
+                  }
+                  setStatusModal({ open: false, status: "" });
+                }}
+                disabled={changeStatus.isPending}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Summary Cards */}
       <DashboardSummaryCards
