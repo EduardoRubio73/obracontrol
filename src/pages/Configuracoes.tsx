@@ -234,6 +234,7 @@ const Configuracoes = () => {
             <TabsTrigger value="unidades">Unidades</TabsTrigger>
             <TabsTrigger value="fornecedor_tipos">Tipos Fornecedor</TabsTrigger>
             <TabsTrigger value="etapas_padrao">Etapas Padrão</TabsTrigger>
+            <TabsTrigger value="tarefas_padrao">Tarefas Padrão</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -252,6 +253,9 @@ const Configuracoes = () => {
         </TabsContent>
         <TabsContent value="etapas_padrao">
           <CrudTabContent table="etapas_padrao" label="etapa padrão" />
+        </TabsContent>
+        <TabsContent value="tarefas_padrao">
+          <CrudTabContent table="tarefas_padrao" label="tarefa padrão" />
         </TabsContent>
       </Tabs>
     </div>
