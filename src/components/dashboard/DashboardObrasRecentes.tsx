@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +37,25 @@ export const DashboardObrasRecentes = ({ obras, fases }: Props) => {
   const navigate = useNavigate();
   const recentes = obras.slice(0, 5);
 
+  const obraIds = recentes.map((o) => o.id);
+  const { data: fotoMap } = useQuery({
+    queryKey: ["obras-thumbs", obraIds.join(",")],
+    enabled: obraIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fase_fotos")
+        .select("id, url, obra_id")
+        .in("obra_id", obraIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const f of data ?? []) {
+        if (!map[f.obra_id]) map[f.obra_id] = f.url;
+      }
+      return map;
+    },
+  });
+
   return (
     <Card className="md:col-span-2 rounded-2xl">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -54,8 +75,16 @@ export const DashboardObrasRecentes = ({ obras, fases }: Props) => {
             const prog = obraFases.length > 0
               ? Math.round(obraFases.reduce((a, f) => a + (f.progresso ?? 0), 0) / obraFases.length)
               : 0;
+            const thumb = fotoMap?.[o.id];
             return (
               <div key={o.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors">
+                {thumb ? (
+                  <img src={thumb} alt="" className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground truncate">{o.nome}</p>
                   <div className="flex items-center gap-2 mt-1">

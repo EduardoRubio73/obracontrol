@@ -44,6 +44,25 @@ const Obras = () => {
     },
   });
 
+  const obraIds = obras?.map((o) => o.id) ?? [];
+  const { data: fotoMap } = useQuery({
+    queryKey: ["obras-list-thumbs", obraIds.join(",")],
+    enabled: obraIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fase_fotos")
+        .select("id, url, obra_id")
+        .in("obra_id", obraIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const f of data ?? []) {
+        if (!map[f.obra_id]) map[f.obra_id] = f.url;
+      }
+      return map;
+    },
+  });
+
   const upsert = useMutation({
     mutationFn: async (values: Partial<TablesInsert<"obras">>) => {
       if (editing) {
