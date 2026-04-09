@@ -40,9 +40,8 @@ export default function EtapaDetalhe() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [comboOpen, setComboOpen] = useState(false);
-  const [selectedNome, setSelectedNome] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [selectedTarefas, setSelectedTarefas] = useState<string[]>([]);
 
   const { data: fase } = useQuery({
     queryKey: ["fase", id],
