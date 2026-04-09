@@ -1,62 +1,54 @@
 
 
-# Plano: Refatoração Completa do Fluxo de Cotações
+# Plano: Navegação Global — Menu Burger, Breadcrumbs, Abas de Contexto
 
 ## Resumo
-Refatorar o fluxo de cotações em 3 blocos: criação com redirecionamento para itens, gestão com abas (Itens + Fornecedores), e correção do Portal do Fornecedor com geração de PDF.
+Resolver o problema de "beco sem saída" adicionando menu burger no mobile, breadcrumbs contextuais em todas as páginas, logo clicável para dashboard, e barra de abas horizontal para navegar entre seções da obra ativa.
 
-## Bloco 1: Criação e Listagem
+## 1. Menu Burger no Mobile (AppLayout)
 
-### 1.1 — Nova Cotação → Redirecionar para Edição de Itens
-- Ao criar cotação, gerar `token_publico` (UUID) automaticamente no insert
-- Após sucesso do `createCotacao`, em vez de fechar o modal, abrir o `itemDialog` com o ID da cotação recém-criada (ou navegar para uma rota dedicada)
-- Remover `datalist` do campo Descrição, usar `autocomplete="off"` no Input
+- Remover `<div className="hidden md:block">` que esconde o sidebar no mobile
+- Adicionar `SidebarTrigger` (ícone hamburger) visível apenas no mobile (`md:hidden`) no header, antes do logo
+- O sidebar já usa `collapsible="icon"` — mudar para `collapsible="offcanvas"` para funcionar como drawer no mobile
+- Manter sidebar visível normalmente no desktop
 
-### 1.2 — Contador visual no card da listagem
-- Adicionar query para contar itens por cotação (fetch all `itens_cotacao` para as cotações visíveis)
-- No card, exibir `📦 X itens` ou `⚠️ Sem itens` (em vermelho) se zero
+## 2. Logo Inteligente
 
-### 1.3 — Botões Editar/Excluir na listagem
-- Adicionar botão ✏️ (editar nome + data expiração via Dialog)
-- Adicionar botão 🗑️ (excluir com confirmação)
-- Mutations: `update cotacoes` e `delete cotacoes`
+- Clique no logo (mobile e desktop) navega para `/dashboard` em vez de `/`
+- Manter botão "Voltar" visível no mobile ao lado do burger
 
-## Bloco 2: Abas Itens + Fornecedores
+## 3. Breadcrumbs Universais
 
-### 2.1 — Reorganizar o Dialog de gerenciamento
-- Substituir o dialog atual de itens por um com duas abas (`Tabs` do Radix):
-  - **Aba 1 — Itens do Orçamento**: Manter o catálogo de produtos + adição manual + lista atual com delete individual
-  - **Aba 2 — Fornecedores Selecionados**: Lista de fornecedores do banco com checkboxes, e botão "📧 Enviar para todos selecionados" que dispara o `enviarCotacao` + mailto
+- Expandir breadcrumbs para aparecer em TODAS as páginas (não só obra pages)
+- Para páginas sem obra: `Dashboard > Página Atual`
+- Para páginas com obra: `🏗️ Obras > [Nome da Obra] > [Seção]`
+- Para sub-rotas como `/etapas/:id` ou `/obras/:id/dossie`: incluir nível intermediário
+- Breadcrumbs ficam na segunda linha do header, sempre visíveis
 
-### 2.2 — Consolidar envio
-- Mover a lógica do `sendDialog` para dentro da Aba 2, eliminando o dialog separado de envio
+## 4. Abas Horizontais de Contexto da Obra
 
-## Bloco 3: Portal do Fornecedor + PDF
+- Criar componente `ObraContextTabs` com abas scrolláveis horizontalmente
+- Abas: 📅 Etapas, 💰 Financeiro, 🛒 Compras, 📋 Cotações, 🖼️ Galeria, 📁 Documentos
+- Renderizar abaixo do header (dentro de `AppLayout`) quando `showObraSelector` é true e há obra selecionada
+- Usar `overflow-x-auto` + `flex-nowrap` para scroll horizontal no mobile
+- Aba ativa destacada com cor primária baseada na rota atual
 
-### 3.1 — Token Público
-- Garantir que o `token_publico` é gerado no momento da criação (já no insert do Bloco 1)
-- Verificar a rota `/cotacao/:token` no App.tsx (já existe como `PortalFornecedor`)
+## 5. Header Sticky (já implementado)
 
-### 3.2 — Portal do Fornecedor
-- O componente `PortalFornecedor.tsx` já existe e funciona. Verificar se RLS permite leitura anon via `token_publico` (as policies já cobrem isso com `c.token_publico IS NOT NULL`)
-- Garantir tabela limpa: Item | Quantidade | Preço Unitário
-
-### 3.3 — Botão Gerar PDF (Espelho do Orçamento)
-- Na visão do admin (dialog de detalhes ou listagem), adicionar botão "🖨️ Gerar Espelho"
-- Usar `window.print()` com CSS `@media print` ou gerar PDF client-side com a lista de itens (sem preços), cabeçalho com logo ObraControl
+- O header já tem `sticky top-0 z-40` — garantir que as abas de contexto também fiquem dentro do sticky header
 
 ## Arquivos Modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Cotacoes.tsx` | Refatoração principal: criação com token, redirect para itens, cards com contadores, edit/delete, abas Itens+Fornecedores, botão PDF |
-| `src/pages/PortalFornecedor.tsx` | Ajustes menores se necessário na tabela de itens |
-| `src/App.tsx` | Nenhuma mudança esperada (rota já existe) |
+| `src/components/AppLayout.tsx` | Burger trigger, breadcrumbs universais, logo → dashboard, abas de contexto |
+| `src/components/AppSidebar.tsx` | Ajuste `collapsible` para offcanvas no mobile |
+| `src/components/ObraContextTabs.tsx` | **Novo** — barra de abas scrolláveis para seções da obra |
 
 ## Detalhes Técnicos
 
-- Token gerado via `crypto.randomUUID()` no client antes do insert
-- Contagem de itens: query adicional `itens_cotacao` agrupada por `cotacao_id` ou fetch em batch
-- PDF: usar `window.print()` com componente de impressão estilizado (abordagem mais simples, sem dependências extras)
-- Abas: usar componente `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent` já existente em `src/components/ui/tabs.tsx`
+- `SidebarTrigger` do shadcn já renderiza ícone hamburger e controla open/close do sidebar
+- Abas usarão `NavLink` do react-router para highlight automático da rota ativa
+- Breadcrumbs expandidos com lógica condicional: se `obraAtiva` existe mostra caminho da obra, senão mostra caminho genérico
+- `MobileBottomNav` pode ser mantido como complemento ou removido (redundante com burger + abas)
 
