@@ -304,7 +304,7 @@ const Dossie = () => {
         <Button
           variant="outline"
           className="flex-1 rounded-xl gap-2 h-12 text-base"
-          onClick={() => navigate(`/galeria`)}
+          onClick={() => navigate(`/obras/${id}/galeria`)}
         >
           <ImageIcon className="h-5 w-5" />
           Galeria
