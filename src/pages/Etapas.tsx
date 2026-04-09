@@ -309,7 +309,7 @@ function EtapasContent() {
 
 export default function Etapas() {
   return (
-    <RequireObra>
+    <RequireObra pageName="Etapas">
       <EtapasContent />
     </RequireObra>
   );

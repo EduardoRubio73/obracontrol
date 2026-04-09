@@ -321,7 +321,7 @@ function FinanceiroContent() {
 
 export default function Financeiro() {
   return (
-    <RequireObra>
+    <RequireObra pageName="Financeiro">
       <FinanceiroContent />
     </RequireObra>
   );

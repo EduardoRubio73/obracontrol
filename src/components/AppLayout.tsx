@@ -42,7 +42,7 @@ const routeLabels: Record<string, string> = {
 };
 
 // Pages that require obra context (show selector)
-const OBRA_PAGES = ["/etapas", "/compras", "/financeiro", "/cotacoes", "/dashboard"];
+const OBRA_PAGES = ["/etapas", "/compras", "/financeiro", "/cotacoes", "/dashboard", "/galeria", "/documentos"];
 
 export function AppLayout() {
   const location = useLocation();
