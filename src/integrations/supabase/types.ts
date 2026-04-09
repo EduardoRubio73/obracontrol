@@ -1183,6 +1183,65 @@ export type Database = {
           },
         ]
       }
+      obra_status_historico: {
+        Row: {
+          created_at: string
+          id: string
+          justificativa: string | null
+          obra_id: string
+          status_anterior: string | null
+          status_novo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          justificativa?: string | null
+          obra_id: string
+          status_anterior?: string | null
+          status_novo: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          justificativa?: string | null
+          obra_id?: string
+          status_anterior?: string | null
+          status_novo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_status_historico_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_status_historico_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "obra_status_historico_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "obra_status_historico_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obras: {
         Row: {
           classificacao: string | null
