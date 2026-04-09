@@ -231,6 +231,7 @@ const Obras = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Foto</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Valor Previsto</TableHead>
@@ -241,6 +242,15 @@ const Obras = () => {
             <TableBody>
               {filtered?.map((obra) => (
                 <TableRow key={obra.id}>
+                  <TableCell>
+                    {fotoMap?.[obra.id] ? (
+                      <img src={fotoMap[obra.id]} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                    ) : (
+                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>{obra.nome}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
@@ -262,7 +272,7 @@ const Obras = () => {
               ))}
               {!isLoading && !filtered?.length && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma obra encontrada</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma obra encontrada</TableCell>
                 </TableRow>
               )}
             </TableBody>
