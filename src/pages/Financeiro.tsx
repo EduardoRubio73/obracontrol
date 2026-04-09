@@ -45,12 +45,8 @@ function FinanceiroContent() {
       ?.filter((t) => t.tipo === "despesa")
       .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
 
-  const totalRecebido =
-    transacoes
-      ?.filter((t) => t.tipo === "receita")
-      .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
-
-  const disponivel = totalRecebido - totalGasto;
+  const valorAprovado = Number(obraAtiva?.valor_previsto ?? 0);
+  const disponivel = valorAprovado - totalGasto;
 
   const create = useMutation({
     mutationFn: async (values: any) => {
