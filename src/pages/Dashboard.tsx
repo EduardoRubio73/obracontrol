@@ -238,17 +238,6 @@ const Dashboard = () => {
   const obraAtual = obras?.find((o) => o.id === filtroId);
   const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
-  const comprasCount = 0; // compras query not present, show 0
-
-  const shortcutCards = [
-    { emoji: "📋", title: "Etapas", summary: `${fasesEmAndamento} em andamento`, route: "/etapas", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { emoji: "🛒", title: "Compras", summary: `${comprasCount} pendentes`, route: "/compras", bg: "bg-orange-50 dark:bg-orange-950/30" },
-    { emoji: "💰", title: "Financeiro", summary: fmt(totalGasto) + " gasto", route: "/financeiro", bg: "bg-green-50 dark:bg-green-950/30" },
-    { emoji: "📝", title: "Cotações", summary: `${cotacoesAbertas} abertas`, route: "/cotacoes", bg: "bg-purple-50 dark:bg-purple-950/30" },
-    { emoji: "🖼️", title: "Galeria", summary: "Fotos da obra", route: "/galeria", bg: "bg-pink-50 dark:bg-pink-950/30" },
-    { emoji: "📁", title: "Documentos", summary: `${documentos?.length ?? 0} arquivos`, route: "/documentos", bg: "bg-amber-50 dark:bg-amber-950/30" },
-  ];
-
   return (
     <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 pb-24 px-4">
       {/* Header */}
@@ -260,25 +249,6 @@ const Dashboard = () => {
           </Button>
         )}
       </div>
-
-      {/* Shortcut Cards — when obra selected */}
-      {filtroId && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {shortcutCards.map((c) => (
-            <Card
-              key={c.route}
-              className={`rounded-2xl cursor-pointer transition-shadow hover:shadow-md ${c.bg}`}
-              onClick={() => navigate(c.route)}
-            >
-              <CardContent className="p-4 flex flex-col items-start gap-1">
-                <span className="text-2xl">{c.emoji}</span>
-                <span className="font-semibold text-sm">{c.title}</span>
-                <span className="text-xs text-muted-foreground">{c.summary}</span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {filtroId && obraAtualStatus && (
         <TooltipProvider delayDuration={300}>
