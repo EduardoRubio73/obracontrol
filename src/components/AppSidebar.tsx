@@ -12,7 +12,7 @@ import {
   Building2,
   BarChart3,
   Settings,
-  
+  PanelLeft,
   Bot,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
