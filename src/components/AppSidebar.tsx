@@ -57,6 +57,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   const renderItems = (items: typeof mainItems) =>
     items.map((item) => (
