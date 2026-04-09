@@ -1,71 +1,45 @@
 
 
-# Plano: Combobox com Zod, Ordem do Dashboard, Título Dinâmico e Lançamento Financeiro Automático
+# Plano: Incluir Compras Pendentes na Tela "Hoje"
 
-## Resumo
+## Problema
 
-4 frentes: (1) Combobox com validação Zod no modal de Nova Tarefa (EtapaDetalhe), (2) reordenar botões do Dashboard para Início primeiro sempre, (3) garantir títulos dinâmicos, (4) "Marcar comprado" cria lançamento no financeiro via RPC transacional.
+A página "Hoje" só verifica pendências em `alertas_sistema` e `fase_itens`. Compras com status "pendente" na tabela `compras` não são consideradas, fazendo o sistema mostrar "Tudo em dia" mesmo com compras pendentes.
 
----
+## Solução
 
-## 1. Migration: RPC `marcar_comprado`
+Adicionar uma query de compras pendentes em `src/pages/Hoje.tsx` e exibir essas compras como pendências na tela.
 
-Criar function SQL transacional que:
-- Atualiza `compras.status = 'comprado'`
-- Insere registro em `financeiro` com tipo `despesa`, valor total, `obra_id`, `user_id`
-- Se qualquer operação falhar, faz rollback
+## Alterações em `src/pages/Hoje.tsx`
 
-```sql
-CREATE OR REPLACE FUNCTION public.marcar_comprado(p_compra_id uuid)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
-DECLARE
-  v_compra RECORD;
-BEGIN
-  SELECT * INTO v_compra FROM compras WHERE id = p_compra_id;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Compra não encontrada'; END IF;
+1. **Nova query** — buscar compras pendentes:
+   ```ts
+   const { data: comprasPendentes } = useQuery({
+     queryKey: ["compras-pendentes"],
+     queryFn: async () => {
+       const { data } = await supabase
+         .from("compras")
+         .select("id, descricao, status, valor_total, fornecedor:fornecedores(nome)")
+         .eq("status", "pendente")
+         .limit(5);
+       return data;
+     },
+   });
+   ```
 
-  UPDATE compras SET status = 'comprado' WHERE id = p_compra_id;
+2. **Atualizar lógica de pendências** — incluir compras no cálculo:
+   ```ts
+   const hasCompras = (comprasPendentes?.length ?? 0) > 0;
+   // "Tudo em dia" só aparece se NÃO há alertas, NEM tarefas, NEM compras
+   ```
 
-  INSERT INTO financeiro (obra_id, user_id, tenant_id, descricao, valor, tipo, data_transacao)
-  VALUES (
-    v_compra.obra_id, v_compra.user_id, v_compra.tenant_id,
-    'Compra: ' || COALESCE(v_compra.descricao, 'Material'),
-    COALESCE(v_compra.valor_total, 0), 'despesa', CURRENT_DATE
-  );
-END; $$;
-```
+3. **Nova seção visual** — listar compras pendentes com cards (similar às tarefas), com ícone de carrinho e botão "Marcar comprado" que chama o RPC `marcar_comprado`.
 
-## 2. `src/pages/EtapaDetalhe.tsx` — Combobox + Zod no modal Nova Tarefa
+4. **Invalidar** queries de compras ao marcar como comprado.
 
-- Substituir `<Input name="nome">` por `EtapaCombobox` (reutilizar do Etapas.tsx ou extrair componente compartilhado)
-- Query `etapas_padrao` para alimentar opções
-- Zod schema: `z.object({ nome: z.string().min(1, "Obrigatório") })`
-- Se valor novo, inserir em `etapas_padrao` antes de criar `fase_itens`
-- Botão desabilitado enquanto campo vazio
-
-## 3. `src/pages/Index.tsx` — Reordenar botões
-
-- Remover lógica condicional `orderedMenu` (linhas 142-144) que coloca Etapas primeiro quando não há alertas
-- Sempre usar `menuItems` na ordem original: Início, Etapas, Compras, Financeiro, Contatos
-
-## 4. `src/pages/Compras.tsx` — Marcar comprado com financeiro
-
-- Substituir `toggleStatus.mutate({ id, status: "comprado" })` por chamada RPC `marcar_comprado`
-- Toast: "Compra registrada e lançada no financeiro com sucesso!"
-- Invalidar queries de `compras` e `financeiro`
-
-## 5. Títulos dinâmicos (já implementados)
-
-Os títulos em Etapas, Compras, Financeiro, Cotações já mostram `— {obraAtiva.nome}`. Nenhuma mudança necessária.
-
----
-
-## Arquivos a editar
+## Arquivo a editar
 
 | Arquivo | Ação |
 |---|---|
-| Migration SQL | Criar RPC `marcar_comprado` |
-| `src/pages/EtapaDetalhe.tsx` | Combobox + Zod no modal Nova Tarefa |
-| `src/pages/Index.tsx` | Remover reordenação condicional dos botões |
-| `src/pages/Compras.tsx` | Usar RPC `marcar_comprado` + toast + invalidar financeiro |
+| `src/pages/Hoje.tsx` | Adicionar query compras pendentes, atualizar condição "Tudo em dia", renderizar seção de compras |
 
