@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,8 +15,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle2, Search, ChevronsUpDown, XCircle } from "lucide-react";
 
 const statusColors: Record<string, string> = {
   pendente: "bg-warning/10 text-warning",
@@ -32,6 +37,109 @@ const statusLabel: Record<string, string> = {
 
 const fmt = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+/* ── Searchable Dropdown ── */
+function SearchableSelect({
+  label,
+  items,
+  value,
+  onChange,
+  onAdd,
+  placeholder = "Buscar...",
+}: {
+  label: string;
+  items: { id: string; nome: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  onAdd: (nome: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const selected = items.find((i) => i.id === value);
+
+  const filtered = useMemo(() => {
+    if (!search) return items;
+    const s = search.toLowerCase();
+    return items.filter((i) => i.nome.toLowerCase().includes(s));
+  }, [items, search]);
+
+  const handleAdd = () => {
+    if (search.trim()) {
+      onAdd(search.trim());
+      setSearch("");
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            className="w-full h-12 justify-between text-base font-normal rounded-xl"
+          >
+            <span className="truncate">{selected?.nome || "Selecione (opcional)"}</span>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <div className="flex items-center border-b px-3">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              className="flex-1 h-11 bg-transparent px-2 text-base outline-none placeholder:text-muted-foreground"
+              placeholder={placeholder}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {value && (
+              <button
+                type="button"
+                onClick={() => { onChange(""); setOpen(false); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-accent transition-colors ${
+                  item.id === value ? "bg-accent font-semibold" : ""
+                }`}
+                onClick={() => { onChange(item.id); setOpen(false); setSearch(""); }}
+              >
+                {item.nome}
+              </button>
+            ))}
+            {filtered.length === 0 && search && (
+              <div className="p-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-start gap-2 text-primary"
+                  onClick={handleAdd}
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar "{search}"
+                </Button>
+              </div>
+            )}
+            {filtered.length === 0 && !search && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum item</p>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 function ComprasContent() {
   const { user } = useAuth();
@@ -53,16 +161,16 @@ function ComprasContent() {
     enabled: !!obraAtivaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("compras" as any)
+        .from("compras")
         .select("*")
         .eq("obra_id", obraAtivaId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as any[];
+      return data;
     },
   });
 
-  const { data: fornecedores } = useQuery({
+  const { data: fornecedores = [] } = useQuery({
     queryKey: ["fornecedores-select"],
     queryFn: async () => {
       const { data } = await supabase.from("fornecedores").select("id, nome");
@@ -70,12 +178,48 @@ function ComprasContent() {
     },
   });
 
-  const { data: produtos } = useQuery({
+  const { data: produtos = [] } = useQuery({
     queryKey: ["produtos-select"],
     queryFn: async () => {
       const { data } = await supabase.from("produtos").select("id, nome");
       return data ?? [];
     },
+  });
+
+  const addFornecedor = useMutation({
+    mutationFn: async (nome: string) => {
+      const { data, error } = await supabase
+        .from("fornecedores")
+        .insert({ nome, user_id: user!.id })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["fornecedores-select"] });
+      setForm((p) => ({ ...p, fornecedor_id: data.id }));
+      toast.success("Fornecedor adicionado!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const addProduto = useMutation({
+    mutationFn: async (nome: string) => {
+      const { data, error } = await supabase
+        .from("produtos")
+        .insert({ nome, user_id: user!.id })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["produtos-select"] });
+      setForm((p) => ({ ...p, produto_id: data.id }));
+      toast.success("Produto adicionado!");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const resetForm = () => {
@@ -86,10 +230,10 @@ function ComprasContent() {
   const save = useMutation({
     mutationFn: async (values: any) => {
       if (editId) {
-        const { error } = await supabase.from("compras" as any).update(values).eq("id", editId);
+        const { error } = await supabase.from("compras").update(values).eq("id", editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("compras" as any).insert(values);
+        const { error } = await supabase.from("compras").insert(values);
         if (error) throw error;
       }
     },
@@ -104,7 +248,7 @@ function ComprasContent() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("compras" as any).delete().eq("id", id);
+      const { error } = await supabase.from("compras").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -122,7 +266,19 @@ function ComprasContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
       queryClient.invalidateQueries({ queryKey: ["financeiro"] });
-      toast.success("Compra registrada e lançada no financeiro com sucesso!");
+      toast.success("Compra registrada e lançada no financeiro!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const changeStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("compras").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
+      toast.success("Status atualizado!");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -158,12 +314,12 @@ function ComprasContent() {
   };
 
   const empty = !isLoading && !compras?.length;
-  const pendentes = compras?.filter((c: any) => c.status === "pendente") ?? [];
-  const comprados = compras?.filter((c: any) => c.status !== "pendente") ?? [];
+  const pendentes = compras?.filter((c) => c.status === "pendente") ?? [];
+  const comprados = compras?.filter((c) => c.status !== "pendente") ?? [];
 
   const renderCard = (c: any) => {
-    const fornNome = fornecedores?.find((f) => f.id === c.fornecedor_id)?.nome;
-    const prodNome = produtos?.find((p) => p.id === c.produto_id)?.nome;
+    const fornNome = fornecedores.find((f) => f.id === c.fornecedor_id)?.nome;
+    const prodNome = produtos.find((p) => p.id === c.produto_id)?.nome;
     return (
       <Card key={c.id} className="shadow-sm">
         <CardContent className="p-5 space-y-3">
@@ -176,9 +332,16 @@ function ComprasContent() {
                 <p className="text-sm text-muted-foreground">{fornNome}</p>
               )}
             </div>
-            <Badge className={`${statusColors[c.status] ?? "bg-muted"} text-xs shrink-0`}>
-              {statusLabel[c.status] ?? c.status}
-            </Badge>
+            {/* Status dropdown */}
+            <select
+              value={c.status}
+              onChange={(e) => changeStatus.mutate({ id: c.id, status: e.target.value })}
+              className={`text-xs font-semibold rounded-full px-3 py-1 border-0 appearance-none cursor-pointer ${statusColors[c.status] ?? "bg-muted"}`}
+            >
+              <option value="pendente">Pendente</option>
+              <option value="comprado">Comprado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
           </div>
 
           <div className="flex items-center justify-between text-sm">
@@ -241,7 +404,6 @@ function ComprasContent() {
         Nova Compra
       </Button>
 
-      {/* Pendentes */}
       {pendentes.length > 0 && (
         <div className="space-y-3">
           <p className="text-base font-semibold text-warning flex items-center gap-2">
@@ -253,7 +415,6 @@ function ComprasContent() {
         </div>
       )}
 
-      {/* Comprados */}
       {comprados.length > 0 && (
         <div className="space-y-3">
           <p className="text-base font-semibold text-success flex items-center gap-2">
@@ -283,33 +444,23 @@ function ComprasContent() {
             <DialogTitle>{editId ? "Editar Compra" : "Nova Compra"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Fornecedor</Label>
-              <select
-                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
-                value={form.fornecedor_id}
-                onChange={(e) => setForm((p) => ({ ...p, fornecedor_id: e.target.value }))}
-              >
-                <option value="">Selecione (opcional)</option>
-                {fornecedores?.map((f) => (
-                  <option key={f.id} value={f.id}>{f.nome}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSelect
+              label="Fornecedor"
+              items={fornecedores}
+              value={form.fornecedor_id}
+              onChange={(id) => setForm((p) => ({ ...p, fornecedor_id: id }))}
+              onAdd={(nome) => addFornecedor.mutate(nome)}
+              placeholder="Buscar fornecedor..."
+            />
 
-            <div className="space-y-2">
-              <Label>Produto</Label>
-              <select
-                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
-                value={form.produto_id}
-                onChange={(e) => setForm((p) => ({ ...p, produto_id: e.target.value }))}
-              >
-                <option value="">Selecione (opcional)</option>
-                {produtos?.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nome}</option>
-                ))}
-              </select>
-            </div>
+            <SearchableSelect
+              label="Produto"
+              items={produtos}
+              value={form.produto_id}
+              onChange={(id) => setForm((p) => ({ ...p, produto_id: id }))}
+              onAdd={(nome) => addProduto.mutate(nome)}
+              placeholder="Buscar produto..."
+            />
 
             <div className="space-y-2">
               <Label>Descrição</Label>
