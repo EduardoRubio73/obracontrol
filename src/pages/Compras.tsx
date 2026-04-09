@@ -158,6 +158,69 @@ function ComprasContent() {
   };
 
   const empty = !isLoading && !compras?.length;
+  const pendentes = compras?.filter((c: any) => c.status === "pendente") ?? [];
+  const comprados = compras?.filter((c: any) => c.status !== "pendente") ?? [];
+
+  const renderCard = (c: any) => {
+    const fornNome = fornecedores?.find((f) => f.id === c.fornecedor_id)?.nome;
+    const prodNome = produtos?.find((p) => p.id === c.produto_id)?.nome;
+    return (
+      <Card key={c.id} className="shadow-sm">
+        <CardContent className="p-5 space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-lg text-foreground truncate">
+                {prodNome || c.descricao || "Compra"}
+              </p>
+              {fornNome && (
+                <p className="text-sm text-muted-foreground">{fornNome}</p>
+              )}
+            </div>
+            <Badge className={`${statusColors[c.status] ?? "bg-muted"} text-xs shrink-0`}>
+              {statusLabel[c.status] ?? c.status}
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {c.quantidade}x {c.valor_unitario ? fmt(c.valor_unitario) : "—"}
+            </span>
+            {c.valor_total ? (
+              <span className="font-bold text-foreground">{fmt(c.valor_total)}</span>
+            ) : null}
+          </div>
+
+          {c.observacao && (
+            <p className="text-sm text-muted-foreground">{c.observacao}</p>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            {c.status === "pendente" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => marcarComprado.mutate(c.id)}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar comprado
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive"
+              onClick={() => del.mutate(c.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
@@ -178,68 +241,29 @@ function ComprasContent() {
         Nova Compra
       </Button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {compras?.map((c: any) => {
-          const fornNome = fornecedores?.find((f) => f.id === c.fornecedor_id)?.nome;
-          const prodNome = produtos?.find((p) => p.id === c.produto_id)?.nome;
-          return (
-            <Card key={c.id} className="shadow-sm">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-lg text-foreground truncate">
-                      {prodNome || c.descricao || "Compra"}
-                    </p>
-                    {fornNome && (
-                      <p className="text-sm text-muted-foreground">{fornNome}</p>
-                    )}
-                  </div>
-                  <Badge className={`${statusColors[c.status] ?? "bg-muted"} text-xs shrink-0`}>
-                    {statusLabel[c.status] ?? c.status}
-                  </Badge>
-                </div>
+      {/* Pendentes */}
+      {pendentes.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-base font-semibold text-warning flex items-center gap-2">
+            🕐 Pendentes ({pendentes.length})
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendentes.map(renderCard)}
+          </div>
+        </div>
+      )}
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {c.quantidade}x {c.valor_unitario ? fmt(c.valor_unitario) : "—"}
-                  </span>
-                  {c.valor_total ? (
-                    <span className="font-bold text-foreground">{fmt(c.valor_total)}</span>
-                  ) : null}
-                </div>
-
-                {c.observacao && (
-                  <p className="text-sm text-muted-foreground">{c.observacao}</p>
-                )}
-
-                <div className="flex items-center gap-2 pt-1">
-                  {c.status === "pendente" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => marcarComprado.mutate(c.id)}
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar comprado
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => del.mutate(c.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Comprados */}
+      {comprados.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-base font-semibold text-success flex items-center gap-2">
+            ✅ Comprados ({comprados.length})
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {comprados.map(renderCard)}
+          </div>
+        </div>
+      )}
 
       {empty && (
         <Card className="border-dashed border-2 shadow-none">
