@@ -45,12 +45,8 @@ function FinanceiroContent() {
       ?.filter((t) => t.tipo === "despesa")
       .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
 
-  const totalRecebido =
-    transacoes
-      ?.filter((t) => t.tipo === "receita")
-      .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
-
-  const disponivel = totalRecebido - totalGasto;
+  const valorAprovado = Number(obraAtiva?.valor_previsto ?? 0);
+  const disponivel = valorAprovado - totalGasto;
 
   const create = useMutation({
     mutationFn: async (values: any) => {
@@ -101,19 +97,27 @@ function FinanceiroContent() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="shadow-sm border-2 border-primary/20 bg-primary/5">
+          <CardContent className="p-4 text-center">
+            <p className="text-sm text-muted-foreground mb-1">📋 Aprovado</p>
+            <p className="text-xl font-black tabular-nums text-primary">
+              {fmt(valorAprovado)}
+            </p>
+          </CardContent>
+        </Card>
         <Card className="shadow-sm border-2 border-destructive/20 bg-destructive/5">
-          <CardContent className="p-5 text-center">
-            <p className="text-sm text-muted-foreground mb-1">💸 Total gasto</p>
-            <p className="text-2xl font-black tabular-nums text-destructive">
+          <CardContent className="p-4 text-center">
+            <p className="text-sm text-muted-foreground mb-1">💸 Gasto</p>
+            <p className="text-xl font-black tabular-nums text-destructive">
               {fmt(totalGasto)}
             </p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-2 border-success/20 bg-success/5">
-          <CardContent className="p-5 text-center">
+        <Card className={`shadow-sm border-2 ${disponivel >= 0 ? "border-success/20 bg-success/5" : "border-destructive/20 bg-destructive/5"}`}>
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">💰 Disponível</p>
-            <p className="text-2xl font-black tabular-nums text-success">
+            <p className={`text-xl font-black tabular-nums ${disponivel >= 0 ? "text-success" : "text-destructive"}`}>
               {fmt(disponivel)}
             </p>
           </CardContent>
