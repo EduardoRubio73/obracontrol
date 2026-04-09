@@ -861,7 +861,7 @@ ObraControl`;
 
 export default function Cotacoes() {
   return (
-    <RequireObra>
+    <RequireObra pageName="Cotações">
       <CotacoesContent />
     </RequireObra>
   );

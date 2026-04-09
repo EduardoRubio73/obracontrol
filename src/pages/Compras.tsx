@@ -521,7 +521,7 @@ function ComprasContent() {
 
 export default function Compras() {
   return (
-    <RequireObra>
+    <RequireObra pageName="Compras">
       <ComprasContent />
     </RequireObra>
   );

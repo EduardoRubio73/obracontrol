@@ -14,11 +14,14 @@ import {
   Settings,
   PanelLeft,
   Bot,
+  Image,
+  FolderOpen,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
 import {
   Sidebar,
   SidebarContent,
@@ -32,25 +35,33 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const mainItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Obras", url: "/obras", icon: Building2 },
-  { title: "Etapas", url: "/etapas", icon: Layers },
-  { title: "Compras", url: "/compras", icon: ShoppingCart },
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Cotações", url: "/cotacoes", icon: FileText },
-  { title: "Fornecedores", url: "/fornecedores", icon: Users },
-  { title: "Assistente IA", url: "/chat", icon: Bot },
+const principalItems = [
+  { title: "📊 Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "🏗️ Obras", url: "/obras", icon: Building2 },
 ];
 
-const adminItems = [
-  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
+const gestaoObraItems = [
+  { title: "📋 Etapas", url: "/etapas", icon: Layers },
+  { title: "🛒 Compras", url: "/compras", icon: ShoppingCart },
+  { title: "💰 Financeiro", url: "/financeiro", icon: DollarSign },
+  { title: "📝 Cotações", url: "/cotacoes", icon: FileText },
+  { title: "🖼️ Galeria", url: "/galeria", icon: Image },
+  { title: "📁 Documentos", url: "/documentos", icon: FolderOpen },
+];
+
+const cadastroItems = [
+  { title: "👥 Fornecedores", url: "/fornecedores", icon: Users },
+  { title: "📦 Produtos", url: "/produtos", icon: Package },
+];
+
+const sistemaItems = [
+  { title: "📈 Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "⚙️ Configurações", url: "/configuracoes", icon: Settings },
+  { title: "🤖 Assistente IA", url: "/chat", icon: Bot },
 ];
 
 const userItems = [
-  { title: "Produtos", url: "/produtos", icon: Package },
-  { title: "Perfil", url: "/perfil", icon: UserCircle },
+  { title: "👤 Perfil", url: "/perfil", icon: UserCircle },
 ];
 
 export function AppSidebar() {
@@ -58,15 +69,18 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { obraAtiva, obraAtivaId } = useObraAtiva();
 
-  const renderItems = (items: typeof mainItems) =>
+  const hasObraSelected = !!obraAtiva && obraAtivaId !== "all";
+
+  const renderItems = (items: typeof principalItems, highlight = false) =>
     items.map((item) => (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton asChild>
           <NavLink
             to={item.url}
             end={item.url === "/"}
-            className="hover:bg-accent"
+            className={`hover:bg-accent ${highlight && hasObraSelected ? "border-l-2 border-primary/60" : ""}`}
             activeClassName="bg-primary/10 text-primary font-medium"
           >
             <item.icon className="mr-2 h-4 w-4" />
@@ -93,21 +107,46 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "Principal"}</SidebarGroupLabel>
+          <SidebarGroupLabel>{!collapsed && "📌 Principal"}</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>{renderItems(mainItems)}</SidebarMenu>
+            <SidebarMenu>{renderItems(principalItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "Gestão"}</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {!collapsed && (
+              <span className="flex items-center gap-1">
+                🏗️ Gestão da Obra
+                {hasObraSelected && (
+                  <span className="ml-1 text-[10px] font-normal text-primary bg-primary/10 rounded-full px-2 py-0.5 truncate max-w-[120px]">
+                    {obraAtiva.nome}
+                  </span>
+                )}
+              </span>
+            )}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>{renderItems(adminItems)}</SidebarMenu>
+            <SidebarMenu>{renderItems(gestaoObraItems, true)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "Conta"}</SidebarGroupLabel>
+          <SidebarGroupLabel>{!collapsed && "📦 Cadastros"}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(cadastroItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>{!collapsed && "⚙️ Sistema"}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(sistemaItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>{!collapsed && "👤 Conta"}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>{renderItems(userItems)}</SidebarMenu>
           </SidebarGroupContent>
@@ -131,7 +170,7 @@ export function AppSidebar() {
               className="text-destructive hover:bg-destructive/10"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              {!collapsed && <span>Sair</span>}
+              {!collapsed && <span>🚪 Sair</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

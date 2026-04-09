@@ -8,11 +8,11 @@ import {
 } from "lucide-react";
 
 const tabs = [
-  { title: "Início", url: "/", icon: Home },
-  { title: "Etapas", url: "/etapas", icon: Layers },
-  { title: "Compras", url: "/compras", icon: ShoppingCart },
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Contatos", url: "/fornecedores", icon: Users },
+  { title: "🏠 Início", url: "/", icon: Home },
+  { title: "📋 Etapas", url: "/etapas", icon: Layers },
+  { title: "🛒 Compras", url: "/compras", icon: ShoppingCart },
+  { title: "💰 Financeiro", url: "/financeiro", icon: DollarSign },
+  { title: "👥 Contatos", url: "/fornecedores", icon: Users },
 ];
 
 export function MobileBottomNav() {
