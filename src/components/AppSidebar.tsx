@@ -12,7 +12,7 @@ import {
   Building2,
   BarChart3,
   Settings,
-  
+  PanelLeft,
   Bot,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -54,7 +54,7 @@ const userItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -116,6 +116,15 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={toggleSidebar}
+              className="text-muted-foreground hover:bg-accent"
+            >
+              <PanelLeft className="mr-2 h-4 w-4" />
+              {!collapsed && <span>Recolher menu</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={signOut}
