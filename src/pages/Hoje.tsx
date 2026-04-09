@@ -90,6 +90,19 @@ const Hoje = () => {
     },
   });
 
+  const { data: comprasPendentes } = useQuery({
+    queryKey: ["compras-pendentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("compras")
+        .select("id, descricao, status, valor_total, fornecedor_id, fornecedores(nome)")
+        .eq("status", "pendente")
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: progresso } = useQuery({
     queryKey: ["progresso-geral"],
     queryFn: async () => {
@@ -103,6 +116,17 @@ const Hoje = () => {
         rows.reduce((a: number, r: any) => a + (r.progresso_geral ?? 0), 0) /
         rows.length;
       return Math.round(avg);
+    },
+  });
+
+  const marcarComprado = useMutation({
+    mutationFn: async (compraId: string) => {
+      const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: compraId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compras-pendentes"] });
+      toast.success("Compra marcada como realizada! 🛒");
     },
   });
 
@@ -127,6 +151,7 @@ const Hoje = () => {
   const firstName = profile?.nome?.split(" ")[0] ?? "";
   const hasAlerts = (alertas?.length ?? 0) > 0;
   const hasTasks = (tarefas?.length ?? 0) > 0;
+  const hasCompras = (comprasPendentes?.length ?? 0) > 0;
 
   const handleVoiceCommand = useCallback(
     (cmd: VoiceCommand, raw: string) => {
