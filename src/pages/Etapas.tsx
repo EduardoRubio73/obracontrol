@@ -170,6 +170,24 @@ function EtapasContent() {
     },
   });
 
+  const { data: faseFotos } = useQuery({
+    queryKey: ["fase-fotos-thumbs", obraAtivaId],
+    enabled: !!obraAtivaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fase_fotos")
+        .select("id, url, fase_id")
+        .eq("obra_id", obraAtivaId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const f of data ?? []) {
+        if (!map[f.fase_id]) map[f.fase_id] = f.url;
+      }
+      return map;
+    },
+  });
+
   const createFase = useMutation({
     mutationFn: async ({ nome, isNew }: { nome: string; isNew: boolean }) => {
       // Auto-insert into etapas_padrao if new
@@ -229,11 +247,15 @@ function EtapasContent() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`h-3.5 w-3.5 rounded-full ${statusDot[st]}`} />
-                  <h3 className="text-xl font-bold text-foreground">
-                    {f.nome}
-                  </h3>
-                </div>
+                   {faseFotos?.[f.id] ? (
+                     <img src={faseFotos[f.id]} alt="" className="h-12 w-12 rounded-lg object-cover flex-shrink-0" />
+                   ) : (
+                     <div className={`h-3.5 w-3.5 rounded-full ${statusDot[st]}`} />
+                   )}
+                   <h3 className="text-xl font-bold text-foreground">
+                     {f.nome}
+                   </h3>
+                 </div>
                 <ChevronRight className="h-6 w-6 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-3">

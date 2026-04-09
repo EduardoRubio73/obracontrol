@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock } from "lucide-react";
+import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock, Building2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +41,25 @@ const Obras = () => {
       const { data, error } = await supabase.from("obras").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  const obraIds = obras?.map((o) => o.id) ?? [];
+  const { data: fotoMap } = useQuery({
+    queryKey: ["obras-list-thumbs", obraIds.join(",")],
+    enabled: obraIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fase_fotos")
+        .select("id, url, obra_id")
+        .in("obra_id", obraIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const f of data ?? []) {
+        if (!map[f.obra_id]) map[f.obra_id] = f.url;
+      }
+      return map;
     },
   });
 
@@ -212,6 +231,7 @@ const Obras = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Foto</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Valor Previsto</TableHead>
@@ -222,6 +242,15 @@ const Obras = () => {
             <TableBody>
               {filtered?.map((obra) => (
                 <TableRow key={obra.id}>
+                  <TableCell>
+                    {fotoMap?.[obra.id] ? (
+                      <img src={fotoMap[obra.id]} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                    ) : (
+                      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>{obra.nome}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
@@ -243,7 +272,7 @@ const Obras = () => {
               ))}
               {!isLoading && !filtered?.length && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma obra encontrada</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma obra encontrada</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -256,11 +285,22 @@ const Obras = () => {
         {filtered?.map((obra) => (
           <Card key={obra.id} className="cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{obra.nome}</span>
-                <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
+              <div className="flex items-center gap-3">
+                {fotoMap?.[obra.id] ? (
+                  <img src={fotoMap[obra.id]} alt="" className="h-12 w-12 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium truncate">{obra.nome}</span>
+                    <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{fmt(obra.valor_previsto)}</p>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{fmt(obra.valor_previsto)}</p>
             </CardContent>
           </Card>
         ))}
