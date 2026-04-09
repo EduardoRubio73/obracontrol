@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { Shield } from "lucide-react";
 
@@ -36,12 +34,12 @@ const Auditoria = () => {
   const tabelas = ["todas", "obras", "obra_fases", "fase_itens", "financeiro", "fornecedores", "cotacoes", "propostas"];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Auditoria</h1>
+    <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 px-4 pb-24">
+      <h1 className="text-xl sm:text-2xl font-bold">Auditoria</h1>
 
       <div className="flex gap-3 flex-wrap">
         <Select value={tabela} onValueChange={setTabela}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Filtrar tabela" />
           </SelectTrigger>
           <SelectContent>
@@ -62,32 +60,23 @@ const Auditoria = () => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Tabela</TableHead>
-                <TableHead>Ação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="text-sm">
+        <div className="space-y-2">
+          {logs.map((log) => (
+            <Card key={log.id} className="rounded-xl">
+              <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-mono truncate">{log.tabela}</p>
+                  <p className="text-xs text-muted-foreground">
                     {log.created_at ? format(new Date(log.created_at), "dd/MM/yy HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className="text-sm font-mono">{log.tabela}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={acaoColor[log.acao ?? ""] ?? ""}>
-                      {log.acao}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+                  </p>
+                </div>
+                <Badge variant="secondary" className={`shrink-0 ${acaoColor[log.acao ?? ""] ?? ""}`}>
+                  {log.acao}
+                </Badge>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );
