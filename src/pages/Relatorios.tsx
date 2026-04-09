@@ -126,8 +126,8 @@ const Relatorios = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Relatórios</h1>
+    <div className="space-y-4 sm:space-y-6 px-1 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28">
+      <h1 className="text-xl sm:text-2xl font-bold">Relatórios</h1>
 
       <Card>
         <CardHeader>
@@ -147,12 +147,12 @@ const Relatorios = () => {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-4">
-            <FileSpreadsheet className="h-12 w-12 text-primary" />
-            <p className="font-semibold">Financeiro (CSV)</p>
-            <p className="text-sm text-muted-foreground text-center">
+          <CardContent className="p-4 sm:p-6 flex flex-col items-center gap-3 sm:gap-4">
+            <FileSpreadsheet className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
+            <p className="font-semibold text-sm sm:text-base">Financeiro (CSV)</p>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center">
               Exporta todas as transações financeiras da obra
             </p>
             <Button onClick={exportFinanceiro} className="w-full">
@@ -162,10 +162,10 @@ const Relatorios = () => {
         </Card>
 
         <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-4">
-            <FileDown className="h-12 w-12 text-destructive" />
-            <p className="font-semibold">Financeiro (PDF)</p>
-            <p className="text-sm text-muted-foreground text-center">
+          <CardContent className="p-4 sm:p-6 flex flex-col items-center gap-3 sm:gap-4">
+            <FileDown className="h-10 w-10 sm:h-12 sm:w-12 text-destructive" />
+            <p className="font-semibold text-sm sm:text-base">Financeiro (PDF)</p>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center">
               Gera relatório financeiro pronto para impressão
             </p>
             <Button onClick={exportFinanceiroPdf} className="w-full" variant="destructive">
@@ -175,10 +175,10 @@ const Relatorios = () => {
         </Card>
 
         <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-4">
-            <FileText className="h-12 w-12 text-primary" />
-            <p className="font-semibold">Dossiê (CSV)</p>
-            <p className="text-sm text-muted-foreground text-center">
+          <CardContent className="p-4 sm:p-6 flex flex-col items-center gap-3 sm:gap-4">
+            <FileText className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
+            <p className="font-semibold text-sm sm:text-base">Dossiê (CSV)</p>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center">
               Exporta a linha do tempo completa da obra
             </p>
             <Button onClick={exportDossie} className="w-full">

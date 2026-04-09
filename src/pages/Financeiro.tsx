@@ -141,34 +141,34 @@ function FinanceiroContent() {
   };
 
   return (
-    <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
-      <div className="pt-4">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+    <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
+      <div className="pt-2 sm:pt-4">
+        <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
           Financeiro {obraAtiva ? `— ${obraAtiva.nome}` : ""}
         </h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Card className="shadow-sm border-2 border-primary/20 bg-primary/5">
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground mb-1">📋 Aprovado</p>
-            <p className="text-xl font-black tabular-nums text-primary">
+          <CardContent className="p-2 sm:p-4 text-center">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">📋 Aprovado</p>
+            <p className="text-sm sm:text-xl font-black tabular-nums text-primary truncate">
               {fmt(valorAprovado)}
             </p>
           </CardContent>
         </Card>
         <Card className="shadow-sm border-2 border-destructive/20 bg-destructive/5">
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground mb-1">💸 Gasto</p>
-            <p className="text-xl font-black tabular-nums text-destructive">
+          <CardContent className="p-2 sm:p-4 text-center">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">💸 Gasto</p>
+            <p className="text-sm sm:text-xl font-black tabular-nums text-destructive truncate">
               {fmt(totalGasto)}
             </p>
           </CardContent>
         </Card>
         <Card className={`shadow-sm border-2 ${disponivel >= 0 ? "border-success/20 bg-success/5" : "border-destructive/20 bg-destructive/5"}`}>
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground mb-1">💰 Disponível</p>
-            <p className={`text-xl font-black tabular-nums ${disponivel >= 0 ? "text-success" : "text-destructive"}`}>
+          <CardContent className="p-2 sm:p-4 text-center">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">💰 Disponível</p>
+            <p className={`text-sm sm:text-xl font-black tabular-nums truncate ${disponivel >= 0 ? "text-success" : "text-destructive"}`}>
               {fmt(disponivel)}
             </p>
           </CardContent>

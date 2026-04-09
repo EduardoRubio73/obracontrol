@@ -223,8 +223,8 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
 
 const Configuracoes = () => {
   return (
-    <div className="space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28">
-      <h1 className="text-2xl font-bold">Configurações</h1>
+    <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
+      <h1 className="text-xl sm:text-2xl font-bold">Configurações</h1>
 
       <Tabs defaultValue="categorias">
         <ScrollArea className="w-full">

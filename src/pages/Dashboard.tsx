@@ -267,22 +267,20 @@ const Dashboard = () => {
   const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-24">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 pb-24 px-1">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-4 w-4" /> Início
-          </Button>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate max-w-xs sm:max-w-md">{dashTitle}</h1>
-        </div>
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
-          {filtroId && (
-            <Button variant="outline" className="rounded-xl gap-2" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
-              <FileSearch className="h-4 w-4" /> Gerar Dossiê
-            </Button>
-          )}
+          <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Início</span>
+          </Button>
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{dashTitle}</h1>
         </div>
+        {filtroId && (
+          <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full sm:w-auto" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
+            <FileSearch className="h-4 w-4" /> Gerar Dossiê
+          </Button>
+        )}
       </div>
 
       {filtroId && obraAtualStatus && (
