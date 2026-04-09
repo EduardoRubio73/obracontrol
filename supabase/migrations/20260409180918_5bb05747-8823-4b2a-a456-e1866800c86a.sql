@@ -1,0 +1,1 @@
+ALTER TABLE public.obras ADD COLUMN justificativa_status text;
