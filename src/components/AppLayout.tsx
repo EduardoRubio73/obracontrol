@@ -65,7 +65,7 @@ export function AppLayout() {
               <SidebarTrigger className="hidden md:flex" />
 
               {/* Logo mobile */}
-              <div className="flex items-center gap-2 md:hidden">
+              <div className="flex items-center gap-2 md:hidden cursor-pointer" onClick={() => navigate("/")}>
                 <img src={logoImg} alt="ObraControl" className="h-8 w-8 rounded-lg object-contain" />
               </div>
 
