@@ -195,18 +195,46 @@ const Dashboard = () => {
     },
   });
 
+  /* ── Status history ── */
+  const { data: statusHistorico } = useQuery({
+    queryKey: ["dashboard-status-historico", filtroId],
+    enabled: !!filtroId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("obra_status_historico")
+        .select("id, status_anterior, status_novo, justificativa, created_at")
+        .eq("obra_id", filtroId!)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   /* ── Status mutation ── */
   const changeStatus = useMutation({
     mutationFn: async ({ obraId, status, justificativa }: { obraId: string; status: string; justificativa?: string }) => {
+      const statusAnterior = obraAtual?.status ?? null;
+
       const { error } = await supabase.from("obras").update({
         status: status as any,
         justificativa_status: justificativa || null,
       } as any).eq("id", obraId);
       if (error) throw error;
+
+      // Insert history record
+      const { error: histError } = await supabase.from("obra_status_historico").insert({
+        obra_id: obraId,
+        status_anterior: statusAnterior,
+        status_novo: status,
+        justificativa: justificativa || null,
+      } as any);
+      if (histError) console.error("Erro ao salvar histórico:", histError);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard-obras"] });
       queryClient.invalidateQueries({ queryKey: ["obras-lista"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-status-historico", filtroId] });
       toast.success("Status atualizado!");
     },
   });
