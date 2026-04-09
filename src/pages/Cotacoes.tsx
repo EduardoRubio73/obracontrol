@@ -538,12 +538,15 @@ const CotacoesContent = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-lg md:max-w-4xl lg:max-w-6xl mx-auto pb-28">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Cotações {obraAtiva ? `— ${obraAtiva.nome}` : ""}</h1>
+    <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-4xl lg:max-w-6xl mx-auto pb-28 px-1">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold truncate">
+          Cotações {obraAtiva ? `— ${obraAtiva.nome}` : ""}
+        </h1>
         <Dialog open={newCotacao} onOpenChange={setNewCotacao}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Nova Cotação</Button>
+            <Button className="w-full sm:w-auto shrink-0"><Plus className="mr-2 h-4 w-4" />Nova Cotação</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -583,42 +586,48 @@ const CotacoesContent = () => {
           const itemCount = allItensCount?.[cotacao.id] ?? 0;
           return (
             <Card key={cotacao.id} className="hover:border-primary/30 transition-colors">
-              <CardContent className="flex items-center justify-between p-4">
+              <CardContent className="p-3 sm:p-4 space-y-2">
+                {/* Row 1: title + status */}
                 <div
-                  className="flex-1 cursor-pointer"
+                  className="flex items-start justify-between gap-2 cursor-pointer"
                   onClick={() => setSelectedId(cotacao.id)}
                 >
-                  <p className="font-medium">{cotacao.descricao}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <p className="text-sm text-muted-foreground">
-                      {(cotacao.obras as any)?.nome ?? "—"}
-                    </p>
-                    {itemCount > 0 ? (
-                      <span className="text-xs text-muted-foreground">📦 {itemCount} ite{itemCount === 1 ? "m" : "ns"}</span>
-                    ) : (
-                      <span className="text-xs text-destructive font-medium">⚠️ Sem itens</span>
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm sm:text-base leading-snug">{cotacao.descricao}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="text-xs sm:text-sm text-muted-foreground truncate">
+                        {(cotacao.obras as any)?.nome ?? "—"}
+                      </span>
+                      {itemCount > 0 ? (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">📦 {itemCount} ite{itemCount === 1 ? "m" : "ns"}</span>
+                      ) : (
+                        <span className="text-xs text-destructive font-medium whitespace-nowrap">⚠️ Sem itens</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className={statusColors[cotacao.status ?? ""] ?? ""}>
+                  <Badge variant="secondary" className={cn("shrink-0 text-xs", statusColors[cotacao.status ?? ""] ?? "")}>
                     {cotacao.status?.replace("_", " ")}
                   </Badge>
-                  <Button variant="ghost" size="icon" title="Gerenciar itens e fornecedores" onClick={() => { setManageDialog(cotacao.id); setSelectedProds({}); setProdSearch(""); }}>
-                    <PackagePlus className="h-4 w-4" />
+                </div>
+                {/* Row 2: action buttons */}
+                <div className="flex items-center gap-1 border-t pt-2 overflow-x-auto">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0" onClick={() => { setManageDialog(cotacao.id); setSelectedProds({}); setProdSearch(""); }}>
+                    <PackagePlus className="h-3.5 w-3.5" /> Itens
                   </Button>
-                  <Button variant="ghost" size="icon" title="Editar cotação" onClick={() => setEditDialog({ id: cotacao.id, descricao: cotacao.descricao, data_expiracao: cotacao.data_expiracao ?? "" })}>
-                    <Pencil className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0" onClick={() => setEditDialog({ id: cotacao.id, descricao: cotacao.descricao, data_expiracao: cotacao.data_expiracao ?? "" })}>
+                    <Pencil className="h-3.5 w-3.5" /> Editar
                   </Button>
-                  <Button variant="ghost" size="icon" title="Excluir cotação" onClick={() => setDeleteConfirm(cotacao.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 text-destructive" onClick={() => setDeleteConfirm(cotacao.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                   {(cotacao as any).token_publico && (
-                    <Button variant="ghost" size="icon" title="Copiar link" onClick={() => copyLink((cotacao as any).token_publico)}>
-                      <Copy className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 ml-auto" onClick={() => copyLink((cotacao as any).token_publico)}>
+                      <Copy className="h-3.5 w-3.5" /> Link
                     </Button>
                   )}
-                  <ChevronRight className="h-4 w-4 text-muted-foreground cursor-pointer" onClick={() => setSelectedId(cotacao.id)} />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 ml-auto" onClick={() => setSelectedId(cotacao.id)}>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -840,7 +849,7 @@ const CotacoesContent = () => {
               <p className="text-muted-foreground text-sm">Nenhuma proposta recebida</p>
             )}
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
               {propostas && propostas.length >= 2 && (
                 <>
                   <Button className="flex-1" onClick={() => { const id = selectedId; setSelectedId(null); navigate(`/cotacoes/${id}/comparar`); }}>
@@ -858,7 +867,7 @@ const CotacoesContent = () => {
 
       {/* Manage Dialog with Tabs: Items + Fornecedores */}
       <Dialog open={!!manageDialog} onOpenChange={(v) => { if (!v) { setManageDialog(null); setSelectedProds({}); setProdSearch(""); setSelectedFornecedores([]); } }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto p-3 sm:p-6">
           <DialogHeader>
             <DialogTitle>Gerenciar Cotação</DialogTitle>
           </DialogHeader>
