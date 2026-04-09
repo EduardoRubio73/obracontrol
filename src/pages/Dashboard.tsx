@@ -62,7 +62,7 @@ const Dashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obras")
-        .select("id, nome, status, valor_previsto, created_at")
+        .select("id, nome, status, valor_previsto, created_at, justificativa_status")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
