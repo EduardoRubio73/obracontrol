@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { ObraPhotoCarousel } from "@/components/ObraPhotoCarousel";
 import logoImg from "@/assets/logo-obracontrol.png";
 import {
   Select,
