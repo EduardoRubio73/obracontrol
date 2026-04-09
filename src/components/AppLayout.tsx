@@ -85,6 +85,7 @@ export function AppLayout() {
                       <SelectValue placeholder="Selecionar obra" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">Todas as obras</SelectItem>
                       {obras.map((o) => (
                         <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
                       ))}
