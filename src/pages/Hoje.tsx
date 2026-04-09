@@ -257,7 +257,7 @@ const Hoje = () => {
       )}
 
       {/* CTA */}
-      {hasTasks && (
+      {(hasTasks || hasCompras) && (
         <Button
           className="w-full h-16 text-xl font-bold rounded-2xl bg-warning text-warning-foreground hover:bg-warning/90 shadow-md"
           onClick={() =>
@@ -271,7 +271,7 @@ const Hoje = () => {
       )}
 
       {/* All good */}
-      {!hasAlerts && !hasTasks && (
+      {!hasAlerts && !hasTasks && !hasCompras && (
         <Card className="border-2 border-success/30 bg-success/10 shadow-sm">
           <CardContent className="p-8 text-center">
             <p className="text-2xl font-bold text-foreground">Tudo em dia 👏</p>
