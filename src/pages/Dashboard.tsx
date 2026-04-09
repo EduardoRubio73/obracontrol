@@ -51,6 +51,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { obraAtiva, filtroObraId, isAll } = useObraAtiva();
+  const [statusModal, setStatusModal] = useState<{ open: boolean; status: string }>({ open: false, status: "" });
+  const [justificativa, setJustificativa] = useState("");
 
   const filtroId = filtroObraId;
 
