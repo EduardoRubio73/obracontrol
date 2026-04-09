@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, FileDown } from "lucide-react";
 
 const downloadCsv = (filename: string, headers: string[], rows: string[][]) => {
   const csv = [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
@@ -71,6 +71,60 @@ const Relatorios = () => {
     toast.success("Exportado!");
   };
 
+  const exportFinanceiroPdf = async () => {
+    if (!obraId) { toast.error("Selecione uma obra"); return; }
+    const obraNome = obras?.find((o) => o.id === obraId)?.nome ?? "Obra";
+    const { data, error } = await supabase
+      .from("financeiro")
+      .select("data_transacao, tipo, descricao, valor")
+      .eq("obra_id", obraId)
+      .order("data_transacao");
+    if (error) { toast.error(error.message); return; }
+    if (!data?.length) { toast.info("Sem dados financeiros"); return; }
+
+    const totalDespesa = data.filter((r) => r.tipo === "despesa").reduce((a, r) => a + (r.valor ?? 0), 0);
+    const totalReceita = data.filter((r) => r.tipo === "receita").reduce((a, r) => a + (r.valor ?? 0), 0);
+    const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) { toast.error("Popup bloqueado"); return; }
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório Financeiro - ${obraNome}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color: #1a1a1a; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+        .summary { display: flex; gap: 24px; margin-bottom: 24px; }
+        .summary div { padding: 12px 16px; border-radius: 8px; background: #f5f5f5; }
+        .summary .label { font-size: 12px; color: #666; }
+        .summary .val { font-size: 18px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 8px; border-bottom: 2px solid #ddd; font-weight: 600; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+        .despesa { color: #dc2626; }
+        .receita { color: #16a34a; }
+        @media print { body { padding: 20px; } }
+      </style></head><body>
+      <h1>Relatório Financeiro</h1>
+      <p class="sub">${obraNome} — gerado em ${new Date().toLocaleDateString("pt-BR")}</p>
+      <div class="summary">
+        <div><span class="label">Total Despesas</span><br><span class="val despesa">${fmt(totalDespesa)}</span></div>
+        <div><span class="label">Total Receitas</span><br><span class="val receita">${fmt(totalReceita)}</span></div>
+        <div><span class="label">Saldo</span><br><span class="val">${fmt(totalReceita - totalDespesa)}</span></div>
+      </div>
+      <table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead>
+        <tbody>${data.map((r) => `<tr>
+          <td>${r.data_transacao ?? "-"}</td>
+          <td class="${r.tipo}">${r.tipo ?? "-"}</td>
+          <td>${r.descricao ?? "-"}</td>
+          <td style="text-align:right" class="${r.tipo}">${fmt(r.valor ?? 0)}</td>
+        </tr>`).join("")}</tbody>
+      </table></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Relatórios</h1>
@@ -93,7 +147,7 @@ const Relatorios = () => {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6 flex flex-col items-center gap-4">
             <FileSpreadsheet className="h-12 w-12 text-primary" />
@@ -103,6 +157,19 @@ const Relatorios = () => {
             </p>
             <Button onClick={exportFinanceiro} className="w-full">
               <Download className="h-4 w-4 mr-2" /> Exportar
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6 flex flex-col items-center gap-4">
+            <FileDown className="h-12 w-12 text-destructive" />
+            <p className="font-semibold">Financeiro (PDF)</p>
+            <p className="text-sm text-muted-foreground text-center">
+              Gera relatório financeiro pronto para impressão
+            </p>
+            <Button onClick={exportFinanceiroPdf} className="w-full" variant="destructive">
+              <Download className="h-4 w-4 mr-2" /> Gerar PDF
             </Button>
           </CardContent>
         </Card>
