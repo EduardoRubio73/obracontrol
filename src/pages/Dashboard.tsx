@@ -1,13 +1,21 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, FileSearch, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
 import { DashboardObrasRecentes } from "@/components/dashboard/DashboardObrasRecentes";
@@ -30,14 +38,27 @@ const statusColor: Record<string, string> = {
   cancelado: "bg-destructive/15 text-destructive",
 };
 
+const allStatuses = ["planejamento", "execução", "concluído", "pausado", "cancelado"] as const;
+
+const statusLabels: Record<string, string> = {
+  planejamento: "Planejamento",
+  "execução": "Execução",
+  "concluído": "Concluído",
+  pausado: "Pausado",
+  cancelado: "Cancelado",
+};
+
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { obraAtivaId, setObraAtivaId, obras: obrasContext } = useObraAtiva();
+  const queryClient = useQueryClient();
+  const { obraAtivaId, obras: obrasContext } = useObraAtiva();
 
-  const filtroId = obraAtivaId;
+  // Local filter: "all" or a specific obra id
+  const [filtroLocal, setFiltroLocal] = useState<string>("active");
+  const filtroId = filtroLocal === "all" ? null : filtroLocal === "active" ? obraAtivaId : filtroLocal;
 
   /* ── Queries ── */
   const { data: obras } = useQuery({
@@ -64,12 +85,11 @@ const Dashboard = () => {
   });
 
   const { data: alertas } = useQuery({
-    queryKey: ["dashboard-alertas"],
+    queryKey: ["dashboard-alertas", filtroId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("alertas_sistema")
-        .select("id")
-        .eq("resolvido", false);
+      let q = supabase.from("alertas_sistema").select("id, entidade_id").eq("resolvido", false);
+      // Filter by obra if selected - alertas can be linked to obra or fase
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
@@ -178,9 +198,25 @@ const Dashboard = () => {
     },
   });
 
+  /* ── Status mutation ── */
+  const changeStatus = useMutation({
+    mutationFn: async ({ obraId, status }: { obraId: string; status: string }) => {
+      const { error } = await supabase.from("obras").update({ status: status as any }).eq("id", obraId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-obras"] });
+      queryClient.invalidateQueries({ queryKey: ["obras-lista"] });
+      toast.success("Status atualizado!");
+    },
+  });
+
   /* ── Derived ── */
-  const obrasTotal = obras?.length ?? 0;
-  const obrasAtivas = obras?.filter((o) => o.status === "execução").length ?? 0;
+  const obraAtual = filtroId ? obras?.find((o) => o.id === filtroId) : null;
+
+  // Cards data filtered by obra
+  const obrasTotal = filtroId ? 1 : (obras?.length ?? 0);
+  const fasesEmAndamento = fases?.filter((f) => f.status === "em_andamento").length ?? 0;
   const totalGasto =
     financeiro?.filter((f) => f.tipo === "despesa").reduce((a, f) => a + (f.valor ?? 0), 0) ?? 0;
 
@@ -202,6 +238,9 @@ const Dashboard = () => {
     propostas_count: (propostas ?? []).filter((p) => p.cotacao_id === c.id).length,
   }));
 
+  // Title
+  const dashTitle = obraAtual ? `Dashboard — ${obraAtual.nome}` : "Dashboard — Todas as Obras";
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-24">
       {/* Header */}
@@ -210,7 +249,7 @@ const Dashboard = () => {
           <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate("/")}>
             <ArrowLeft className="h-4 w-4" /> Início
           </Button>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate max-w-xs sm:max-w-md">{dashTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
           {filtroId && (
@@ -224,10 +263,55 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Obra filter selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Select value={filtroLocal} onValueChange={setFiltroLocal}>
+          <SelectTrigger className="w-full sm:w-72 h-10 rounded-xl">
+            <SelectValue placeholder="Filtrar por obra" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Obras</SelectItem>
+            {obrasContext.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                <span className="flex items-center gap-2">
+                  {o.nome}
+                  <span className="text-xs text-muted-foreground">
+                    • {statusLabels[o.status ?? "planejamento"] ?? o.status}
+                  </span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Status pills — only when a specific obra is selected */}
+        {filtroId && obraAtual && (
+          <div className="flex flex-wrap gap-2">
+            {allStatuses.map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  if (obraAtual.status !== s) {
+                    changeStatus.mutate({ obraId: filtroId, status: s });
+                  }
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                  obraAtual.status === s
+                    ? `${statusColor[s]} border-current ring-2 ring-current/20`
+                    : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                }`}
+              >
+                {statusLabels[s]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Summary Cards */}
       <DashboardSummaryCards
         obrasTotal={obrasTotal}
-        obrasAtivas={obrasAtivas}
+        obrasAtivas={fasesEmAndamento}
         totalGasto={totalGasto}
         alertasCount={alertas?.length ?? 0}
       />

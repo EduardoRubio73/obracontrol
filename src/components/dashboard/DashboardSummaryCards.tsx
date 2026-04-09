@@ -17,7 +17,7 @@ export const DashboardSummaryCards = ({ obrasTotal, obrasAtivas, totalGasto, ale
 
   const items = [
     { label: "Total Obras", value: obrasTotal, icon: Building2, color: "text-primary", route: "/obras" },
-    { label: "Em Andamento", value: obrasAtivas, icon: TrendingUp, color: "text-amber-500", route: "/etapas" },
+    { label: "Etapas Ativas", value: obrasAtivas, icon: TrendingUp, color: "text-amber-500", route: "/etapas" },
     { label: "Total Investido", value: fmt(totalGasto), icon: DollarSign, color: "text-emerald-500", route: "/financeiro" },
     { label: "Alertas", value: alertasCount, icon: AlertTriangle, color: "text-destructive", route: "/dashboard" },
   ];
