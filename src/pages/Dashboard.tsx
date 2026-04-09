@@ -24,7 +24,6 @@ import { DashboardDocumentos } from "@/components/dashboard/DashboardDocumentos"
 import { DashboardAlteracoes } from "@/components/dashboard/DashboardAlteracoes";
 import { DashboardFornecedores } from "@/components/dashboard/DashboardFornecedores";
 import { DashboardCotacoesDetalhadas } from "@/components/dashboard/DashboardCotacoesDetalhadas";
-import { DashboardAdminSection } from "@/components/dashboard/DashboardAdminSection";
 
 const statusColor: Record<string, string> = {
   planejamento: "bg-muted text-muted-foreground",
@@ -169,32 +168,6 @@ const Dashboard = () => {
     },
   });
 
-  const { data: auditoria } = useQuery({
-    queryKey: ["dashboard-auditoria"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("auditoria")
-        .select("id, tabela, acao, created_at")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: vozLogs } = useQuery({
-    queryKey: ["dashboard-voz-logs"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("voz_comandos_log")
-        .select("id, comando, interpretacao, created_at")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
   /* ── Status history ── */
   const { data: statusHistorico } = useQuery({
     queryKey: ["dashboard-status-historico", filtroId],
@@ -222,7 +195,6 @@ const Dashboard = () => {
       } as any).eq("id", obraId);
       if (error) throw error;
 
-      // Insert history record
       const { error: histError } = await supabase.from("obra_status_historico").insert({
         obra_id: obraId,
         status_anterior: statusAnterior,
@@ -267,7 +239,7 @@ const Dashboard = () => {
   const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 pb-24 px-1">
+    <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 pb-24 px-4">
       {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -326,7 +298,7 @@ const Dashboard = () => {
 
       {/* Modal justificativa de status */}
       <Dialog open={statusModal.open} onOpenChange={(v) => !v && setStatusModal({ open: false, status: "" })}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md">
           <DialogHeader>
             <DialogTitle>Alterar para {statusLabels[statusModal.status] ?? statusModal.status}</DialogTitle>
           </DialogHeader>
@@ -374,7 +346,7 @@ const Dashboard = () => {
       />
 
       {/* Obras Recentes + Financeiro + Cotações */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DashboardObrasRecentes obras={obrasFiltradas ?? []} fases={fases ?? []} />
         <div className="space-y-4">
           <DashboardFinanceiroCard totalGasto={totalGasto} totalPrevisto={totalPrevisto} />
@@ -383,7 +355,7 @@ const Dashboard = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DashboardTimeline fases={fases ?? []} />
         <DashboardChartPrevistoGasto chartData={chartData} />
       </div>
@@ -393,7 +365,7 @@ const Dashboard = () => {
 
       {/* Documentos + Alterações (when obra selected) */}
       {filtroId && (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DashboardDocumentos documentos={documentos ?? []} />
           <DashboardAlteracoes alteracoes={alteracoes ?? []} />
         </div>
@@ -410,7 +382,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="space-y-3">
               {(statusHistorico ?? []).map((h) => (
-                <div key={h.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/40">
+                <div key={h.id} className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-3 rounded-xl bg-muted/40">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {h.status_anterior && (
@@ -439,19 +411,49 @@ const Dashboard = () => {
         </Card>
       )}
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DashboardFornecedores fornecedores={fornecedores ?? []} />
         <DashboardCotacoesDetalhadas cotacoes={cotacoesDetalhadas} />
       </div>
 
-      {/* DESKTOP: Tabela completa de obras */}
+      {/* Todas as Obras — mobile: cards, desktop: table */}
       {!filtroId && (obras ?? []).length > 0 && (
         <Card className="rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Todas as Obras</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {(obras ?? []).map((o) => {
+                const obraFases = fases?.filter((f) => f.obra_id === o.id) ?? [];
+                const prog = obraFases.length > 0
+                  ? Math.round(obraFases.reduce((a, f) => a + (f.progresso ?? 0), 0) / obraFases.length)
+                  : 0;
+                const gasto = financeiro?.filter((f) => f.obra_id === o.id && f.tipo === "despesa").reduce((a, f) => a + (f.valor ?? 0), 0) ?? 0;
+                return (
+                  <div key={o.id} className="rounded-xl border p-3 space-y-2" onClick={() => navigate(`/obras/${o.id}/dossie`)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm truncate">{o.nome}</p>
+                      <Badge className={`text-xs border-0 shrink-0 ${statusColor[o.status ?? "planejamento"] ?? "bg-muted"}`}>
+                        {o.status ?? "planejamento"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Previsto: {fmt(o.valor_previsto ?? 0)}</span>
+                      <span>Gasto: {fmt(gasto)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={prog} className="h-2 flex-1" />
+                      <span className="text-xs text-muted-foreground">{prog}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
@@ -498,9 +500,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       )}
-
-      {/* Admin Section */}
-      <DashboardAdminSection auditoria={auditoria ?? []} vozLogs={vozLogs ?? []} />
     </div>
   );
 };

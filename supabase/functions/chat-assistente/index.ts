@@ -16,12 +16,14 @@ Regras:
 - NUNCA retorne tags HTML como <button>, <a>, <div>, etc. Use APENAS markdown para formatação.
 - Para sugerir ações clicáveis, retorne-as no campo "acoes" via ferramentas, NUNCA como HTML no texto.
 - Se o usuário enviar uma foto ou documento, analise o contexto e sugira ações.
-- Nunca invente dados. Se não souber, diga que não tem a informação.
+- NUNCA invente dados. Se não encontrar informações, diga claramente: "Não encontrei registros de [item] nesta obra."
 - Use markdown para formatar respostas (negrito, listas, etc).
+- Sempre consulte os dados reais antes de responder sobre custos, prazos, etapas ou progresso.
 
 Contexto atual:
 - O usuário pode ter uma obra ativa selecionada. Se obra_id for fornecido, use-o nas operações.
-- Se o usuário pedir algo que precisa de obra e não houver obra_id, peça para selecionar uma obra.`;
+- Se o usuário pedir algo que precisa de obra e não houver obra_id, peça para selecionar uma obra.
+- Você receberá dados contextuais da obra ativa (etapas, financeiro, etc) para dar respostas precisas.`;
 
 const tools = [
   {
@@ -88,6 +90,65 @@ const tools = [
   },
 ];
 
+async function buildObraContext(obraId: string, userId: string, supabaseAdmin: ReturnType<typeof createClient>): Promise<string> {
+  try {
+    const [obraRes, fasesRes, finRes, cotacoesRes, comprasRes] = await Promise.all([
+      supabaseAdmin.from("obras").select("nome, status, valor_previsto, data_inicio, data_prevista_conclusao, classificacao, tipo_obra").eq("id", obraId).eq("user_id", userId).single(),
+      supabaseAdmin.from("obra_fases").select("nome, status, progresso, data_inicio, data_fim").eq("obra_id", obraId).order("ordem"),
+      supabaseAdmin.from("financeiro").select("descricao, valor, tipo, data_transacao").eq("obra_id", obraId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+      supabaseAdmin.from("cotacoes").select("descricao, status").eq("obra_id", obraId).limit(10),
+      supabaseAdmin.from("compras").select("descricao, status, valor_total").eq("obra_id", obraId).eq("user_id", userId).limit(10),
+    ]);
+
+    if (obraRes.error || !obraRes.data) return "\nNão foi possível carregar dados da obra ativa.";
+
+    const obra = obraRes.data;
+    const fases = fasesRes.data || [];
+    const financeiro = finRes.data || [];
+    const cotacoes = cotacoesRes.data || [];
+    const compras = comprasRes.data || [];
+
+    const totalGasto = financeiro.filter((f) => f.tipo === "despesa").reduce((s, f) => s + (f.valor || 0), 0);
+    const totalReceita = financeiro.filter((f) => f.tipo === "receita").reduce((s, f) => s + (f.valor || 0), 0);
+    const progressoGeral = fases.length ? Math.round(fases.reduce((s, f) => s + (f.progresso || 0), 0) / fases.length) : 0;
+
+    const fasesResumo = fases.map((f) => `  - ${f.nome}: ${f.status} (${f.progresso || 0}%)`).join("\n");
+    const finResumo = financeiro.slice(0, 10).map((f) => `  - ${f.descricao || f.tipo}: R$ ${Number(f.valor).toFixed(2)} (${f.tipo})`).join("\n");
+    const cotacoesResumo = cotacoes.map((c) => `  - ${c.descricao}: ${c.status}`).join("\n");
+    const comprasResumo = compras.map((c) => `  - ${c.descricao || "Compra"}: ${c.status} - R$ ${Number(c.valor_total || 0).toFixed(2)}`).join("\n");
+
+    return `
+--- DADOS REAIS DA OBRA ATIVA ---
+Nome: ${obra.nome}
+Status: ${obra.status || "planejamento"}
+Tipo: ${obra.tipo_obra || "N/A"} | Classificação: ${obra.classificacao || "N/A"}
+Orçamento previsto: R$ ${Number(obra.valor_previsto || 0).toFixed(2)}
+Total gasto: R$ ${totalGasto.toFixed(2)}
+Total receita: R$ ${totalReceita.toFixed(2)}
+Saldo: R$ ${(Number(obra.valor_previsto || 0) - totalGasto).toFixed(2)}
+Progresso geral: ${progressoGeral}%
+Data início: ${obra.data_inicio || "Não definida"}
+Previsão conclusão: ${obra.data_prevista_conclusao || "Não definida"}
+
+Etapas (${fases.length}):
+${fasesResumo || "  Nenhuma etapa cadastrada."}
+
+Últimas movimentações financeiras:
+${finResumo || "  Nenhuma movimentação registrada."}
+
+Cotações (${cotacoes.length}):
+${cotacoesResumo || "  Nenhuma cotação."}
+
+Compras (${compras.length}):
+${comprasResumo || "  Nenhuma compra."}
+--- FIM DOS DADOS ---
+Use SOMENTE estes dados para responder perguntas sobre a obra. Se um dado não está listado acima, responda: "Não encontrei registros de [item] nesta obra."`;
+  } catch (e) {
+    console.error("Error building obra context:", e);
+    return "\nErro ao carregar dados da obra.";
+  }
+}
+
 async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
@@ -130,12 +191,8 @@ async function executeTool(
 
     case "criar_etapa": {
       const { data: maxOrdem } = await supabaseAdmin
-        .from("obra_fases")
-        .select("ordem")
-        .eq("obra_id", args.obra_id as string)
-        .order("ordem", { ascending: false })
-        .limit(1)
-        .single();
+        .from("obra_fases").select("ordem").eq("obra_id", args.obra_id as string)
+        .order("ordem", { ascending: false }).limit(1).single();
 
       const { error } = await supabaseAdmin.from("obra_fases").insert({
         obra_id: args.obra_id as string,
@@ -160,7 +217,7 @@ async function executeTool(
         supabaseAdmin.from("financeiro").select("valor, tipo").eq("obra_id", obraId),
       ]);
 
-      if (obraRes.error) return { result: `Erro ao buscar obra: ${obraRes.error.message}` };
+      if (obraRes.error) return { result: `Não encontrei registros desta obra. Verifique se o ID está correto.` };
 
       const obra = obraRes.data;
       const fases = fasesRes.data || [];
@@ -169,9 +226,7 @@ async function executeTool(
       const totalGasto = financeiro.filter((f) => f.tipo === "despesa").reduce((s, f) => s + f.valor, 0);
       const progressoGeral = fases.length ? Math.round(fases.reduce((s, f) => s + (f.progresso || 0), 0) / fases.length) : 0;
 
-      const fasesResumo = fases
-        .map((f) => `- ${f.nome}: ${f.status} (${f.progresso || 0}%)`)
-        .join("\n");
+      const fasesResumo = fases.map((f) => `- ${f.nome}: ${f.status} (${f.progresso || 0}%)`).join("\n");
 
       return {
         result: `**${obra.nome}** — ${obra.status || "em andamento"}
@@ -243,8 +298,14 @@ serve(async (req) => {
       });
     }
 
-    // Build messages
-    const contextInfo = obra_id ? `\nObra ativa ID: ${obra_id}` : "\nNenhuma obra selecionada.";
+    // Build context with real data
+    let contextInfo = "";
+    if (obra_id) {
+      contextInfo = await buildObraContext(obra_id, userId, supabaseAdmin);
+    } else {
+      contextInfo = "\nNenhuma obra selecionada. Se o usuário perguntar sobre dados específicos, peça para selecionar uma obra.";
+    }
+
     const anexoInfo = anexos.length
       ? `\nO usuário enviou ${anexos.length} anexo(s): ${anexos.map((a: { nome: string; url: string }) => a.nome).join(", ")}`
       : "";
