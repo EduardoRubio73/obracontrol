@@ -326,7 +326,39 @@ const Hoje = () => {
         </div>
       )}
 
-      {/* Voice FAB */}
+      {/* Compras Pendentes */}
+      {hasCompras && (
+        <div className="space-y-4">
+          <p className="text-base font-semibold text-muted-foreground">
+            🛒 Compras pendentes
+          </p>
+          {comprasPendentes!.map((c: any) => (
+            <Card key={c.id} className="shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <ShoppingCart className="h-6 w-6 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-lg text-foreground truncate">
+                    {c.descricao || "Compra sem descrição"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {(c.fornecedores as any)?.nome ?? "Sem fornecedor"}
+                    {c.valor_total ? ` · R$ ${Number(c.valor_total).toFixed(2)}` : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => marcarComprado.mutate(c.id)}
+                >
+                  Comprado
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
           {(voiceStatus !== "idle" || falando) && (
