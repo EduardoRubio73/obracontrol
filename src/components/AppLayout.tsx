@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { ObraPhotoCarousel } from "@/components/ObraPhotoCarousel";
+import { ObraContextTabs } from "@/components/ObraContextTabs";
 import logoImg from "@/assets/logo-obracontrol.png";
 import {
   Select,
@@ -39,9 +40,14 @@ const routeLabels: Record<string, string> = {
   "/auditoria": "Auditoria",
   "/perfil": "Perfil",
   "/nova-obra": "Nova Obra",
+  "/galeria": "Galeria",
+  "/documentos": "Documentos",
+  "/chat": "Assistente IA",
+  "/ranking": "Ranking",
+  "/analise": "Análise",
+  "/materiais": "Materiais",
 };
 
-// Pages that require obra context (show selector)
 const OBRA_PAGES = ["/etapas", "/compras", "/financeiro", "/cotacoes", "/dashboard", "/galeria", "/documentos"];
 
 export function AppLayout() {
@@ -53,25 +59,31 @@ export function AppLayout() {
   const basePath = "/" + location.pathname.split("/").filter(Boolean)[0];
   const currentLabel = routeLabels[location.pathname] || routeLabels[basePath] || "";
   const showObraSelector = OBRA_PAGES.includes(basePath) || OBRA_PAGES.includes(location.pathname);
+  const showObraTabs = showObraSelector && obraAtiva;
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <div className="hidden md:block">
-          <AppSidebar />
-        </div>
+        <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="sticky top-0 z-40 flex flex-col border-b bg-card">
             <div className="flex h-14 items-center px-4 md:px-6 gap-2">
-              
+              {/* Burger menu — mobile only */}
+              <SidebarTrigger className="md:hidden shrink-0" />
 
-              {/* Logo mobile */}
-              <div className="flex items-center gap-2 md:hidden cursor-pointer" onClick={() => navigate("/")}>
+              {/* Logo — navigates to dashboard */}
+              <div
+                className="flex items-center gap-2 cursor-pointer shrink-0"
+                onClick={() => navigate("/dashboard")}
+              >
                 <img src={logoImg} alt="ObraControl" className="h-8 w-8 rounded-lg object-contain" />
+                <span className="hidden sm:inline text-lg font-bold text-foreground">
+                  ObraControl
+                </span>
               </div>
 
               {showBack && (
-                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => navigate(-1)}>
+                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hidden sm:flex" onClick={() => navigate(-1)}>
                   <ArrowLeft className="h-4 w-4" /> Voltar
                 </Button>
               )}
@@ -81,7 +93,7 @@ export function AppLayout() {
                 <div className="flex items-center gap-2 ml-auto">
                   <Building2 className="h-4 w-4 text-muted-foreground hidden sm:block" />
                   <Select value={obraAtivaId ?? ""} onValueChange={(v) => setObraAtivaId(v)}>
-                    <SelectTrigger className="w-[180px] h-9 rounded-xl text-sm">
+                    <SelectTrigger className="w-[160px] sm:w-[180px] h-9 rounded-xl text-sm">
                       <SelectValue placeholder="Selecionar obra" />
                     </SelectTrigger>
                     <SelectContent>
@@ -95,31 +107,49 @@ export function AppLayout() {
               )}
             </div>
 
-            {/* Breadcrumb */}
-            {obraAtiva && currentLabel && showObraSelector && (
-              <div className="px-4 md:px-6 pb-2">
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    <BreadcrumbItem>
-                      <BreadcrumbLink className="cursor-pointer text-xs" onClick={() => navigate("/obras")}>
-                        Obras
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbLink className="cursor-pointer text-xs" onClick={() => navigate(`/obras/${obraAtivaId}/dossie`)}>
-                        {obraAtiva.nome}
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage className="text-xs">{currentLabel}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </div>
-            )}
+            {/* Breadcrumbs — always visible */}
+            <div className="px-4 md:px-6 pb-2">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink className="cursor-pointer text-xs" onClick={() => navigate("/dashboard")}>
+                      Dashboard
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+
+                  {obraAtiva && showObraSelector && (
+                    <>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <BreadcrumbLink className="cursor-pointer text-xs" onClick={() => navigate("/obras")}>
+                          🏗️ Obras
+                        </BreadcrumbLink>
+                      </BreadcrumbItem>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <BreadcrumbLink className="cursor-pointer text-xs" onClick={() => navigate(`/obras/${obraAtivaId}/dossie`)}>
+                          {obraAtiva.nome}
+                        </BreadcrumbLink>
+                      </BreadcrumbItem>
+                    </>
+                  )}
+
+                  {currentLabel && currentLabel !== "Dashboard" && (
+                    <>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <BreadcrumbPage className="text-xs">{currentLabel}</BreadcrumbPage>
+                      </BreadcrumbItem>
+                    </>
+                  )}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+
+            {/* Obra context tabs */}
+            {showObraTabs && <ObraContextTabs />}
           </header>
+
           {obraAtiva && showObraSelector && (
             <ObraPhotoCarousel obraId={obraAtiva.id} />
           )}
