@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 const fmt = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,6 +25,8 @@ function FinanceiroContent() {
   const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [formDefaults, setFormDefaults] = useState<Record<string, string>>({});
 
   const { data: transacoes, isLoading } = useQuery({
     queryKey: ["financeiro", obraAtivaId],
@@ -48,25 +50,68 @@ function FinanceiroContent() {
   const valorAprovado = Number(obraAtiva?.valor_previsto ?? 0);
   const disponivel = valorAprovado - totalGasto;
 
-  const create = useMutation({
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["financeiro", obraAtivaId] });
+
+  const saveMutation = useMutation({
     mutationFn: async (values: any) => {
-      const { error } = await supabase.from("financeiro").insert(values);
-      if (error) throw error;
+      if (editId) {
+        const { error } = await supabase.from("financeiro").update(values).eq("id", editId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("financeiro").insert(values);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financeiro", obraAtivaId] });
-      toast.success("Registrado!");
-      setOpen(false);
+      invalidate();
+      toast.success(editId ? "Atualizado!" : "Registrado!");
+      closeDialog();
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const delMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financeiro").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Removido!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const closeDialog = () => {
+    setOpen(false);
+    setEditId(null);
+    setFormDefaults({});
+  };
+
+  const openNew = () => {
+    setEditId(null);
+    setFormDefaults({});
+    setOpen(true);
+  };
+
+  const openEdit = (t: any) => {
+    setEditId(t.id);
+    setFormDefaults({
+      valor: String(t.valor),
+      tipo: t.tipo,
+      descricao: t.descricao ?? "",
+      data_transacao: t.data_transacao ?? "",
+    });
+    setOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     let comprovante_url: string | null = null;
 
-    const file = (fd.get("comprovante") as File);
+    const file = fd.get("comprovante") as File;
     if (file && file.size > 0) {
       const path = `comprovantes/${user!.id}/${Date.now()}_${file.name}`;
       const { error: upErr } = await supabase.storage.from("documentos").upload(path, file);
@@ -78,15 +123,21 @@ function FinanceiroContent() {
       comprovante_url = urlData.publicUrl;
     }
 
-    create.mutate({
-      obra_id: obraAtivaId!,
+    const payload: any = {
       valor: Number(fd.get("valor")),
       tipo: fd.get("tipo"),
       descricao: fd.get("descricao") || null,
       data_transacao: fd.get("data_transacao") || null,
-      comprovante_url,
-      user_id: user!.id,
-    });
+    };
+
+    if (comprovante_url) payload.comprovante_url = comprovante_url;
+
+    if (!editId) {
+      payload.obra_id = obraAtivaId!;
+      payload.user_id = user!.id;
+    }
+
+    saveMutation.mutate(payload);
   };
 
   return (
@@ -126,10 +177,10 @@ function FinanceiroContent() {
 
       <Button
         className="w-full h-14 rounded-2xl font-bold text-lg"
-        onClick={() => setOpen(true)}
+        onClick={openNew}
       >
         <Plus className="mr-2 h-6 w-6" />
-        Adicionar gasto
+        Adicionar lançamento
       </Button>
 
       {transacoes?.map((t) => {
@@ -154,22 +205,37 @@ function FinanceiroContent() {
               <p className="text-base text-muted-foreground mt-2">
                 {t.descricao ?? "—"}
               </p>
-              <div className="flex items-center justify-between mt-1">
-                {t.data_transacao && (
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
-                  </p>
-                )}
-                {t.comprovante_url && (
-                  <a
-                    href={t.comprovante_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline"
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2">
+                  {t.data_transacao && (
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
+                  {t.comprovante_url && (
+                    <a
+                      href={t.comprovante_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      📎 Comprovante
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => openEdit(t)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    onClick={() => delMutation.mutate(t.id)}
                   >
-                    📎 Comprovante
-                  </a>
-                )}
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -179,15 +245,15 @@ function FinanceiroContent() {
       {!isLoading && !transacoes?.length && (
         <Card className="border-dashed border-2 shadow-none">
           <CardContent className="py-14 text-center text-muted-foreground">
-            <p className="text-lg">Nenhum gasto registrado</p>
+            <p className="text-lg">Nenhum lançamento registrado</p>
           </CardContent>
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); else setOpen(true); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar</DialogTitle>
+            <DialogTitle>{editId ? "Editar Lançamento" : "Novo Lançamento"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -198,6 +264,7 @@ function FinanceiroContent() {
                   type="number"
                   step="0.01"
                   required
+                  defaultValue={formDefaults.valor ?? ""}
                   className="h-12 text-base"
                 />
               </div>
@@ -206,10 +273,13 @@ function FinanceiroContent() {
                 <select
                   name="tipo"
                   required
+                  defaultValue={formDefaults.tipo ?? "despesa"}
                   className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
                 >
                   <option value="despesa">Saída</option>
                   <option value="receita">Entrada</option>
+                  <option value="adiantamento">Adiantamento</option>
+                  <option value="reembolso">Reembolso</option>
                 </select>
               </div>
             </div>
@@ -218,12 +288,18 @@ function FinanceiroContent() {
               <Input
                 name="descricao"
                 placeholder="Ex: Cimento"
+                defaultValue={formDefaults.descricao ?? ""}
                 className="h-12 text-base"
               />
             </div>
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input name="data_transacao" type="date" className="h-12 text-base" />
+              <Input
+                name="data_transacao"
+                type="date"
+                defaultValue={formDefaults.data_transacao ?? ""}
+                className="h-12 text-base"
+              />
             </div>
             <div className="space-y-2">
               <Label>Comprovante / NF</Label>
@@ -232,9 +308,9 @@ function FinanceiroContent() {
             <Button
               type="submit"
               className="w-full h-14 rounded-2xl font-bold text-lg"
-              disabled={create.isPending}
+              disabled={saveMutation.isPending}
             >
-              {create.isPending ? "Salvando..." : "Salvar"}
+              {saveMutation.isPending ? "Salvando..." : editId ? "Salvar alterações" : "Salvar"}
             </Button>
           </form>
         </DialogContent>
