@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,27 +13,31 @@ import { toast } from "sonner";
 import { ArrowLeft, Upload, FileText, Trash2, Download } from "lucide-react";
 
 const Documentos = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const { obraAtivaId } = useObraAtiva();
+  const obraId = routeId ?? (obraAtivaId && obraAtivaId !== "all" ? obraAtivaId : null);
 
   const { data: obra } = useQuery({
-    queryKey: ["obra", id],
+    queryKey: ["obra", obraId],
+    enabled: !!obraId,
     queryFn: async () => {
-      const { data } = await supabase.from("obras").select("nome").eq("id", id!).single();
+      const { data } = await supabase.from("obras").select("nome").eq("id", obraId!).single();
       return data;
     },
   });
 
   const { data: docs, isLoading } = useQuery({
-    queryKey: ["documentos", id],
+    queryKey: ["documentos", obraId],
+    enabled: !!obraId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("documentos")
         .select("*")
-        .eq("obra_id", id!)
+        .eq("obra_id", obraId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -40,11 +46,11 @@ const Documentos = () => {
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !obraId) return;
 
     setUploading(true);
     try {
-      const path = `${user.id}/${id}/${Date.now()}_${file.name}`;
+      const path = `${user.id}/${obraId}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from("documentos")
         .upload(path, file);
@@ -53,7 +59,7 @@ const Documentos = () => {
       const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
 
       const { error } = await supabase.from("documentos").insert({
-        obra_id: id!,
+        obra_id: obraId,
         nome: file.name,
         tipo: file.type,
         url: urlData.publicUrl,
@@ -62,7 +68,7 @@ const Documentos = () => {
       } as any);
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ["documentos", id] });
+      queryClient.invalidateQueries({ queryKey: ["documentos", obraId] });
       toast.success("Documento enviado!");
     } catch (err: any) {
       toast.error(err.message);
@@ -78,7 +84,7 @@ const Documentos = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documentos", id] });
+      queryClient.invalidateQueries({ queryKey: ["documentos", obraId] });
       toast.success("Documento removido");
     },
     onError: (e: any) => toast.error(e.message),
@@ -90,6 +96,14 @@ const Documentos = () => {
     if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
+
+  if (!obraId) {
+    return (
+      <RequireObra pageName="Documentos">
+        <></>
+      </RequireObra>
+    );
+  }
 
   return (
     <div className="space-y-6">
