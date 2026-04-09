@@ -849,7 +849,7 @@ const CotacoesContent = () => {
               <p className="text-muted-foreground text-sm">Nenhuma proposta recebida</p>
             )}
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
               {propostas && propostas.length >= 2 && (
                 <>
                   <Button className="flex-1" onClick={() => { const id = selectedId; setSelectedId(null); navigate(`/cotacoes/${id}/comparar`); }}>
