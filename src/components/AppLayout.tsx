@@ -38,7 +38,7 @@ export function AppLayout() {
               {/* Logo — navigates to dashboard */}
               <div
                 className="flex items-center gap-2 cursor-pointer shrink-0"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/")}
               >
                 <img src={logoImg} alt="ObraControl" className="h-8 w-8 rounded-lg object-contain" />
                 <span className="hidden sm:inline text-lg font-bold text-foreground">
