@@ -1,45 +1,71 @@
 
 
-# Plano: Incluir Compras Pendentes na Tela "Hoje"
+# Plano: Status automático, Dashboard por obra e melhorias
 
-## Problema
+## 1. Status automático da obra
 
-A página "Hoje" só verifica pendências em `alertas_sistema` e `fase_itens`. Compras com status "pendente" na tabela `compras` não são consideradas, fazendo o sistema mostrar "Tudo em dia" mesmo com compras pendentes.
+Criar um trigger no banco que muda o status da obra de "planejamento" para "execução" quando houver movimentação em `compras` ou `financeiro`.
 
-## Solução
+**Migration SQL:**
+```sql
+CREATE OR REPLACE FUNCTION public.auto_status_obra_execucao()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+BEGIN
+  UPDATE obras SET status = 'execução'
+  WHERE id = NEW.obra_id AND status = 'planejamento';
+  RETURN NEW;
+END; $$;
 
-Adicionar uma query de compras pendentes em `src/pages/Hoje.tsx` e exibir essas compras como pendências na tela.
+CREATE TRIGGER trg_compras_auto_status
+  AFTER INSERT ON compras
+  FOR EACH ROW EXECUTE FUNCTION auto_status_obra_execucao();
 
-## Alterações em `src/pages/Hoje.tsx`
+CREATE TRIGGER trg_financeiro_auto_status
+  AFTER INSERT ON financeiro
+  FOR EACH ROW EXECUTE FUNCTION auto_status_obra_execucao();
+```
 
-1. **Nova query** — buscar compras pendentes:
-   ```ts
-   const { data: comprasPendentes } = useQuery({
-     queryKey: ["compras-pendentes"],
-     queryFn: async () => {
-       const { data } = await supabase
-         .from("compras")
-         .select("id, descricao, status, valor_total, fornecedor:fornecedores(nome)")
-         .eq("status", "pendente")
-         .limit(5);
-       return data;
-     },
-   });
-   ```
+## 2. Status da obra no dropdown do selector
 
-2. **Atualizar lógica de pendências** — incluir compras no cálculo:
-   ```ts
-   const hasCompras = (comprasPendentes?.length ?? 0) > 0;
-   // "Tudo em dia" só aparece se NÃO há alertas, NEM tarefas, NEM compras
-   ```
+**`src/hooks/useObraAtiva.tsx`:**
+- Adicionar `status` ao interface `Obra` e à query (`select("id, nome, valor_previsto, status")`)
 
-3. **Nova seção visual** — listar compras pendentes com cards (similar às tarefas), com ícone de carrinho e botão "Marcar comprado" que chama o RPC `marcar_comprado`.
+**`src/pages/Index.tsx`** (obra selector):
+- Exibir status como badge ao lado do nome: `Reforma Portaria • Execução`
 
-4. **Invalidar** queries de compras ao marcar como comprado.
+## 3. Dashboard — Nome da obra no título + filtro "Todas"
 
-## Arquivo a editar
+**`src/pages/Dashboard.tsx`:**
+- No header, ao lado de "Dashboard", mostrar o nome da obra ativa (ex: "Dashboard — Reforma Portaria")
+- Adicionar opção "Todas as obras" no selector (setar `obraAtivaId = null` temporariamente ou usar estado local `filtroId`)
+- Adicionar um `Select` no header para alternar entre obras e "Todas"
+
+## 4. Cards do Dashboard correspondentes à obra filtrada
+
+**`src/pages/Dashboard.tsx`:**
+- O card "Total Obras" mostra 1 quando filtrado por obra, ou total quando "Todas"
+- "Em Andamento" mostra fases em andamento da obra filtrada (não obras em andamento)
+- "Total Investido" já filtra por `filtroId` — manter
+- "Alertas" filtrar por obra quando selecionada
+
+**`src/components/dashboard/DashboardSummaryCards.tsx`:**
+- Ajustar props para receber dados já filtrados corretamente
+
+## 5. Pills de status clicáveis
+
+**`src/pages/Dashboard.tsx`:**
+- Abaixo do header, renderizar pills/badges para cada status: Planejamento, Execução, Concluído, Pausado, Cancelado
+- A pill ativa (status atual da obra) fica destacada
+- Ao clicar em outra pill, chama `supabase.from("obras").update({ status }).eq("id", obraAtivaId)` e invalida queries
+- Só aparece quando uma obra específica está selecionada
+
+## Arquivos a editar
 
 | Arquivo | Ação |
 |---|---|
-| `src/pages/Hoje.tsx` | Adicionar query compras pendentes, atualizar condição "Tudo em dia", renderizar seção de compras |
+| Migration SQL | Trigger auto status em compras/financeiro |
+| `src/hooks/useObraAtiva.tsx` | Adicionar `status` ao tipo e query |
+| `src/pages/Index.tsx` | Exibir status no dropdown |
+| `src/pages/Dashboard.tsx` | Nome da obra no título, filtro Todas/Obra, cards filtrados, pills de status |
+| `src/components/dashboard/DashboardSummaryCards.tsx` | Ajustar para dados filtrados por obra |
 
