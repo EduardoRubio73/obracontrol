@@ -867,7 +867,7 @@ const CotacoesContent = () => {
 
       {/* Manage Dialog with Tabs: Items + Fornecedores */}
       <Dialog open={!!manageDialog} onOpenChange={(v) => { if (!v) { setManageDialog(null); setSelectedProds({}); setProdSearch(""); setSelectedFornecedores([]); } }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto p-3 sm:p-6">
           <DialogHeader>
             <DialogTitle>Gerenciar Cotação</DialogTitle>
           </DialogHeader>
