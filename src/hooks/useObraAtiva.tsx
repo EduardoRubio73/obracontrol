@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 interface Obra {
   id: string;
   nome: string;
+  valor_previsto: number | null;
 }
 
 interface ObraAtivaContextType {
@@ -40,7 +41,7 @@ export function ObraAtivaProvider({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obras")
-        .select("id, nome")
+        .select("id, nome, valor_previsto")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Obra[];
