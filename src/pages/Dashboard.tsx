@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,13 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Plus, FileSearch, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,11 +46,9 @@ const fmt = (v: number) =>
 const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { obraAtivaId, obras: obrasContext } = useObraAtiva();
+  const { obraAtiva, filtroObraId, isAll } = useObraAtiva();
 
-  // Local filter: "all" or a specific obra id
-  const [filtroLocal, setFiltroLocal] = useState<string>("active");
-  const filtroId = filtroLocal === "all" ? null : filtroLocal === "active" ? obraAtivaId : filtroLocal;
+  const filtroId = filtroObraId;
 
   /* ── Queries ── */
   const { data: obras } = useQuery({
@@ -85,11 +75,12 @@ const Dashboard = () => {
   });
 
   const { data: alertas } = useQuery({
-    queryKey: ["dashboard-alertas", filtroId],
+    queryKey: ["dashboard-alertas"],
     queryFn: async () => {
-      let q = supabase.from("alertas_sistema").select("id, entidade_id").eq("resolvido", false);
-      // Filter by obra if selected - alertas can be linked to obra or fase
-      const { data, error } = await q;
+      const { data, error } = await supabase
+        .from("alertas_sistema")
+        .select("id")
+        .eq("resolvido", false);
       if (error) throw error;
       return data ?? [];
     },
@@ -212,9 +203,6 @@ const Dashboard = () => {
   });
 
   /* ── Derived ── */
-  const obraAtual = filtroId ? obras?.find((o) => o.id === filtroId) : null;
-
-  // Cards data filtered by obra
   const obrasTotal = filtroId ? 1 : (obras?.length ?? 0);
   const fasesEmAndamento = fases?.filter((f) => f.status === "em_andamento").length ?? 0;
   const totalGasto =
@@ -226,20 +214,18 @@ const Dashboard = () => {
   const cotacoesAbertas = cotacoes?.filter((c) => c.status !== "finalizada" && c.status !== "cancelada").length ?? 0;
   const cotacoesAguardando = cotacoes?.filter((c) => c.status === "enviada" || c.status === "recebendo_propostas").length ?? 0;
 
-  // Chart data
   const chartData = (obrasFiltradas ?? []).slice(0, 6).map((o) => {
     const gasto = financeiro?.filter((f) => f.obra_id === o.id && f.tipo === "despesa").reduce((a, f) => a + (f.valor ?? 0), 0) ?? 0;
     return { nome: o.nome?.substring(0, 12) ?? "", previsto: o.valor_previsto ?? 0, gasto };
   });
 
-  // Cotações with proposal count
   const cotacoesDetalhadas = (cotacoes ?? []).map((c) => ({
     ...c,
     propostas_count: (propostas ?? []).filter((p) => p.cotacao_id === c.id).length,
   }));
 
-  // Title
-  const dashTitle = obraAtual ? `Dashboard — ${obraAtual.nome}` : "Dashboard — Todas as Obras";
+  const dashTitle = obraAtiva ? `Dashboard — ${obraAtiva.nome}` : "Dashboard — Todas as Obras";
+  const obraAtualStatus = obraAtiva?.status ?? null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-24">
@@ -263,50 +249,28 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Obra filter selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <Select value={filtroLocal} onValueChange={setFiltroLocal}>
-          <SelectTrigger className="w-full sm:w-72 h-10 rounded-xl">
-            <SelectValue placeholder="Filtrar por obra" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as Obras</SelectItem>
-            {obrasContext.map((o) => (
-              <SelectItem key={o.id} value={o.id}>
-                <span className="flex items-center gap-2">
-                  {o.nome}
-                  <span className="text-xs text-muted-foreground">
-                    • {statusLabels[o.status ?? "planejamento"] ?? o.status}
-                  </span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Status pills — only when a specific obra is selected */}
-        {filtroId && obraAtual && (
-          <div className="flex flex-wrap gap-2">
-            {allStatuses.map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  if (obraAtual.status !== s) {
-                    changeStatus.mutate({ obraId: filtroId, status: s });
-                  }
-                }}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
-                  obraAtual.status === s
-                    ? `${statusColor[s]} border-current ring-2 ring-current/20`
-                    : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
-                }`}
-              >
-                {statusLabels[s]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Status pills — only when a specific obra is selected */}
+      {filtroId && obraAtualStatus && (
+        <div className="flex flex-wrap gap-2">
+          {allStatuses.map((s) => (
+            <button
+              key={s}
+              onClick={() => {
+                if (obraAtualStatus !== s) {
+                  changeStatus.mutate({ obraId: filtroId, status: s });
+                }
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                obraAtualStatus === s
+                  ? `${statusColor[s]} border-current ring-2 ring-current/20`
+                  : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+              }`}
+            >
+              {statusLabels[s]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <DashboardSummaryCards
