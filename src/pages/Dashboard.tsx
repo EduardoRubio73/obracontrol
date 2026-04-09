@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, FileSearch, ArrowLeft } from "lucide-react";
+import { Plus, FileSearch, ArrowLeft, History } from "lucide-react";
 import { toast } from "sonner";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
@@ -404,7 +404,46 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Fornecedores + Cotações Detalhadas */}
+      {/* Histórico de Status */}
+      {filtroId && (statusHistorico ?? []).length > 0 && (
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-4 w-4" /> Histórico de Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {(statusHistorico ?? []).map((h) => (
+                <div key={h.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/40">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {h.status_anterior && (
+                        <>
+                          <Badge className={`text-xs border-0 ${statusColor[h.status_anterior] ?? "bg-muted"}`}>
+                            {statusLabels[h.status_anterior] ?? h.status_anterior}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">→</span>
+                        </>
+                      )}
+                      <Badge className={`text-xs border-0 ${statusColor[h.status_novo] ?? "bg-muted"}`}>
+                        {statusLabels[h.status_novo] ?? h.status_novo}
+                      </Badge>
+                    </div>
+                    {h.justificativa && (
+                      <p className="text-sm text-muted-foreground mt-1">{h.justificativa}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(h.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid md:grid-cols-2 gap-4">
         <DashboardFornecedores fornecedores={fornecedores ?? []} />
         <DashboardCotacoesDetalhadas cotacoes={cotacoesDetalhadas} />
