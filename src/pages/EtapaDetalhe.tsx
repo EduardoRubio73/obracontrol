@@ -6,43 +6,26 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from "@/components/ui/command";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, ChevronsUpDown, Check } from "lucide-react";
+import { ArrowLeft, Plus, Search } from "lucide-react";
 import { FasePhotos } from "@/components/FasePhotos";
-import { z } from "zod";
 import { cn } from "@/lib/utils";
-
-const tarefaSchema = z.object({
-  nome: z.string().min(1, "Obrigatório"),
-});
 
 export default function EtapaDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [comboOpen, setComboOpen] = useState(false);
-  const [selectedNome, setSelectedNome] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [selectedTarefas, setSelectedTarefas] = useState<string[]>([]);
+  const [customNome, setCustomNome] = useState("");
 
   const { data: fase } = useQuery({
     queryKey: ["fase", id],
@@ -88,30 +71,33 @@ export default function EtapaDetalhe() {
   const done = itens?.filter((i) => i.status === "concluido").length ?? 0;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  const createItem = useMutation({
-    mutationFn: async (nome: string) => {
-      // Auto-insert into tarefas_padrao if new
-      const exists = tarefasPadrao?.some(
-        (e) => e.nome.toLowerCase() === nome.toLowerCase()
-      );
-      if (!exists) {
-        await supabase.from("tarefas_padrao" as any).insert({ nome } as any);
-      }
+  const existingNames = new Set(itens?.map((i) => i.nome.toLowerCase()) ?? []);
 
-      const { error } = await supabase.from("fase_itens").insert({
-        fase_id: id!,
-        nome,
-        status: "pendente",
-      } as any);
-      if (error) throw error;
+  const createItems = useMutation({
+    mutationFn: async (nomes: string[]) => {
+      for (const nome of nomes) {
+        const exists = tarefasPadrao?.some(
+          (e) => e.nome.toLowerCase() === nome.toLowerCase()
+        );
+        if (!exists) {
+          await supabase.from("tarefas_padrao" as any).insert({ nome } as any);
+        }
+        const { error } = await supabase.from("fase_itens").insert({
+          fase_id: id!,
+          nome,
+          status: "pendente",
+        } as any);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
       queryClient.invalidateQueries({ queryKey: ["tarefas-padrao"] });
-      toast.success("Tarefa adicionada!");
+      toast.success("Tarefas adicionadas!");
       setOpen(false);
-      setSelectedNome("");
+      setSelectedTarefas([]);
       setSearchValue("");
+      setCustomNome("");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -139,21 +125,34 @@ export default function EtapaDetalhe() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const result = tarefaSchema.safeParse({ nome: selectedNome });
-    if (!result.success) {
-      toast.error("Preencha o nome da tarefa");
-      return;
-    }
-    createItem.mutate(result.data.nome);
+  const toggleSelection = (nome: string) => {
+    setSelectedTarefas((prev) =>
+      prev.includes(nome) ? prev.filter((n) => n !== nome) : [...prev, nome]
+    );
   };
 
-  const isNewValue =
-    searchValue.trim().length > 0 &&
-    !tarefasPadrao?.some(
-      (e) => e.nome.toLowerCase() === searchValue.trim().toLowerCase()
-    );
+  const handleAddCustom = () => {
+    const nome = customNome.trim();
+    if (!nome) return;
+    if (!selectedTarefas.includes(nome)) {
+      setSelectedTarefas((prev) => [...prev, nome]);
+    }
+    setCustomNome("");
+  };
+
+  const handleSubmit = () => {
+    if (selectedTarefas.length === 0) {
+      toast.error("Selecione pelo menos uma tarefa");
+      return;
+    }
+    createItems.mutate(selectedTarefas);
+  };
+
+  const filteredTarefas = tarefasPadrao?.filter(
+    (e) =>
+      e.nome.toLowerCase().includes(searchValue.toLowerCase()) &&
+      !existingNames.has(e.nome.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 max-w-lg mx-auto pb-28 px-1">
@@ -247,107 +246,108 @@ export default function EtapaDetalhe() {
       {/* Photos */}
       {obraId && id && <FasePhotos faseId={id} obraId={obraId} />}
 
-      {/* Dialog */}
+      {/* Dialog multi-select */}
       <Dialog
         open={open}
         onOpenChange={(v) => {
           setOpen(v);
           if (!v) {
-            setSelectedNome("");
+            setSelectedTarefas([]);
             setSearchValue("");
+            setCustomNome("");
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Nova tarefa</DialogTitle>
+            <DialogTitle>Adicionar tarefas</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium leading-none">
-                Nome da tarefa
-              </label>
-              <Popover open={comboOpen} onOpenChange={setComboOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={comboOpen}
-                    className="w-full h-12 justify-between text-base font-normal"
-                  >
-                    {selectedNome || "Selecione ou digite..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command shouldFilter={false}>
-                    <CommandInput
-                      placeholder="Buscar tarefa..."
-                      value={searchValue}
-                      onValueChange={setSearchValue}
-                    />
-                    <CommandList>
-                      <CommandEmpty>
-                        {searchValue.trim() ? null : "Nenhuma tarefa cadastrada"}
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {tarefasPadrao
-                          ?.filter((e) =>
-                            e.nome
-                              .toLowerCase()
-                              .includes(searchValue.toLowerCase())
-                          )
-                          .map((e) => (
-                            <CommandItem
-                              key={e.id}
-                              onSelect={() => {
-                                setSelectedNome(e.nome);
-                                setSearchValue(e.nome);
-                                setComboOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedNome === e.nome
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              {e.nome}
-                            </CommandItem>
-                          ))}
-                        {isNewValue && (
-                          <CommandItem
-                            onSelect={() => {
-                              setSelectedNome(searchValue.trim());
-                              setComboOpen(false);
-                            }}
-                          >
-                            <Plus className="mr-2 h-4 w-4 text-primary" />
-                            <span>
-                              Adicionar "
-                              <span className="font-semibold">
-                                {searchValue.trim()}
-                              </span>
-                              " como nova tarefa padrão
-                            </span>
-                          </CommandItem>
-                        )}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar tarefa..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="pl-9"
+              />
             </div>
+
+            {/* Selection list */}
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-[40vh] border rounded-lg p-2">
+              {filteredTarefas?.map((t) => {
+                const isSelected = selectedTarefas.includes(t.nome);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => toggleSelection(t.nome)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors",
+                      isSelected
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted/60"
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      className="h-5 w-5 rounded pointer-events-none"
+                    />
+                    <span className="text-base font-medium">{t.nome}</span>
+                  </button>
+                );
+              })}
+              {filteredTarefas?.length === 0 && !searchValue.trim() && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma tarefa padrão cadastrada
+                </p>
+              )}
+              {filteredTarefas?.length === 0 && searchValue.trim() && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma tarefa encontrada
+                </p>
+              )}
+            </div>
+
+            {/* Custom add */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ou digite uma nova tarefa..."
+                value={customNome}
+                onChange={(e) => setCustomNome(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustom())}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleAddCustom}
+                disabled={!customNome.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Selected summary */}
+            {selectedTarefas.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                {selectedTarefas.length} tarefa(s) selecionada(s)
+              </div>
+            )}
+
             <Button
-              type="submit"
+              onClick={handleSubmit}
               className="w-full h-14 rounded-2xl font-bold text-lg"
-              disabled={createItem.isPending || !selectedNome.trim()}
+              disabled={createItems.isPending || selectedTarefas.length === 0}
             >
-              {createItem.isPending ? "Adicionando..." : "Adicionar tarefa"}
+              {createItems.isPending
+                ? "Adicionando..."
+                : `Adicionar ${selectedTarefas.length} tarefa(s)`}
             </Button>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
