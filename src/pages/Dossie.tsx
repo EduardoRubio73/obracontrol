@@ -70,6 +70,22 @@ const Dossie = () => {
     },
   });
 
+  const { data: obraThumb } = useQuery({
+    queryKey: ["obra-thumb", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fase_fotos")
+        .select("url")
+        .eq("obra_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.url ?? null;
+    },
+  });
+
   const { data: fases } = useQuery({
     queryKey: ["dossie-fases", id],
     queryFn: async () => {
@@ -231,9 +247,13 @@ const Dossie = () => {
         <Card className="rounded-2xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
+              {obraThumb ? (
+                <img src={obraThumb} alt="" className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+              )}
               <div>
                 <p className="font-bold text-lg text-foreground">{obra.nome}</p>
                 <p className="text-sm text-muted-foreground capitalize">
