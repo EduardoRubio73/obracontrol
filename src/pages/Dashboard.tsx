@@ -197,8 +197,11 @@ const Dashboard = () => {
 
   /* ── Status mutation ── */
   const changeStatus = useMutation({
-    mutationFn: async ({ obraId, status }: { obraId: string; status: string }) => {
-      const { error } = await supabase.from("obras").update({ status: status as any }).eq("id", obraId);
+    mutationFn: async ({ obraId, status, justificativa }: { obraId: string; status: string; justificativa?: string }) => {
+      const { error } = await supabase.from("obras").update({
+        status: status as any,
+        justificativa_status: justificativa || null,
+      } as any).eq("id", obraId);
       if (error) throw error;
     },
     onSuccess: () => {
