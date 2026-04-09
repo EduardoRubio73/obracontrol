@@ -68,7 +68,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarContent>
-        <div className="flex items-center gap-2 px-4 py-5 cursor-pointer" onClick={() => navigate("/")}>
+        <div className="flex items-center gap-2 px-4 py-5 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <img
             src={logoImg}
             alt="ObraControl"
