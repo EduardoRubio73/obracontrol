@@ -1,54 +1,47 @@
 
 
-# Plano: Navegação Global — Menu Burger, Breadcrumbs, Abas de Contexto
+# Plano: UX e Interatividade — Sidebar, Header, Abas e Cards de Atalho
 
-## Resumo
-Resolver o problema de "beco sem saída" adicionando menu burger no mobile, breadcrumbs contextuais em todas as páginas, logo clicável para dashboard, e barra de abas horizontal para navegar entre seções da obra ativa.
+## 1. Sidebar fecha ao clicar em link (mobile)
 
-## 1. Menu Burger no Mobile (AppLayout)
+**AppSidebar.tsx**: Importar `useSidebar` e chamar `setOpenMobile(false)` ao clicar em qualquer link. Modificar `renderItems` para adicionar `onClick={() => { if (isMobile) setOpenMobile(false) }}` em cada `NavLink`.
 
-- Remover `<div className="hidden md:block">` que esconde o sidebar no mobile
-- Adicionar `SidebarTrigger` (ícone hamburger) visível apenas no mobile (`md:hidden`) no header, antes do logo
-- O sidebar já usa `collapsible="icon"` — mudar para `collapsible="offcanvas"` para funcionar como drawer no mobile
-- Manter sidebar visível normalmente no desktop
+Sidebar ja tem `useSidebar` importado — basta adicionar `isMobile` e `setOpenMobile` do contexto.
 
-## 2. Logo Inteligente
+## 2. Header Ultra-Clean
 
-- Clique no logo (mobile e desktop) navega para `/dashboard` em vez de `/`
-- Manter botão "Voltar" visível no mobile ao lado do burger
+**AppLayout.tsx**: Remover toda a seção de Breadcrumbs (linhas 110-147). Remover imports de Breadcrumb. Header fica apenas com: burger (esquerda), logo, e seletor de obra (direita). Remover tambem o botao "Voltar".
 
-## 3. Breadcrumbs Universais
+## 3. Barra de Gestao (ObraContextTabs) — flex-wrap, botoes maiores
 
-- Expandir breadcrumbs para aparecer em TODAS as páginas (não só obra pages)
-- Para páginas sem obra: `Dashboard > Página Atual`
-- Para páginas com obra: `🏗️ Obras > [Nome da Obra] > [Seção]`
-- Para sub-rotas como `/etapas/:id` ou `/obras/:id/dossie`: incluir nível intermediário
-- Breadcrumbs ficam na segunda linha do header, sempre visíveis
+**ObraContextTabs.tsx**:
+- Remover `overflow-x-auto` e `min-w-max`
+- Usar `flex flex-wrap gap-2 px-4 py-2`
+- Botoes com `min-h-[44px] px-4 py-2 text-sm` para toque facil
+- Remover `whitespace-nowrap` — permitir wrap natural
 
-## 4. Abas Horizontais de Contexto da Obra
+## 4. Cards de Atalho na pagina da Obra (Dashboard)
 
-- Criar componente `ObraContextTabs` com abas scrolláveis horizontalmente
-- Abas: 📅 Etapas, 💰 Financeiro, 🛒 Compras, 📋 Cotações, 🖼️ Galeria, 📁 Documentos
-- Renderizar abaixo do header (dentro de `AppLayout`) quando `showObraSelector` é true e há obra selecionada
-- Usar `overflow-x-auto` + `flex-nowrap` para scroll horizontal no mobile
-- Aba ativa destacada com cor primária baseada na rota atual
+**Dashboard.tsx**: Quando `filtroId` existe (obra selecionada), exibir grid de 6 cards grandes e coloridos ANTES dos summary cards:
 
-## 5. Header Sticky (já implementado)
+```
+grid grid-cols-2 sm:grid-cols-3 gap-3
+```
 
-- O header já tem `sticky top-0 z-40` — garantir que as abas de contexto também fiquem dentro do sticky header
+Cards: Etapas, Compras, Financeiro, Cotacoes, Galeria, Documentos. Cada card com emoji, titulo, resumo (ex: "X etapas em andamento"), e `onClick` para navegar. Cores distintas com `bg-blue-50`, `bg-green-50`, etc.
+
+Dados de resumo ja disponiveis: `fases`, `cotacoes`, `financeiro`, `documentos`.
+
+## 5. Mobile-First: sem larguras fixas
+
+Revisar `SelectTrigger` no header — trocar `w-[160px]` por `w-full max-w-[180px]`.
 
 ## Arquivos Modificados
 
-| Arquivo | Mudança |
+| Arquivo | Mudanca |
 |---------|---------|
-| `src/components/AppLayout.tsx` | Burger trigger, breadcrumbs universais, logo → dashboard, abas de contexto |
-| `src/components/AppSidebar.tsx` | Ajuste `collapsible` para offcanvas no mobile |
-| `src/components/ObraContextTabs.tsx` | **Novo** — barra de abas scrolláveis para seções da obra |
-
-## Detalhes Técnicos
-
-- `SidebarTrigger` do shadcn já renderiza ícone hamburger e controla open/close do sidebar
-- Abas usarão `NavLink` do react-router para highlight automático da rota ativa
-- Breadcrumbs expandidos com lógica condicional: se `obraAtiva` existe mostra caminho da obra, senão mostra caminho genérico
-- `MobileBottomNav` pode ser mantido como complemento ou removido (redundante com burger + abas)
+| `src/components/AppSidebar.tsx` | Fechar sidebar ao clicar link no mobile |
+| `src/components/AppLayout.tsx` | Remover breadcrumbs, limpar header |
+| `src/components/ObraContextTabs.tsx` | flex-wrap, botoes 44px, sem scroll |
+| `src/pages/Dashboard.tsx` | Cards de atalho coloridos quando obra selecionada |
 
