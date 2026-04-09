@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, Mic, MicOff, Loader2, Volume2 } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, Loader2, Volume2, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 function limparTextoParaVoz(texto: string): string {
