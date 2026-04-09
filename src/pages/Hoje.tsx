@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, Mic, MicOff, Loader2, Volume2 } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, Loader2, Volume2, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 function limparTextoParaVoz(texto: string): string {
@@ -90,6 +90,19 @@ const Hoje = () => {
     },
   });
 
+  const { data: comprasPendentes } = useQuery({
+    queryKey: ["compras-pendentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("compras")
+        .select("id, descricao, status, valor_total, fornecedor_id, fornecedores(nome)")
+        .eq("status", "pendente")
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: progresso } = useQuery({
     queryKey: ["progresso-geral"],
     queryFn: async () => {
@@ -103,6 +116,17 @@ const Hoje = () => {
         rows.reduce((a: number, r: any) => a + (r.progresso_geral ?? 0), 0) /
         rows.length;
       return Math.round(avg);
+    },
+  });
+
+  const marcarComprado = useMutation({
+    mutationFn: async (compraId: string) => {
+      const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: compraId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["compras-pendentes"] });
+      toast.success("Compra marcada como realizada! 🛒");
     },
   });
 
@@ -127,6 +151,7 @@ const Hoje = () => {
   const firstName = profile?.nome?.split(" ")[0] ?? "";
   const hasAlerts = (alertas?.length ?? 0) > 0;
   const hasTasks = (tarefas?.length ?? 0) > 0;
+  const hasCompras = (comprasPendentes?.length ?? 0) > 0;
 
   const handleVoiceCommand = useCallback(
     (cmd: VoiceCommand, raw: string) => {
@@ -232,7 +257,7 @@ const Hoje = () => {
       )}
 
       {/* CTA */}
-      {hasTasks && (
+      {(hasTasks || hasCompras) && (
         <Button
           className="w-full h-16 text-xl font-bold rounded-2xl bg-warning text-warning-foreground hover:bg-warning/90 shadow-md"
           onClick={() =>
@@ -246,7 +271,7 @@ const Hoje = () => {
       )}
 
       {/* All good */}
-      {!hasAlerts && !hasTasks && (
+      {!hasAlerts && !hasTasks && !hasCompras && (
         <Card className="border-2 border-success/30 bg-success/10 shadow-sm">
           <CardContent className="p-8 text-center">
             <p className="text-2xl font-bold text-foreground">Tudo em dia 👏</p>
@@ -301,7 +326,39 @@ const Hoje = () => {
         </div>
       )}
 
-      {/* Voice FAB */}
+      {/* Compras Pendentes */}
+      {hasCompras && (
+        <div className="space-y-4">
+          <p className="text-base font-semibold text-muted-foreground">
+            🛒 Compras pendentes
+          </p>
+          {comprasPendentes!.map((c: any) => (
+            <Card key={c.id} className="shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <ShoppingCart className="h-6 w-6 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-lg text-foreground truncate">
+                    {c.descricao || "Compra sem descrição"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {(c.fornecedores as any)?.nome ?? "Sem fornecedor"}
+                    {c.valor_total ? ` · R$ ${Number(c.valor_total).toFixed(2)}` : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => marcarComprado.mutate(c.id)}
+                >
+                  Comprado
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {voiceSupported && (
         <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end">
           {(voiceStatus !== "idle" || falando) && (
