@@ -177,6 +177,12 @@ const MenuPrincipal = () => {
                 <SelectValue placeholder="Selecionar obra" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">
+                  <span className="flex items-center gap-2">
+                    Todas as Obras
+                    <span className="text-xs text-muted-foreground">• Visão geral</span>
+                  </span>
+                </SelectItem>
                 {obras.map((o) => {
                   const statusLabel = o.status ? o.status.charAt(0).toUpperCase() + o.status.slice(1) : "Planejamento";
                   return (
