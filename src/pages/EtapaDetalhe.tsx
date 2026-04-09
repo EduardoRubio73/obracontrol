@@ -72,15 +72,15 @@ export default function EtapaDetalhe() {
     },
   });
 
-  const { data: etapasPadrao } = useQuery({
-    queryKey: ["etapas-padrao"],
+  const { data: tarefasPadrao } = useQuery({
+    queryKey: ["tarefas-padrao"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("etapas_padrao")
+        .from("tarefas_padrao" as any)
         .select("id, nome")
         .order("nome");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as { id: string; nome: string }[];
     },
   });
 
@@ -90,12 +90,12 @@ export default function EtapaDetalhe() {
 
   const createItem = useMutation({
     mutationFn: async (nome: string) => {
-      // Auto-insert into etapas_padrao if new
-      const exists = etapasPadrao?.some(
+      // Auto-insert into tarefas_padrao if new
+      const exists = tarefasPadrao?.some(
         (e) => e.nome.toLowerCase() === nome.toLowerCase()
       );
       if (!exists) {
-        await supabase.from("etapas_padrao").insert({ nome } as any);
+        await supabase.from("tarefas_padrao" as any).insert({ nome } as any);
       }
 
       const { error } = await supabase.from("fase_itens").insert({
@@ -107,7 +107,7 @@ export default function EtapaDetalhe() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
-      queryClient.invalidateQueries({ queryKey: ["etapas-padrao"] });
+      queryClient.invalidateQueries({ queryKey: ["tarefas-padrao"] });
       toast.success("Tarefa adicionada!");
       setOpen(false);
       setSelectedNome("");
@@ -151,7 +151,7 @@ export default function EtapaDetalhe() {
 
   const isNewValue =
     searchValue.trim().length > 0 &&
-    !etapasPadrao?.some(
+    !tarefasPadrao?.some(
       (e) => e.nome.toLowerCase() === searchValue.trim().toLowerCase()
     );
 
@@ -282,16 +282,16 @@ export default function EtapaDetalhe() {
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput
-                      placeholder="Buscar etapa..."
+                      placeholder="Buscar tarefa..."
                       value={searchValue}
                       onValueChange={setSearchValue}
                     />
                     <CommandList>
                       <CommandEmpty>
-                        {searchValue.trim() ? null : "Nenhuma etapa cadastrada"}
+                        {searchValue.trim() ? null : "Nenhuma tarefa cadastrada"}
                       </CommandEmpty>
                       <CommandGroup>
-                        {etapasPadrao
+                        {tarefasPadrao
                           ?.filter((e) =>
                             e.nome
                               .toLowerCase()
@@ -330,7 +330,7 @@ export default function EtapaDetalhe() {
                               <span className="font-semibold">
                                 {searchValue.trim()}
                               </span>
-                              " como nova etapa padrão
+                              " como nova tarefa padrão
                             </span>
                           </CommandItem>
                         )}
