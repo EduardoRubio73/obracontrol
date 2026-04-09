@@ -1,5 +1,4 @@
 import {
-  Home,
   Layers,
   ShoppingCart,
   DollarSign,
@@ -49,18 +48,12 @@ const gestaoObraItems = [
   { title: "📁 Documentos", url: "/documentos", icon: FolderOpen },
 ];
 
-const cadastroItems = [
+const configItems = [
   { title: "👥 Fornecedores", url: "/fornecedores", icon: Users },
   { title: "📦 Produtos", url: "/produtos", icon: Package },
-];
-
-const sistemaItems = [
   { title: "📈 Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "⚙️ Configurações", url: "/configuracoes", icon: Settings },
   { title: "🤖 Assistente IA", url: "/chat", icon: Bot },
-];
-
-const userItems = [
   { title: "👤 Perfil", url: "/perfil", icon: UserCircle },
 ];
 
@@ -113,42 +106,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            {!collapsed && (
-              <span className="flex items-center gap-1">
-                🏗️ Gestão da Obra
-                {hasObraSelected && (
+        {hasObraSelected && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              {!collapsed && (
+                <span className="flex items-center gap-1">
+                  🏗️ Gestão da Obra
                   <span className="ml-1 text-[10px] font-normal text-primary bg-primary/10 rounded-full px-2 py-0.5 truncate max-w-[120px]">
                     {obraAtiva.nome}
                   </span>
-                )}
-              </span>
-            )}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(gestaoObraItems, true)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                </span>
+              )}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>{renderItems(gestaoObraItems, true)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "📦 Cadastros"}</SidebarGroupLabel>
+          <SidebarGroupLabel>{!collapsed && "⚙️ Configurações"}</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>{renderItems(cadastroItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "⚙️ Sistema"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(sistemaItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "👤 Conta"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(userItems)}</SidebarMenu>
+            <SidebarMenu>{renderItems(configItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
