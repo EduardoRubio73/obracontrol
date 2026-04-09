@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Package, FolderOpen, Filter } from "lucide-react";
@@ -168,31 +167,32 @@ const Produtos = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Produtos</h1>
+    <div className="space-y-5 px-1">
+      {/* Header */}
+      <div className="flex flex-col gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold">Produtos</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={openNewCat}>
-            <FolderOpen className="mr-2 h-4 w-4" /> Nova Categoria
+          <Button variant="outline" size="lg" className="flex-1 h-12 text-base font-semibold rounded-xl" onClick={openNewCat}>
+            <FolderOpen className="mr-2 h-5 w-5" /> Nova Categoria
           </Button>
-          <Button onClick={openNewProd}>
-            <Plus className="mr-2 h-4 w-4" /> Novo Produto
+          <Button size="lg" className="flex-1 h-12 text-base font-semibold rounded-xl" onClick={openNewProd}>
+            <Plus className="mr-2 h-5 w-5" /> Novo Produto
           </Button>
         </div>
       </div>
 
-      {/* Categories row */}
-      <Card>
+      {/* Categories */}
+      <Card className="rounded-2xl">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FolderOpen className="h-4 w-4" /> Categorias
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FolderOpen className="h-5 w-5" /> Categorias
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             <Badge
               variant={filterCat === "" ? "default" : "outline"}
-              className="cursor-pointer"
+              className="cursor-pointer text-base px-4 py-2 rounded-full"
               onClick={() => setFilterCat("")}
             >
               Todas
@@ -201,7 +201,7 @@ const Produtos = () => {
               <div key={cat.id} className="group flex items-center gap-1">
                 <Badge
                   variant={filterCat === cat.id ? "default" : "outline"}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-base px-4 py-2 rounded-full"
                   onClick={() => setFilterCat(filterCat === cat.id ? "" : cat.id)}
                 >
                   {cat.nome}
@@ -209,36 +209,36 @@ const Produtos = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-7 w-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity"
                   onClick={() => openEditCat(cat)}
                 >
-                  <Pencil className="h-3 w-3" />
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-7 w-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity"
                   onClick={() => setDeleteConfirm({ type: "cat", id: cat.id, nome: cat.nome })}
                 >
-                  <Trash2 className="h-3 w-3 text-destructive" />
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>
             ))}
             {!categorias?.length && (
-              <p className="text-sm text-muted-foreground">Nenhuma categoria criada</p>
+              <p className="text-base text-muted-foreground">Nenhuma categoria criada</p>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Products table */}
-      <Card>
+      {/* Products — card list for mobile */}
+      <Card className="rounded-2xl">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="h-4 w-4" /> Produtos
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Package className="h-5 w-5" /> Produtos
             {filterCat && (
-              <Badge variant="secondary" className="ml-2 text-xs">
-                <Filter className="mr-1 h-3 w-3" />
+              <Badge variant="secondary" className="ml-2 text-sm px-3 py-1 rounded-full">
+                <Filter className="mr-1 h-3.5 w-3.5" />
                 Filtrando por categoria
               </Badge>
             )}
@@ -246,43 +246,38 @@ const Produtos = () => {
         </CardHeader>
         <CardContent>
           {produtos?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Unidade</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="w-20"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {produtos.map((p: any) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.nome}</TableCell>
-                    <TableCell>{p.unidade}</TableCell>
-                    <TableCell>
-                      {p.categorias_produtos?.nome ? (
-                        <Badge variant="outline">{p.categorias_produtos.nome}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
+            <div className="space-y-3">
+              {produtos.map((p: any) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between rounded-xl border p-4 gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold truncate">{p.nome}</p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <Badge variant="secondary" className="text-sm px-3 py-0.5 rounded-full">
+                        {p.unidade || "un"}
+                      </Badge>
+                      {p.categorias_produtos?.nome && (
+                        <Badge variant="outline" className="text-sm px-3 py-0.5 rounded-full">
+                          {p.categorias_produtos.nome}
+                        </Badge>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEditProd(p)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ type: "prod", id: p.id, nome: p.nome })}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => openEditProd(p)}>
+                      <Pencil className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setDeleteConfirm({ type: "prod", id: p.id, nome: p.nome })}>
+                      <Trash2 className="h-5 w-5 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-muted-foreground text-base py-8">
               {isLoading ? "Carregando..." : "Nenhum produto cadastrado"}
             </p>
           )}
@@ -293,19 +288,20 @@ const Produtos = () => {
       <Dialog open={catDialog} onOpenChange={(v) => { if (!v) { setCatDialog(false); setEditCat(null); setCatName(""); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editCat ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
+            <DialogTitle className="text-xl">{editCat ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome</Label>
+              <Label className="text-base">Nome</Label>
               <Input
+                className="h-12 text-base rounded-xl"
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
                 placeholder="Ex: Material Elétrico"
               />
             </div>
             <Button
-              className="w-full"
+              className="w-full h-12 text-base font-semibold rounded-xl"
               onClick={() => saveCat.mutate()}
               disabled={!catName.trim() || saveCat.isPending}
             >
@@ -319,31 +315,33 @@ const Produtos = () => {
       <Dialog open={prodDialog} onOpenChange={(v) => { if (!v) closeProdDialog(); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editProd ? "Editar Produto" : "Novo Produto"}</DialogTitle>
+            <DialogTitle className="text-xl">{editProd ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome</Label>
+              <Label className="text-base">Nome</Label>
               <Input
+                className="h-12 text-base rounded-xl"
                 value={prodName}
                 onChange={(e) => setProdName(e.target.value)}
                 placeholder="Ex: Fio 2.5mm"
               />
             </div>
             <div className="space-y-2">
-              <Label>Unidade</Label>
+              <Label className="text-base">Unidade</Label>
               <Input
+                className="h-12 text-base rounded-xl"
                 value={prodUnit}
                 onChange={(e) => setProdUnit(e.target.value)}
                 placeholder="un, m, kg, etc."
               />
             </div>
             <div className="space-y-2">
-              <Label>Categoria</Label>
+              <Label className="text-base">Categoria</Label>
               <select
                 value={prodCatId}
                 onChange={(e) => setProdCatId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
               >
                 <option value="">Sem categoria</option>
                 {categorias?.map((c) => (
@@ -352,7 +350,7 @@ const Produtos = () => {
               </select>
             </div>
             <Button
-              className="w-full"
+              className="w-full h-12 text-base font-semibold rounded-xl"
               onClick={() => saveProd.mutate()}
               disabled={!prodName.trim() || saveProd.isPending}
             >
@@ -366,15 +364,15 @@ const Produtos = () => {
       <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => { if (!v) setDeleteConfirm(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-xl">Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
               Tem certeza que deseja excluir <strong>{deleteConfirm?.nome}</strong>? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 text-base rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-11 text-base rounded-xl"
               onClick={() => {
                 if (deleteConfirm?.type === "cat") deleteCat.mutate(deleteConfirm.id);
                 else if (deleteConfirm?.type === "prod") deleteProd.mutate(deleteConfirm.id);
