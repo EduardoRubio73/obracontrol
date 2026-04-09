@@ -15,6 +15,7 @@ import {
   
   Bot,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
