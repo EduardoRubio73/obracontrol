@@ -1,47 +1,42 @@
 
 
-# Plano: UX e Interatividade — Sidebar, Header, Abas e Cards de Atalho
+# Plano: Correção de Localização — Cards no Index, Limpeza do Dashboard, Scroll Invisível
 
-## 1. Sidebar fecha ao clicar em link (mobile)
+## 1. Remover shortcut cards do Dashboard.tsx
 
-**AppSidebar.tsx**: Importar `useSidebar` e chamar `setOpenMobile(false)` ao clicar em qualquer link. Modificar `renderItems` para adicionar `onClick={() => { if (isMobile) setOpenMobile(false) }}` em cada `NavLink`.
+Remover as linhas ~241-281 (definição de `shortcutCards` e o bloco JSX que renderiza o grid de 6 cards). Dashboard volta a ser apenas gráficos e resumos financeiros. Remover também a variável `comprasCount` que só servia para os cards.
 
-Sidebar ja tem `useSidebar` importado — basta adicionar `isMobile` e `setOpenMobile` do contexto.
+## 2. Mover cards coloridos para Index.tsx
 
-## 2. Header Ultra-Clean
+Substituir o menu gradient atual por 6 cards grandes e coloridos quando uma obra está selecionada:
+- 📋 Etapas (fundo azul claro), 🛒 Compras (fundo laranja claro), 💰 Financeiro (fundo verde claro)
+- 📝 Cotações (fundo amarelo/laranja claro), 🖼️ Galeria (fundo rosa claro), 📁 Documentos (fundo âmbar claro)
 
-**AppLayout.tsx**: Remover toda a seção de Breadcrumbs (linhas 110-147). Remover imports de Breadcrumb. Header fica apenas com: burger (esquerda), logo, e seletor de obra (direita). Remover tambem o botao "Voltar".
+Cada card mostra resumo rápido (queries já existentes no Index.tsx podem ser reaproveitadas). Layout: `grid grid-cols-2 sm:grid-cols-3 gap-4`, sem larguras fixas.
 
-## 3. Barra de Gestao (ObraContextTabs) — flex-wrap, botoes maiores
+Quando "Todas as Obras" estiver selecionado, mostrar card de boas-vindas + atalhos gerais (manter menuItems existentes como fallback).
 
-**ObraContextTabs.tsx**:
-- Remover `overflow-x-auto` e `min-w-max`
-- Usar `flex flex-wrap gap-2 px-4 py-2`
-- Botoes com `min-h-[44px] px-4 py-2 text-sm` para toque facil
-- Remover `whitespace-nowrap` — permitir wrap natural
+## 3. ObraContextTabs — scroll invisível com botões grandes
 
-## 4. Cards de Atalho na pagina da Obra (Dashboard)
+Alterar de `flex-wrap` para `overflow-x-auto` com scrollbar escondida:
+- Adicionar CSS `::-webkit-scrollbar { display: none }` e `-ms-overflow-style: none; scrollbar-width: none`
+- Manter `min-h-[44px]` nos botões
+- Usar `flex-nowrap` para permitir arrastar horizontalmente sem barra visível
 
-**Dashboard.tsx**: Quando `filtroId` existe (obra selecionada), exibir grid de 6 cards grandes e coloridos ANTES dos summary cards:
+## 4. Sidebar — confirmar auto-close no mobile
 
-```
-grid grid-cols-2 sm:grid-cols-3 gap-3
-```
+O `setOpenMobile(false)` já está no `AppSidebar.tsx` (linha 43). Verificar que está sendo chamado no `onClick` de cada link dentro de `renderItems`.
 
-Cards: Etapas, Compras, Financeiro, Cotacoes, Galeria, Documentos. Cada card com emoji, titulo, resumo (ex: "X etapas em andamento"), e `onClick` para navegar. Cores distintas com `bg-blue-50`, `bg-green-50`, etc.
+## 5. Header — confirmar limpeza
 
-Dados de resumo ja disponiveis: `fases`, `cotacoes`, `financeiro`, `documentos`.
-
-## 5. Mobile-First: sem larguras fixas
-
-Revisar `SelectTrigger` no header — trocar `w-[160px]` por `w-full max-w-[180px]`.
+O header já está limpo (apenas burger + logo + seletor de obra) conforme `AppLayout.tsx` atual. Breadcrumbs já foram removidos. Nenhuma mudança necessária.
 
 ## Arquivos Modificados
 
-| Arquivo | Mudanca |
+| Arquivo | Mudança |
 |---------|---------|
-| `src/components/AppSidebar.tsx` | Fechar sidebar ao clicar link no mobile |
-| `src/components/AppLayout.tsx` | Remover breadcrumbs, limpar header |
-| `src/components/ObraContextTabs.tsx` | flex-wrap, botoes 44px, sem scroll |
-| `src/pages/Dashboard.tsx` | Cards de atalho coloridos quando obra selecionada |
+| `src/pages/Dashboard.tsx` | Remover shortcutCards e grid |
+| `src/pages/Index.tsx` | Adicionar 6 cards coloridos com resumos |
+| `src/components/ObraContextTabs.tsx` | Scroll invisível, flex-nowrap, 44px |
+| `src/index.css` | Adicionar classe `.scrollbar-hide` |
 
