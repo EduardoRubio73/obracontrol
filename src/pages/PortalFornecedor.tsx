@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,26 @@ import { CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 
 const PortalFornecedor = () => {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const fornecedorIdParam = searchParams.get("fornecedor");
+
   const [submitted, setSubmitted] = useState(false);
   const [empresa, setEmpresa] = useState("");
+  const [empresaLocked, setEmpresaLocked] = useState(false);
   const [prazo, setPrazo] = useState("");
   const [valores, setValores] = useState<Record<string, string>>({});
+
+  // Fetch fornecedor name if param present
+  useEffect(() => {
+    if (!fornecedorIdParam) return;
+    supabase.rpc("get_public_fornecedor_nome" as any, { p_id: fornecedorIdParam })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setEmpresa(data as string);
+          setEmpresaLocked(true);
+        }
+      });
+  }, [fornecedorIdParam]);
 
   // Fetch cotação by token
   const { data: cotacao, isLoading: loadingCotacao, error: cotacaoError } = useQuery({
@@ -191,7 +207,14 @@ const PortalFornecedor = () => {
                   onChange={(e) => setEmpresa(e.target.value)}
                   placeholder="Razão social ou nome fantasia"
                   required
+                  disabled={empresaLocked}
+                  className={empresaLocked ? "bg-muted cursor-not-allowed" : ""}
                 />
+                {empresaLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Nome identificado automaticamente pelo convite.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Prazo de Entrega (dias)</Label>
