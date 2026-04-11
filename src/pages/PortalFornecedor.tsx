@@ -21,13 +21,11 @@ const PortalFornecedor = () => {
     queryKey: ["portal-cotacao", token],
     enabled: !!token,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("cotacoes")
-        .select("id, descricao, data_expiracao, obras(nome)")
-        .eq("token_publico", token!)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_public_cotacao_by_token", {
+        p_token: token!,
+      });
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
   });
 
@@ -36,11 +34,9 @@ const PortalFornecedor = () => {
     queryKey: ["portal-itens", cotacao?.id],
     enabled: !!cotacao?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("itens_cotacao")
-        .select("*")
-        .eq("cotacao_id", cotacao!.id)
-        .order("created_at");
+      const { data, error } = await supabase.rpc("get_public_itens_cotacao_by_token", {
+        p_token: token!,
+      });
       if (error) throw error;
       return data;
     },
@@ -49,54 +45,16 @@ const PortalFornecedor = () => {
   // Track visualização when cotação loads
   useEffect(() => {
     if (!cotacao?.id) return;
-    supabase
-      .from("cotacao_fornecedores")
-      .update({
-        status: "visualizado",
-        data_visualizacao: new Date().toISOString(),
-      })
-      .eq("cotacao_id", cotacao.id)
-      .in("status", ["enviado"])
-      .then(({ error }) => {
+    supabase.rpc("track_public_cotacao_view", { p_token: token! }).then(({ error }) => {
         if (error) console.error("tracking view:", error.message);
       });
-  }, [cotacao?.id]);
+  }, [cotacao?.id, token]);
 
   const submitProposta = useMutation({
     mutationFn: async () => {
-      if (!cotacao || !itens?.length) throw new Error("Dados inválidos");
+      if (!cotacao || !itens?.length || !token) throw new Error("Dados inválidos");
 
-      // 1. Create or find fornecedor
-      const { data: forn, error: fornError } = await supabase
-        .from("fornecedores")
-        .insert({ nome: empresa, user_id: "00000000-0000-0000-0000-000000000000" })
-        .select("id")
-        .single();
-      if (fornError) throw fornError;
-
-      // 2. Calculate total
-      const totalValor = itens.reduce((acc, item: any) => {
-        const vu = Number(valores[item.id] || 0);
-        return acc + vu * Number(item.quantidade);
-      }, 0);
-
-      // 3. Create proposta
-      const { data: proposta, error: propError } = await supabase
-        .from("propostas")
-        .insert({
-          cotacao_id: cotacao.id,
-          fornecedor_id: forn.id,
-          valor: totalValor,
-          prazo_dias: Number(prazo) || null,
-          status: "recebida",
-        })
-        .select("id")
-        .single();
-      if (propError) throw propError;
-
-      // 4. Create proposta_itens
       const propostaItens = itens.map((item: any) => ({
-        proposta_id: proposta.id,
         nome: item.nome,
         quantidade: Number(item.quantidade),
         valor_unitario: Number(valores[item.id] || 0),
@@ -106,19 +64,14 @@ const PortalFornecedor = () => {
         throw new Error("Proposta sem itens — não é possível enviar.");
       }
 
-      const { error: itensError } = await supabase
-        .from("proposta_itens")
-        .insert(propostaItens);
-      if (itensError) throw new Error(`Erro ao salvar itens: ${itensError.message}`);
-      // 5. Update tracking status to "respondeu"
-      await supabase
-        .from("cotacao_fornecedores")
-        .update({
-          status: "respondeu",
-          data_resposta: new Date().toISOString(),
-        })
-        .eq("cotacao_id", cotacao.id)
-        .eq("fornecedor_id", forn.id);
+      const { error } = await supabase.rpc("submit_public_proposta", {
+        p_token: token,
+        p_empresa: empresa.trim(),
+        p_prazo_dias: Number(prazo) || null,
+        p_itens: propostaItens,
+      });
+
+      if (error) throw error;
     },
     onSuccess: () => {
       setSubmitted(true);
@@ -215,7 +168,7 @@ const PortalFornecedor = () => {
           <h1 className="text-2xl font-bold">Enviar Proposta</h1>
           <p className="text-muted-foreground">{cotacao.descricao}</p>
           <p className="text-sm text-muted-foreground">
-            Obra: {(cotacao.obras as any)?.nome ?? "—"}
+            Obra: {(cotacao as any)?.obra_nome ?? "—"}
           </p>
           {cotacao.data_expiracao && (
             <p className="text-xs text-warning">
