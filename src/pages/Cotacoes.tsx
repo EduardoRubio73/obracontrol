@@ -671,11 +671,9 @@ const CotacoesContent = () => {
                   <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 text-destructive" onClick={() => setDeleteConfirm(cotacao.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                  {(cotacao as any).token_publico && (
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 ml-auto" onClick={() => copyLink((cotacao as any).token_publico)}>
-                      <Copy className="h-3.5 w-3.5" /> Link
-                    </Button>
-                  )}
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 ml-auto" onClick={() => copyLink(cotacao.id, cotacao.token_publico)}>
+                    <Copy className="h-3.5 w-3.5" /> Link
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 ml-auto" onClick={() => setSelectedId(cotacao.id)}>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -757,13 +755,13 @@ const CotacoesContent = () => {
             <DialogTitle>{selected?.descricao}</DialogTitle>
           </DialogHeader>
 
-          {(selected as any)?.token_publico && (
+          {selected && (
             <div className="flex items-center gap-2 rounded-lg bg-muted p-3 min-w-0">
               <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
               <code className="flex-1 text-xs truncate min-w-0 block overflow-hidden">
-                {window.location.origin}/cotacao/{(selected as any).token_publico}
+                {selected.token_publico ? `${window.location.origin}/cotacao/${selected.token_publico}` : "Clique para gerar link"}
               </code>
-              <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink((selected as any).token_publico)}>
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink(selected.id, selected.token_publico)}>
                 <Copy className="mr-1 h-3 w-3" /> Copiar
               </Button>
             </div>
