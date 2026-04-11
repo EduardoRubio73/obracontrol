@@ -1,7 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +19,6 @@ const downloadCsv = (filename: string, headers: string[], rows: string[][]) => {
 };
 
 const Relatorios = () => {
-  const { user } = useAuth();
   const [obraId, setObraId] = useState<string>("");
 
   const { data: obras } = useQuery({
@@ -28,16 +26,6 @@ const Relatorios = () => {
     queryFn: async () => {
       const { data } = await supabase.from("obras").select("id, nome").order("nome");
       return data ?? [];
-    },
-  });
-
-  const { data: profile } = useQuery({
-    queryKey: ["profile-relatorio", user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
-      if (error) throw error;
-      return data;
     },
   });
 
@@ -86,21 +74,6 @@ const Relatorios = () => {
   const exportFinanceiroPdf = async () => {
     if (!obraId) { toast.error("Selecione uma obra"); return; }
     const obraNome = obras?.find((o) => o.id === obraId)?.nome ?? "Obra";
-
-    // Fetch signature
-    let signatureBase64 = "";
-    if ((profile as any)?.assinatura_url) {
-      try {
-        const sigResp = await fetch((profile as any).assinatura_url);
-        const sigBlob = await sigResp.blob();
-        signatureBase64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(sigBlob);
-        });
-      } catch { /* fallback */ }
-    }
-
     const { data, error } = await supabase
       .from("financeiro")
       .select("data_transacao, tipo, descricao, valor")
@@ -108,6 +81,24 @@ const Relatorios = () => {
       .order("data_transacao");
     if (error) { toast.error(error.message); return; }
     if (!data?.length) { toast.info("Sem dados financeiros"); return; }
+
+    // Fetch profile signature
+    let sigBase64 = "";
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("assinatura_url").eq("id", user.id).single();
+      if (profile?.assinatura_url) {
+        try {
+          const resp = await fetch(profile.assinatura_url);
+          const blob = await resp.blob();
+          sigBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch { /* fallback */ }
+      }
+    }
 
     const totalDespesa = data.filter((r) => r.tipo === "despesa").reduce((a, r) => a + (r.valor ?? 0), 0);
     const totalReceita = data.filter((r) => r.tipo === "receita").reduce((a, r) => a + (r.valor ?? 0), 0);
@@ -130,7 +121,10 @@ const Relatorios = () => {
         td { padding: 8px; border-bottom: 1px solid #eee; }
         .despesa { color: #dc2626; }
         .receita { color: #16a34a; }
-        @media print { body { padding: 20px; } }
+        .sig-section { margin-top: 60px; width: 250px; text-align: center; }
+        .sig-section img { height: 60px; object-fit: contain; margin-bottom: -4px; }
+        .sig-section .sig-label { border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
+        @media print { body { padding: 20px; } * { box-shadow: none !important; } }
       </style></head><body>
       <h1>Relatório Financeiro</h1>
       <p class="sub">${obraNome} — gerado em ${new Date().toLocaleDateString("pt-BR")}</p>
@@ -148,10 +142,10 @@ const Relatorios = () => {
           <td style="text-align:right" class="${r.tipo}">${fmt(r.valor ?? 0)}</td>
         </tr>`).join("")}</tbody>
       </table>
-      ${signatureBase64 ? `<div style="margin-top: 40px; text-align: right;">
-        <img src="${signatureBase64}" style="max-width:200px;max-height:80px;" alt="Assinatura" />
-        <p style="font-size:12px;color:#666;border-top:1px solid #333;display:inline-block;padding-top:6px;margin-top:4px;">Assinatura do Responsável</p>
-      </div>` : ""}
+      <div class="sig-section">
+        ${sigBase64 ? `<img src="${sigBase64}" alt="Assinatura" />` : `<div style="height:60px"></div>`}
+        <div class="sig-label">Assinatura do Responsável</div>
+      </div>
       </body></html>`);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 500);

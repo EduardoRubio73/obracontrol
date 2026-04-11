@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { UserCircle, Camera } from "lucide-react";
-import SignaturePad from "@/components/SignaturePad";
 
 const Perfil = () => {
   const { user } = useAuth();
@@ -18,7 +17,6 @@ const Perfil = () => {
   const [telefone, setTelefone] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [savingSignature, setSavingSignature] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -66,33 +64,6 @@ const Perfil = () => {
     finally { setUploading(false); e.target.value = ""; }
   };
 
-  const handleSaveSignature = useCallback(async (dataUrl: string) => {
-    if (!user) return;
-    setSavingSignature(true);
-    try {
-      const resp = await fetch(dataUrl);
-      const blob = await resp.blob();
-      const path = `assinaturas/${user.id}.png`;
-      const { error: uploadError } = await supabase.storage
-        .from("documentos")
-        .upload(path, blob, { upsert: true, contentType: "image/png" });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
-      const assinaturaUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ assinatura_url: assinaturaUrl } as any)
-        .eq("id", user.id);
-      if (updateError) throw updateError;
-      queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
-      toast.success("Assinatura salva com sucesso!");
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar assinatura");
-    } finally {
-      setSavingSignature(false);
-    }
-  }, [user, queryClient]);
-
   return (
     <div className="w-full max-w-screen-xl mx-auto px-4 pb-24">
       <div className="mx-auto max-w-lg space-y-6">
@@ -100,14 +71,14 @@ const Perfil = () => {
         <Card>
           <CardHeader className="items-center">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <Avatar className="h-32 w-32 sm:h-40 sm:w-40">
+              <Avatar className="h-20 w-20">
                 <AvatarImage src={profile?.avatar_url ?? undefined} alt={nome} />
-                <AvatarFallback className="bg-primary/10 text-primary text-5xl">
-                  {nome?.charAt(0)?.toUpperCase() || <UserCircle className="h-16 w-16" />}
+                <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                  {nome?.charAt(0)?.toUpperCase() || <UserCircle className="h-10 w-10" />}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="h-8 w-8 text-white" />
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="h-6 w-6 text-white" />
               </div>
               {uploading && (
                 <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
@@ -137,15 +108,6 @@ const Perfil = () => {
                 {update.isPending ? "Salvando..." : "Salvar alterações"}
               </Button>
             </form>
-
-            {/* Assinatura Digital */}
-            <div className="mt-6 pt-6 border-t">
-              <SignaturePad
-                initialImage={(profile as any)?.assinatura_url ?? null}
-                onSave={handleSaveSignature}
-                saving={savingSignature}
-              />
-            </div>
           </CardContent>
         </Card>
       </div>
