@@ -1925,6 +1925,7 @@ export type Database = {
           obra_nome: string
         }[]
       }
+      get_public_fornecedor_nome: { Args: { p_id: string }; Returns: string }
       get_public_itens_cotacao_by_token: {
         Args: { p_token: string }
         Returns: {

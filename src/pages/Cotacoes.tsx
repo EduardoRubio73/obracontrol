@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import {
   ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy,
   PackagePlus, Brain, Mail, Send, Eye, Clock, CheckCircle2, AlertTriangle,
-  Search, Pencil, Printer,
+  Search, Pencil, Printer, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,12 +32,16 @@ const statusColors: Record<string, string> = {
   cancelada: "bg-destructive/10 text-destructive",
 };
 
-const trackingStatusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  pendente: { label: "Pendente", color: "bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
-  enviado: { label: "Enviado", color: "bg-primary/10 text-primary", icon: <Send className="h-3 w-3" /> },
-  visualizado: { label: "Visualizado", color: "bg-warning/10 text-warning", icon: <Eye className="h-3 w-3" /> },
-  respondeu: { label: "Respondeu", color: "bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
-  expirado: { label: "Expirado", color: "bg-destructive/10 text-destructive", icon: <AlertTriangle className="h-3 w-3" /> },
+// Helper to compute badge status from tracking row
+const getInviteStatus = (t: any): { label: string; color: string } => {
+  if (t.data_resposta) return { label: "Respondido", color: "bg-green-100 text-green-700" };
+  if (t.data_envio) {
+    const diffMs = Date.now() - new Date(t.data_envio).getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays > 2) return { label: "Atrasado", color: "bg-red-100 text-red-700" };
+    return { label: "Pendente", color: "bg-yellow-100 text-yellow-700" };
+  }
+  return { label: "Pendente", color: "bg-yellow-100 text-yellow-700" };
 };
 
 const CotacoesContent = () => {
@@ -57,6 +61,9 @@ const CotacoesContent = () => {
   const [selectedFornecedores, setSelectedFornecedores] = useState<string[]>([]);
   const [editDialog, setEditDialog] = useState<{ id: string; descricao: string; data_expiracao: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [resendDialog, setResendDialog] = useState<{ trackingId: string; fornecedorId: string; fornecedorNome: string; email: string } | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
+  const [viewPropostaDialog, setViewPropostaDialog] = useState<{ fornecedorId: string; fornecedorNome: string } | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,7 +95,6 @@ const CotacoesContent = () => {
     },
   });
 
-  // Fetch item counts for all cotações
   const cotacaoIds = useMemo(() => cotacoes?.map((c) => c.id) ?? [], [cotacoes]);
   const { data: allItensCount } = useQuery({
     queryKey: ["itens-cotacao-count", cotacaoIds],
@@ -127,7 +133,7 @@ const CotacoesContent = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cotacao_fornecedores")
-        .select("*, fornecedores(nome)")
+        .select("*, fornecedores(nome, email)")
         .eq("cotacao_id", selectedId!)
         .order("created_at");
       if (error) throw error;
@@ -149,7 +155,6 @@ const CotacoesContent = () => {
     },
   });
 
-  // Items for print (selectedId)
   const { data: printItens } = useQuery({
     queryKey: ["itens-cotacao-print", selectedId],
     enabled: !!selectedId,
@@ -161,6 +166,24 @@ const CotacoesContent = () => {
         .order("created_at");
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch proposta + itens for viewing a specific fornecedor's response
+  const { data: viewPropostaData } = useQuery({
+    queryKey: ["view-proposta", selectedId, viewPropostaDialog?.fornecedorId],
+    enabled: !!selectedId && !!viewPropostaDialog?.fornecedorId,
+    queryFn: async () => {
+      const { data: prop, error } = await supabase
+        .from("propostas")
+        .select("*, proposta_itens(*)")
+        .eq("cotacao_id", selectedId!)
+        .eq("fornecedor_id", viewPropostaDialog!.fornecedorId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return prop;
     },
   });
 
@@ -176,7 +199,6 @@ const CotacoesContent = () => {
     },
   });
 
-  // Linked fornecedores for active manage dialog
   const { data: linkedFornecedores } = useQuery({
     queryKey: ["cotacao-fornecedores-linked", manageDialog],
     enabled: !!manageDialog,
@@ -190,7 +212,6 @@ const CotacoesContent = () => {
     },
   });
 
-  // Set selectedFornecedores from DB when manage dialog opens
   useEffect(() => {
     if (linkedFornecedores) {
       setSelectedFornecedores(linkedFornecedores);
@@ -228,7 +249,6 @@ const CotacoesContent = () => {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
       toast.success("Cotação criada! Adicione os itens.");
       setNewCotacao(false);
-      // Redirect to manage dialog with items tab
       setManageDialog(data.id);
     },
     onError: (e: any) => toast.error(e.message),
@@ -249,7 +269,6 @@ const CotacoesContent = () => {
 
   const deleteCotacao = useMutation({
     mutationFn: async (id: string) => {
-      // Delete related items first
       await supabase.from("itens_cotacao").delete().eq("cotacao_id", id);
       await supabase.from("cotacao_fornecedores").delete().eq("cotacao_id", id);
       await supabase.from("propostas").delete().eq("cotacao_id", id);
@@ -349,6 +368,11 @@ const CotacoesContent = () => {
     return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
   };
 
+  const fmtDateShort = (d: string | null) => {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  };
+
   const selected = cotacoes?.find((c) => c.id === selectedId);
 
   const ensureToken = async (cotacaoId: string, currentToken: string | null): Promise<string | null> => {
@@ -368,7 +392,7 @@ const CotacoesContent = () => {
     if (!token) return;
     const url = `${window.location.origin}/cotacao/${token}`;
     navigator.clipboard.writeText(url);
-    toast.success("Link copiado!");
+    toast.success("Link avulso copiado!");
   };
 
   const handleNewCotacao = (e: React.FormEvent<HTMLFormElement>) => {
@@ -443,6 +467,7 @@ const CotacoesContent = () => {
     );
   };
 
+  // Individualized email sending
   const handleSendToFornecedores = async () => {
     if (!manageDialog || !selectedFornecedores.length) {
       toast.error("Selecione pelo menos um fornecedor");
@@ -454,26 +479,52 @@ const CotacoesContent = () => {
       prazoDias: Number(prazoDias) || 7,
     });
 
-    // Open mailto
     const cotacao = cotacoes?.find((c) => c.id === manageDialog);
     if (cotacao) {
       const token = await ensureToken(cotacao.id, cotacao.token_publico);
       if (!token) return;
-      const link = `${window.location.origin}/cotacao/${token}`;
       const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
-      const emails = selectedFornecedores
-        .map((id) => fornecedoresDb?.find((f) => f.id === id)?.email)
-        .filter(Boolean) as string[];
 
-      if (emails.length) {
-        const subject = `Solicitação de Orçamento - ${nomeObra}`;
-        const body = `Prezados,\n\nEstamos realizando uma cotação referente à obra:\n\n${nomeObra}\n\nSolicitamos o envio da proposta através do link abaixo:\n\n${link}\n\nPrazo para envio: ${prazoDias} dias\n\nIMPORTANTE:\nO envio deve ser feito exclusivamente pelo formulário.\n\nAtenciosamente,\nObraControl`;
-
-        const [first, ...rest] = emails;
-        const cc = rest.length ? `&cc=${rest.map(encodeURIComponent).join(",")}` : "";
-        window.location.href = `mailto:${encodeURIComponent(first)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}${cc}`;
+      // Open individual mailto for each fornecedor
+      for (const fId of selectedFornecedores) {
+        const forn = fornecedoresDb?.find((f) => f.id === fId);
+        if (!forn?.email) continue;
+        const link = `${window.location.origin}/cotacao/${token}?fornecedor=${fId}`;
+        const subject = `Solicitação de Orçamento #${cotacao.id.slice(0, 8)} - ${nomeObra}`;
+        const body = `Prezado(a) ${forn.nome},\n\nEstamos realizando uma cotação referente à obra:\n\n${nomeObra}\n\nSolicitamos o envio da proposta através do link abaixo:\n\n${link}\n\nPrazo para envio: ${prazoDias} dias\n\nIMPORTANTE:\nO envio deve ser feito exclusivamente pelo formulário.\n\nAtenciosamente,\nObraControl`;
+        window.open(`mailto:${encodeURIComponent(forn.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
       }
     }
+  };
+
+  // Resend to a single fornecedor
+  const handleResend = async () => {
+    if (!resendDialog || !selectedId) return;
+    const cotacao = selected;
+    if (!cotacao) return;
+
+    // Update data_envio and email in cotacao_fornecedores
+    const { error } = await supabase
+      .from("cotacao_fornecedores")
+      .update({ data_envio: new Date().toISOString(), email: resendEmail || null })
+      .eq("id", resendDialog.trackingId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["cotacao-tracking", selectedId] });
+    toast.success("Convite reenviado!");
+
+    // Open mailto
+    const token = await ensureToken(cotacao.id, cotacao.token_publico);
+    if (token && resendEmail) {
+      const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
+      const link = `${window.location.origin}/cotacao/${token}?fornecedor=${resendDialog.fornecedorId}`;
+      const subject = `Solicitação de Orçamento #${cotacao.id.slice(0, 8)} - ${nomeObra}`;
+      const body = `Prezado(a) ${resendDialog.fornecedorNome},\n\nReenviamos a cotação referente à obra:\n\n${nomeObra}\n\nEnvie sua proposta pelo link:\n\n${link}\n\nAtenciosamente,\nObraControl`;
+      window.open(`mailto:${encodeURIComponent(resendEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+    }
+    setResendDialog(null);
   };
 
   const handlePrintEspelho = async () => {
@@ -483,15 +534,14 @@ const CotacoesContent = () => {
       return;
     }
     const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
+    const numOrc = `#${cotacao.id.slice(0, 8)}`;
 
-    // Fetch profile data
     let profileData: any = {};
     if (user) {
       const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (data) profileData = data;
     }
 
-    // Convert logo to base64 for print
     let logoBase64 = "";
     try {
       const resp = await fetch(logoImg);
@@ -503,7 +553,6 @@ const CotacoesContent = () => {
       });
     } catch { /* fallback without logo */ }
 
-    // Convert signature to base64 for print
     let sigBase64 = "";
     if (profileData.assinatura_url) {
       try {
@@ -526,12 +575,13 @@ const CotacoesContent = () => {
     w.document.write(`
       <html>
       <head>
-        <title>Espelho do Orçamento</title>
+        <title>Espelho do Orçamento ${numOrc}</title>
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a1a; background: #fff; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
           .header img { height: 60px; margin-bottom: 12px; }
           .header h2 { font-size: 22px; color: #2563eb; margin: 0; font-weight: 700; letter-spacing: 0.5px; }
+          .header .num-orc { font-size: 14px; color: #666; margin-top: 4px; }
           .info { margin-bottom: 20px; }
           .info p { margin: 4px 0; font-size: 14px; }
           table { width: 100%; border-collapse: collapse; margin-top: 16px; }
@@ -556,6 +606,7 @@ const CotacoesContent = () => {
         <div class="header">
           ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : ""}
           <h2>Espelho do Orçamento</h2>
+          <p class="num-orc">Orçamento ${numOrc}</p>
         </div>
         <div class="info">
           <p><strong>Cotação:</strong> ${cotacao.descricao}</p>
@@ -657,6 +708,7 @@ const CotacoesContent = () => {
       <div className="space-y-3">
         {cotacoes?.map((cotacao) => {
           const itemCount = allItensCount?.[cotacao.id] ?? 0;
+          const numOrc = `#${cotacao.id.slice(0, 8)}`;
           return (
             <Card key={cotacao.id} className="hover:border-primary/30 transition-colors">
               <CardContent className="p-3 sm:p-4 space-y-2">
@@ -666,7 +718,10 @@ const CotacoesContent = () => {
                   onClick={() => setSelectedId(cotacao.id)}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm sm:text-base leading-snug">{cotacao.descricao}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-muted-foreground">{numOrc}</span>
+                      <p className="font-medium text-sm sm:text-base leading-snug">{cotacao.descricao}</p>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-xs sm:text-sm text-muted-foreground truncate">
                         {(cotacao.obras as any)?.nome ?? "—"}
@@ -694,9 +749,9 @@ const CotacoesContent = () => {
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 ml-auto" onClick={() => copyLink(cotacao.id, cotacao.token_publico)}>
-                    <Copy className="h-3.5 w-3.5" /> Link
+                    <Copy className="h-3.5 w-3.5" /> Link Avulso
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 ml-auto" onClick={() => setSelectedId(cotacao.id)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setSelectedId(cotacao.id)}>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </div>
@@ -770,11 +825,14 @@ const CotacoesContent = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Detail Dialog with Tracking + Propostas */}
+      {/* Detail Dialog */}
       <Dialog open={!!selectedId} onOpenChange={(v) => !v && setSelectedId(null)}>
         <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{selected?.descricao}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-xs font-mono text-muted-foreground">{selected ? `#${selected.id.slice(0, 8)}` : ""}</span>
+              {selected?.descricao}
+            </DialogTitle>
           </DialogHeader>
 
           {selected && (
@@ -784,72 +842,168 @@ const CotacoesContent = () => {
                 {selected.token_publico ? `${window.location.origin}/cotacao/${selected.token_publico}` : "Clique para gerar link"}
               </code>
               <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink(selected.id, selected.token_publico)}>
-                <Copy className="mr-1 h-3 w-3" /> Copiar
+                <Copy className="mr-1 h-3 w-3" /> Link Avulso
               </Button>
             </div>
           )}
 
-          {/* Print Button */}
-          <Button variant="outline" size="sm" onClick={handlePrintEspelho} className="gap-2">
+          {/* Print Button - Blue */}
+          <Button size="sm" onClick={handlePrintEspelho} className="gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
             <Printer className="h-4 w-4" /> Gerar Espelho do Orçamento
           </Button>
 
-          {/* Tracking Panel */}
+          {/* Items list */}
+          {printItens && printItens.length > 0 && (
+            <div>
+              <h3 className="mb-3 font-semibold flex items-center gap-2">
+                📦 Itens da Cotação
+              </h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Qtd</TableHead>
+                    <TableHead>Unidade</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {printItens.map((item: any, i: number) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-xs">{i + 1}</TableCell>
+                      <TableCell>{item.nome}</TableCell>
+                      <TableCell>{item.quantidade}</TableCell>
+                      <TableCell>{item.unidade || "un"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Fornecedores Convidados */}
           {tracking && tracking.length > 0 && (
             <div>
               <h3 className="mb-3 font-semibold flex items-center gap-2">
-                <Eye className="h-4 w-4" /> Status dos Fornecedores
+                👥 Fornecedores Convidados
               </h3>
+              {/* Desktop table */}
               <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Fornecedor</TableHead>
+                      <TableHead>Data Envio</TableHead>
+                      <TableHead>Data Resposta</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Enviado</TableHead>
-                      <TableHead>Visualizado</TableHead>
-                      <TableHead>Respondido</TableHead>
-                      <TableHead>Prazo</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {tracking.map((t: any) => {
-                      const cfg = trackingStatusConfig[t.status] || trackingStatusConfig.pendente;
+                      const status = getInviteStatus(t);
+                      const responded = !!t.data_resposta;
                       return (
-                        <TableRow key={t.id}>
+                        <TableRow
+                          key={t.id}
+                          className={responded ? "cursor-pointer hover:bg-muted/50" : ""}
+                          onClick={() => {
+                            if (responded) {
+                              setViewPropostaDialog({
+                                fornecedorId: t.fornecedor_id,
+                                fornecedorNome: t.fornecedores?.nome ?? t.email ?? "—",
+                              });
+                            }
+                          }}
+                        >
                           <TableCell className="font-medium">{t.fornecedores?.nome ?? t.email ?? "—"}</TableCell>
+                          <TableCell className="text-xs">{fmtDateShort(t.data_envio)}</TableCell>
+                          <TableCell className="text-xs">{fmtDateShort(t.data_resposta)}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className={cn("gap-1", cfg.color)}>
-                              {cfg.icon} {cfg.label}
+                            <Badge variant="secondary" className={cn("text-xs", status.color)}>
+                              {status.label === "Respondido" && "🟢 "}
+                              {status.label === "Pendente" && "🟡 "}
+                              {status.label === "Atrasado" && "🔴 "}
+                              {status.label}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs">{fmtDate(t.data_envio)}</TableCell>
-                          <TableCell className="text-xs">{fmtDate(t.data_visualizacao)}</TableCell>
-                          <TableCell className="text-xs">{fmtDate(t.data_resposta)}</TableCell>
-                          <TableCell className="text-xs">{fmtDate(t.prazo_limite)}</TableCell>
+                          <TableCell>
+                            {!responded && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setResendEmail(t.fornecedores?.email ?? t.email ?? "");
+                                  setResendDialog({
+                                    trackingId: t.id,
+                                    fornecedorId: t.fornecedor_id,
+                                    fornecedorNome: t.fornecedores?.nome ?? "—",
+                                    email: t.fornecedores?.email ?? t.email ?? "",
+                                  });
+                                }}
+                              >
+                                <RefreshCw className="h-3 w-3" /> Reenviar
+                              </Button>
+                            )}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
               </div>
+              {/* Mobile cards */}
               <div className="space-y-2 md:hidden">
                 {tracking.map((t: any) => {
-                  const cfg = trackingStatusConfig[t.status] || trackingStatusConfig.pendente;
+                  const status = getInviteStatus(t);
+                  const responded = !!t.data_resposta;
                   return (
-                    <div key={t.id} className="rounded-lg border p-3 space-y-1">
+                    <div
+                      key={t.id}
+                      className={cn("rounded-lg border p-3 space-y-2", responded && "cursor-pointer")}
+                      onClick={() => {
+                        if (responded) {
+                          setViewPropostaDialog({
+                            fornecedorId: t.fornecedor_id,
+                            fornecedorNome: t.fornecedores?.nome ?? t.email ?? "—",
+                          });
+                        }
+                      }}
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm">{t.fornecedores?.nome ?? t.email ?? "—"}</span>
-                        <Badge variant="secondary" className={cn("gap-1 text-xs", cfg.color)}>
-                          {cfg.icon} {cfg.label}
+                        <Badge variant="secondary" className={cn("gap-1 text-xs", status.color)}>
+                          {status.label === "Respondido" && "🟢 "}
+                          {status.label === "Pendente" && "🟡 "}
+                          {status.label === "Atrasado" && "🔴 "}
+                          {status.label}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                        <span>Enviado: {fmtDate(t.data_envio)}</span>
-                        <span>Visto: {fmtDate(t.data_visualizacao)}</span>
-                        <span>Respondido: {fmtDate(t.data_resposta)}</span>
-                        <span>Prazo: {fmtDate(t.prazo_limite)}</span>
+                        <span>Envio: {fmtDateShort(t.data_envio)}</span>
+                        <span>Resposta: {fmtDateShort(t.data_resposta)}</span>
                       </div>
+                      {!responded && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setResendEmail(t.fornecedores?.email ?? t.email ?? "");
+                            setResendDialog({
+                              trackingId: t.id,
+                              fornecedorId: t.fornecedor_id,
+                              fornecedorNome: t.fornecedores?.nome ?? "—",
+                              email: t.fornecedores?.email ?? t.email ?? "",
+                            });
+                          }}
+                        >
+                          <RefreshCw className="h-3 w-3" /> Reenviar
+                        </Button>
+                      )}
                     </div>
                   );
                 })}
@@ -862,7 +1016,6 @@ const CotacoesContent = () => {
             <h3 className="mb-3 font-semibold">Propostas</h3>
             {propostas?.length ? (
               <>
-                {/* Desktop table */}
                 <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -895,7 +1048,6 @@ const CotacoesContent = () => {
                     </TableBody>
                   </Table>
                 </div>
-                {/* Mobile cards */}
                 <div className="space-y-2 md:hidden">
                   {propostas.map((p) => (
                     <div key={p.id} className="rounded-lg border p-3 space-y-1">
@@ -936,6 +1088,81 @@ const CotacoesContent = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Resend Dialog */}
+      <Dialog open={!!resendDialog} onOpenChange={(v) => !v && setResendDialog(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reenviar Convite</DialogTitle>
+          </DialogHeader>
+          {resendDialog && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Reenviar convite para <strong>{resendDialog.fornecedorNome}</strong>
+              </p>
+              <div className="space-y-2">
+                <Label>E-mail do Fornecedor</Label>
+                <Input
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  placeholder="email@fornecedor.com"
+                  type="email"
+                />
+              </div>
+              <Button className="w-full" onClick={handleResend}>
+                <Send className="mr-2 h-4 w-4" /> Reenviar
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Proposta Dialog */}
+      <Dialog open={!!viewPropostaDialog} onOpenChange={(v) => !v && setViewPropostaDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Proposta — {viewPropostaDialog?.fornecedorNome}</DialogTitle>
+          </DialogHeader>
+          {viewPropostaData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">Valor Total</p>
+                  <p className="text-lg font-bold text-primary">{fmt(viewPropostaData.valor)}</p>
+                </div>
+                <div className="rounded-lg bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">Prazo</p>
+                  <p className="text-lg font-bold">{viewPropostaData.prazo_dias ? `${viewPropostaData.prazo_dias} dias` : "—"}</p>
+                </div>
+              </div>
+              {(viewPropostaData as any).proposta_itens?.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Qtd</TableHead>
+                      <TableHead>Valor Unit.</TableHead>
+                      <TableHead>Subtotal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(viewPropostaData as any).proposta_itens.map((pi: any) => (
+                      <TableRow key={pi.id}>
+                        <TableCell>{pi.nome}</TableCell>
+                        <TableCell>{pi.quantidade}</TableCell>
+                        <TableCell>{fmt(pi.valor_unitario)}</TableCell>
+                        <TableCell>{fmt(pi.quantidade * pi.valor_unitario)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Manage Dialog with Tabs: Items + Fornecedores */}
       <Dialog open={!!manageDialog} onOpenChange={(v) => { if (!v) { setManageDialog(null); setSelectedProds({}); setProdSearch(""); setSelectedFornecedores([]); } }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto p-3 sm:p-6">
@@ -950,7 +1177,6 @@ const CotacoesContent = () => {
 
             {/* Tab 1: Itens */}
             <TabsContent value="itens" className="space-y-4">
-              {/* Multi-select from catalog */}
               <div className="space-y-3">
                 <Label className="text-sm font-semibold">Selecionar do catálogo</Label>
                 <div className="relative">
@@ -1011,7 +1237,6 @@ const CotacoesContent = () => {
                 )}
               </div>
 
-              {/* Manual add */}
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Ou adicionar manualmente</Label>
                 <div className="flex gap-2">
@@ -1024,7 +1249,6 @@ const CotacoesContent = () => {
                 </div>
               </div>
 
-              {/* Current items */}
               {itens?.length ? (
                 <Table>
                   <TableHeader>
