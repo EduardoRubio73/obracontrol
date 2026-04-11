@@ -503,6 +503,20 @@ const CotacoesContent = () => {
       });
     } catch { /* fallback without logo */ }
 
+    // Convert signature to base64 for print
+    let sigBase64 = "";
+    if (profileData.assinatura_url) {
+      try {
+        const resp = await fetch(profileData.assinatura_url);
+        const blob = await resp.blob();
+        sigBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch { /* fallback without signature */ }
+    }
+
     const profileName = profileData.nome || user?.email || "";
     const profileEmail = profileData.email || user?.email || "";
     const profilePhone = profileData.telefone || "";
