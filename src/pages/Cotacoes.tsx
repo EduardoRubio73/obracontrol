@@ -351,7 +351,21 @@ const CotacoesContent = () => {
 
   const selected = cotacoes?.find((c) => c.id === selectedId);
 
-  const copyLink = (token: string) => {
+  const ensureToken = async (cotacaoId: string, currentToken: string | null): Promise<string | null> => {
+    if (currentToken) return currentToken;
+    const newToken = crypto.randomUUID();
+    const { error } = await supabase.from("cotacoes").update({ token_publico: newToken }).eq("id", cotacaoId);
+    if (error) {
+      toast.error("⚠️ Gerando link de acesso... tente novamente em instantes");
+      return null;
+    }
+    queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
+    return newToken;
+  };
+
+  const copyLink = async (cotacaoId: string, currentToken: string | null) => {
+    const token = await ensureToken(cotacaoId, currentToken);
+    if (!token) return;
     const url = `${window.location.origin}/cotacao/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
@@ -429,7 +443,7 @@ const CotacoesContent = () => {
     );
   };
 
-  const handleSendToFornecedores = () => {
+  const handleSendToFornecedores = async () => {
     if (!manageDialog || !selectedFornecedores.length) {
       toast.error("Selecione pelo menos um fornecedor");
       return;
@@ -443,7 +457,8 @@ const CotacoesContent = () => {
     // Open mailto
     const cotacao = cotacoes?.find((c) => c.id === manageDialog);
     if (cotacao) {
-      const token = (cotacao as any).token_publico;
+      const token = await ensureToken(cotacao.id, cotacao.token_publico);
+      if (!token) return;
       const link = `${window.location.origin}/cotacao/${token}`;
       const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
       const emails = selectedFornecedores
@@ -497,30 +512,34 @@ const CotacoesContent = () => {
     w.document.write(`
       <html>
       <head>
-        <title>Espelho do Orçamento - ObraControl</title>
+        <title>Espelho do Orçamento</title>
         <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a1a; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a1a; background: #fff; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
-          .header img { height: 60px; margin-bottom: 8px; }
-          .header h1 { font-size: 24px; color: #2563eb; margin: 0; }
-          .header p { margin: 4px 0; color: #666; font-size: 14px; }
+          .header img { height: 60px; margin-bottom: 12px; }
+          .header h2 { font-size: 22px; color: #2563eb; margin: 0; font-weight: 700; letter-spacing: 0.5px; }
           .info { margin-bottom: 20px; }
           .info p { margin: 4px 0; font-size: 14px; }
           table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-          th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
-          th { background: #f0f4ff; font-weight: 600; }
-          tr:nth-child(even) { background: #fafafa; }
-          .footer { margin-top: 40px; border-top: 2px solid #e5e7eb; padding-top: 16px; text-align: center; font-size: 12px; color: #666; }
-          .footer p { margin: 2px 0; }
+          th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-size: 14px; }
+          th { background: #e0e7ff; font-weight: 600; color: #1e3a5f; }
+          tr:nth-child(even) td { background: #f3f4f6; }
+          tr:nth-child(odd) td { background: #fff; }
           .price-col { width: 150px; border-bottom: 1px dotted #999; }
-          @media print { body { margin: 20px; } }
+          .footer { margin-top: 50px; border-top: 1px solid #e5e7eb; padding-top: 24px; }
+          .footer .signature-line { display: flex; justify-content: space-between; margin-top: 40px; }
+          .footer .signature-line div { width: 45%; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
+          @media print {
+            body { margin: 20px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            button, .no-print { display: none !important; }
+            * { box-shadow: none !important; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          ${logoBase64 ? `<img src="${logoBase64}" alt="ObraControl" />` : ""}
-          <h1>ObraControl</h1>
-          <p>Espelho do Orçamento</p>
+          ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : ""}
+          <h2>Espelho do Orçamento</h2>
         </div>
         <div class="info">
           <p><strong>Cotação:</strong> ${cotacao.descricao}</p>
@@ -556,10 +575,11 @@ const CotacoesContent = () => {
           <p><strong>Total: ________________</strong></p>
         </div>
         <div class="footer">
-          ${profileName ? `<p><strong>${profileName}</strong></p>` : ""}
-          ${profileEmail ? `<p>${profileEmail}</p>` : ""}
-          ${profilePhone ? `<p>${profilePhone}</p>` : ""}
-          <p style="margin-top: 8px; color: #999;">Documento gerado por ObraControl em ${new Date().toLocaleString("pt-BR")}</p>
+          ${profileName ? `<p style="font-size:13px;color:#444;"><strong>Responsável:</strong> ${profileName}${profilePhone ? ` | ${profilePhone}` : ""}${profileEmail ? ` | ${profileEmail}` : ""}</p>` : ""}
+          <div class="signature-line">
+            <div>Assinatura do Fornecedor</div>
+            <div>Assinatura do Responsável</div>
+          </div>
         </div>
       </body>
       </html>
@@ -651,11 +671,9 @@ const CotacoesContent = () => {
                   <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 text-destructive" onClick={() => setDeleteConfirm(cotacao.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                  {(cotacao as any).token_publico && (
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 ml-auto" onClick={() => copyLink((cotacao as any).token_publico)}>
-                      <Copy className="h-3.5 w-3.5" /> Link
-                    </Button>
-                  )}
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-8 px-2 shrink-0 ml-auto" onClick={() => copyLink(cotacao.id, cotacao.token_publico)}>
+                    <Copy className="h-3.5 w-3.5" /> Link
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 ml-auto" onClick={() => setSelectedId(cotacao.id)}>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -737,13 +755,13 @@ const CotacoesContent = () => {
             <DialogTitle>{selected?.descricao}</DialogTitle>
           </DialogHeader>
 
-          {(selected as any)?.token_publico && (
+          {selected && (
             <div className="flex items-center gap-2 rounded-lg bg-muted p-3 min-w-0">
               <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
               <code className="flex-1 text-xs truncate min-w-0 block overflow-hidden">
-                {window.location.origin}/cotacao/{(selected as any).token_publico}
+                {selected.token_publico ? `${window.location.origin}/cotacao/${selected.token_publico}` : "Clique para gerar link"}
               </code>
-              <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink((selected as any).token_publico)}>
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => copyLink(selected.id, selected.token_publico)}>
                 <Copy className="mr-1 h-3 w-3" /> Copiar
               </Button>
             </div>
