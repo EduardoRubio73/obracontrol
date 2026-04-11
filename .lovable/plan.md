@@ -1,42 +1,62 @@
 
 
-# Plano: Correção de Localização — Cards no Index, Limpeza do Dashboard, Scroll Invisível
+# Plano: Agente IA com CRUD Total — Gestão Completa via Chat
 
-## 1. Remover shortcut cards do Dashboard.tsx
+## Resumo
+Expandir a edge function `chat-assistente` de 4 tools para ~15 tools cobrindo CRUD completo em todos os módulos: obras, etapas, financeiro, compras, cotações, fornecedores, produtos e documentos.
 
-Remover as linhas ~241-281 (definição de `shortcutCards` e o bloco JSX que renderiza o grid de 6 cards). Dashboard volta a ser apenas gráficos e resumos financeiros. Remover também a variável `comprasCount` que só servia para os cards.
+## Mudanças na Edge Function (`supabase/functions/chat-assistente/index.ts`)
 
-## 2. Mover cards coloridos para Index.tsx
+### Novos Tools
 
-Substituir o menu gradient atual por 6 cards grandes e coloridos quando uma obra está selecionada:
-- 📋 Etapas (fundo azul claro), 🛒 Compras (fundo laranja claro), 💰 Financeiro (fundo verde claro)
-- 📝 Cotações (fundo amarelo/laranja claro), 🖼️ Galeria (fundo rosa claro), 📁 Documentos (fundo âmbar claro)
+**READ (consultas):**
+- `consultar_financeiro` — Soma gastos/receitas, saldo, lista movimentações. Responde "quanto gastei?", "qual o saldo?"
+- `consultar_compras` — Lista compras por status, totais pendentes
+- `consultar_cotacoes` — Lista cotações abertas/fechadas, contagem
+- `consultar_documentos` — Lista documentos da obra por nome/tipo
+- `consultar_fornecedores` — Lista fornecedores do usuário, filtro por categoria/status
+- `consultar_produtos` — Lista produtos cadastrados
 
-Cada card mostra resumo rápido (queries já existentes no Index.tsx podem ser reaproveitadas). Layout: `grid grid-cols-2 sm:grid-cols-3 gap-4`, sem larguras fixas.
+**CREATE (novos):**
+- `criar_compra` — Registra compra em `compras` (e opcionalmente em `financeiro` se status=comprado)
+- `criar_fornecedor` — Cadastra fornecedor em `fornecedores`
+- `criar_cotacao` — Cria cotação em `cotacoes` com itens
 
-Quando "Todas as Obras" estiver selecionado, mostrar card de boas-vindas + atalhos gerais (manter menuItems existentes como fallback).
+**UPDATE:**
+- `atualizar_etapa` — Muda status/progresso de uma fase por nome. Ex: "marcar Pintura como concluída"
+- `atualizar_obra` — Muda status, valor_previsto, datas de uma obra
+- `atualizar_compra` — Muda status de compra (pendente → comprado)
 
-## 3. ObraContextTabs — scroll invisível com botões grandes
+**DELETE:**
+- `excluir_gasto` — Remove registro do financeiro por descrição
+- `excluir_etapa` — Remove etapa por nome
 
-Alterar de `flex-wrap` para `overflow-x-auto` com scrollbar escondida:
-- Adicionar CSS `::-webkit-scrollbar { display: none }` e `-ms-overflow-style: none; scrollbar-width: none`
-- Manter `min-h-[44px]` nos botões
-- Usar `flex-nowrap` para permitir arrastar horizontalmente sem barra visível
+### System Prompt Expandido
 
-## 4. Sidebar — confirmar auto-close no mobile
+Adicionar ao system prompt:
+- Mapeamento completo das tabelas e campos disponíveis
+- Instruções para usar `consultar_*` ANTES de responder perguntas sobre dados
+- Instruções para confirmar ações com ✅ e detalhes
+- Regra: sempre usar `user_id` do token autenticado em todas as operações
+- Regra: usar `obra_id` do contexto ativo quando não especificado
 
-O `setOpenMobile(false)` já está no `AppSidebar.tsx` (linha 43). Verificar que está sendo chamado no `onClick` de cada link dentro de `renderItems`.
+### Segurança
 
-## 5. Header — confirmar limpeza
+- Todas as operações INSERT/UPDATE/DELETE usam `supabaseAdmin` com `user_id` do token JWT validado
+- Queries de leitura filtram por `user_id = userId` ou via join com `obras.user_id`
+- Sem uso de tenant_id (projeto usa `user_id = auth.uid()` conforme mem://features/security)
 
-O header já está limpo (apenas burger + logo + seletor de obra) conforme `AppLayout.tsx` atual. Breadcrumbs já foram removidos. Nenhuma mudança necessária.
+### Contexto Dinâmico
 
-## Arquivos Modificados
+A função `buildObraContext` já carrega dados reais. Será expandida para incluir também fornecedores e produtos do usuário quando relevante.
+
+## Nenhuma mudança no frontend
+
+O `Chat.tsx` já suporta `acoes` e `executado` — o backend faz todo o trabalho.
+
+## Arquivo Modificado
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Dashboard.tsx` | Remover shortcutCards e grid |
-| `src/pages/Index.tsx` | Adicionar 6 cards coloridos com resumos |
-| `src/components/ObraContextTabs.tsx` | Scroll invisível, flex-nowrap, 44px |
-| `src/index.css` | Adicionar classe `.scrollbar-hide` |
+| `supabase/functions/chat-assistente/index.ts` | Expandir de 4 para ~15 tools, atualizar system prompt, adicionar executeTool cases |
 
