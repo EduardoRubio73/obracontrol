@@ -82,6 +82,24 @@ const Relatorios = () => {
     if (error) { toast.error(error.message); return; }
     if (!data?.length) { toast.info("Sem dados financeiros"); return; }
 
+    // Fetch profile signature
+    let sigBase64 = "";
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("assinatura_url").eq("id", user.id).single();
+      if (profile?.assinatura_url) {
+        try {
+          const resp = await fetch(profile.assinatura_url);
+          const blob = await resp.blob();
+          sigBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch { /* fallback */ }
+      }
+    }
+
     const totalDespesa = data.filter((r) => r.tipo === "despesa").reduce((a, r) => a + (r.valor ?? 0), 0);
     const totalReceita = data.filter((r) => r.tipo === "receita").reduce((a, r) => a + (r.valor ?? 0), 0);
     const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -103,7 +121,10 @@ const Relatorios = () => {
         td { padding: 8px; border-bottom: 1px solid #eee; }
         .despesa { color: #dc2626; }
         .receita { color: #16a34a; }
-        @media print { body { padding: 20px; } }
+        .sig-section { margin-top: 60px; width: 250px; text-align: center; }
+        .sig-section img { height: 60px; object-fit: contain; margin-bottom: -4px; }
+        .sig-section .sig-label { border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
+        @media print { body { padding: 20px; } * { box-shadow: none !important; } }
       </style></head><body>
       <h1>Relatório Financeiro</h1>
       <p class="sub">${obraNome} — gerado em ${new Date().toLocaleDateString("pt-BR")}</p>
@@ -120,7 +141,12 @@ const Relatorios = () => {
           <td>${r.descricao ?? "-"}</td>
           <td style="text-align:right" class="${r.tipo}">${fmt(r.valor ?? 0)}</td>
         </tr>`).join("")}</tbody>
-      </table></body></html>`);
+      </table>
+      <div class="sig-section">
+        ${sigBase64 ? `<img src="${sigBase64}" alt="Assinatura" />` : `<div style="height:60px"></div>`}
+        <div class="sig-label">Assinatura do Responsável</div>
+      </div>
+      </body></html>`);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 500);
   };
