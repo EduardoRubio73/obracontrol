@@ -1,36 +1,30 @@
 
 
-# Plano: Melhorias no Formulário Financeiro
+# Plano: Corrigir Token Público + Limpar Espelho do Orçamento
 
-## 1. Combobox Inteligente para Descrição
+## Problema 1: Token Público Nulo
+Cotações criadas antes da adição do campo `token_publico` estão com valor `NULL`. O link `/cotacao/:token` quebra porque não encontra a cotação. A criação atual (linha 363) já gera token via `crypto.randomUUID()`, então só precisamos:
 
-Criar um componente `DescricaoCombobox` que:
-- Consulta descrições únicas já cadastradas na tabela `financeiro` (filtradas por `obra_id`)
-- Usa Popover + Command (cmdk) para dropdown com busca
-- Se o texto digitado não existir na lista, mostra opção "Adicionar: [texto]"
-- `autocomplete="off"` no input
-- Valor controlado via state, integrado ao form via hidden input `name="descricao"`
+1. **Migration**: Adicionar um valor default `gen_random_uuid()` na coluna `token_publico` para que toda cotação futura já tenha token automaticamente.
+2. **Backfill**: Atualizar cotações existentes com token nulo (3 registros encontrados).
+3. **Fallback no frontend**: No `copyLink` e `handleSendToFornecedores`, se `token_publico` for null, gerar e salvar o token antes de usar.
 
-## 2. Upload Estilizado com Preview
+## Problema 2: Espelho do Orçamento — Poluição Visual
 
-Substituir o `<Input type="file">` por:
-- Botão estilizado com ícone 📎 e texto "Anexar comprovante"
-- Ao selecionar arquivo de imagem: exibe miniatura (thumbnail) via `URL.createObjectURL`
-- Ao selecionar PDF: exibe ícone de PDF com nome do arquivo
-- Após upload concluído (no submit): ícone ✅ verde
-- Input file oculto, acionado pelo botão customizado
-- 100% largura no mobile
+Alterações no `handlePrintEspelho` (linhas 464-569 de Cotacoes.tsx):
 
-## 3. Responsividade
-
-- Combobox e upload ocupam `w-full` em todos os breakpoints
-- Manter grid 2 colunas para Valor/Tipo no desktop, empilhar no mobile (`grid-cols-1 sm:grid-cols-2`)
+1. **Cabeçalho**: Remover o `<h1>ObraControl</h1>` — manter apenas a imagem do logo + título "Espelho do Orçamento" centralizado e em destaque.
+2. **Rodapé**: Remover "Documento gerado por ObraControl...". Substituir por linha de assinatura simples.
+3. **Tabela**: Adicionar `tr:nth-child(even) { background: #f5f5f5; }` (já existe parcialmente, reforçar contraste). Garantir `width: 100%`.
+4. **CSS @media print**: Adicionar regras para remover sombras, botões, fundo branco puro.
 
 ## Arquivos Modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Financeiro.tsx` | Substituir campo descrição pelo Combobox, substituir input file pelo upload estilizado com preview, ajustar grid responsivo |
+| `src/pages/Cotacoes.tsx` | Fallback de geração de token no `copyLink`/`handleSendToFornecedores`; limpar HTML do espelho |
+| Migration SQL | Default `gen_random_uuid()` em `token_publico` + backfill cotações existentes |
 
-Nenhuma mudança no banco de dados — apenas consulta SELECT DISTINCT para sugestões.
+## Rota Pública
+Já está correta — `/cotacao/:token` está fora do `ProtectedRoute` no `App.tsx` (linha 80). O `PortalFornecedor` já busca por `.eq('token_publico', token)`. Nenhuma mudança necessária.
 
