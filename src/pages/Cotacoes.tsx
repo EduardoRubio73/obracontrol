@@ -507,6 +507,20 @@ const CotacoesContent = () => {
     const profileEmail = profileData.email || user?.email || "";
     const profilePhone = profileData.telefone || "";
 
+    // Convert signature to base64
+    let signatureBase64 = "";
+    if (profileData.assinatura_url) {
+      try {
+        const sigResp = await fetch(profileData.assinatura_url);
+        const sigBlob = await sigResp.blob();
+        signatureBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(sigBlob);
+        });
+      } catch { /* fallback without signature */ }
+    }
+
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(`
@@ -529,6 +543,7 @@ const CotacoesContent = () => {
           .footer { margin-top: 50px; border-top: 1px solid #e5e7eb; padding-top: 24px; }
           .footer .signature-line { display: flex; justify-content: space-between; margin-top: 40px; }
           .footer .signature-line div { width: 45%; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
+          .signature-img { max-width: 200px; max-height: 80px; margin-bottom: 4px; }
           @media print {
             body { margin: 20px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             button, .no-print { display: none !important; }
@@ -578,7 +593,7 @@ const CotacoesContent = () => {
           ${profileName ? `<p style="font-size:13px;color:#444;"><strong>Responsável:</strong> ${profileName}${profilePhone ? ` | ${profilePhone}` : ""}${profileEmail ? ` | ${profileEmail}` : ""}</p>` : ""}
           <div class="signature-line">
             <div>Assinatura do Fornecedor</div>
-            <div>Assinatura do Responsável</div>
+              <div>${signatureBase64 ? `<img src="${signatureBase64}" class="signature-img" alt="Assinatura" />` : ""}<br>Assinatura do Responsável</div>
           </div>
         </div>
       </body>
