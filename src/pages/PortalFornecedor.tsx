@@ -21,7 +21,7 @@ const PortalFornecedor = () => {
     queryKey: ["portal-cotacao", token],
     enabled: !!token,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_public_cotacao_by_token", {
+      const { data, error } = await supabase.rpc("get_public_cotacao_by_token" as any, {
         p_token: token!,
       });
       if (error) throw error;
@@ -34,7 +34,7 @@ const PortalFornecedor = () => {
     queryKey: ["portal-itens", cotacao?.id],
     enabled: !!cotacao?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_public_itens_cotacao_by_token", {
+      const { data, error } = await supabase.rpc("get_public_itens_cotacao_by_token" as any, {
         p_token: token!,
       });
       if (error) throw error;
@@ -45,7 +45,7 @@ const PortalFornecedor = () => {
   // Track visualização when cotação loads
   useEffect(() => {
     if (!cotacao?.id) return;
-    supabase.rpc("track_public_cotacao_view", { p_token: token! }).then(({ error }) => {
+    supabase.rpc("track_public_cotacao_view" as any, { p_token: token! }).then(({ error }) => {
         if (error) console.error("tracking view:", error.message);
       });
   }, [cotacao?.id, token]);
@@ -64,7 +64,7 @@ const PortalFornecedor = () => {
         throw new Error("Proposta sem itens — não é possível enviar.");
       }
 
-      const { error } = await supabase.rpc("submit_public_proposta", {
+      const { error } = await supabase.rpc("submit_public_proposta" as any, {
         p_token: token,
         p_empresa: empresa.trim(),
         p_prazo_dias: Number(prazo) || null,
