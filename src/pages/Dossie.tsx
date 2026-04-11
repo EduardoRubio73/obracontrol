@@ -347,11 +347,33 @@ const Dossie = () => {
                 const config = tipoConfig[evento.tipo] || tipoConfig.default;
                 const Icon = config.icon;
                 const isExpanded = expandedId === evento.id;
+
+                // Cards with expandable content stay expandable
+                const hasExpandableContent =
+                  (evento.tipo === "foto" && evento.meta?.url) ||
+                  (evento.tipo === "alteracao" && (evento.meta?.justificativa || evento.meta?.valor_impacto));
+
+                // Route map for non-expandable cards
+                const routeMap: Record<string, string> = {
+                  financeiro: "/financeiro",
+                  compra: "/compras",
+                  dossie: `/obras/${id}/dossie`,
+                  fase: "/etapas",
+                };
+
+                const handleClick = () => {
+                  if (hasExpandableContent) {
+                    setExpandedId(isExpanded ? null : evento.id);
+                  } else if (routeMap[evento.tipo]) {
+                    navigate(routeMap[evento.tipo]);
+                  }
+                };
+
                 return (
                   <div
                     key={evento.id}
                     className="flex gap-4 relative cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : evento.id)}
+                    onClick={handleClick}
                   >
                     <div className={`w-10 h-10 rounded-full ${config.bg} flex items-center justify-center shrink-0 z-10`}>
                       <Icon className={`h-5 w-5 ${config.color}`} />
@@ -389,6 +411,11 @@ const Dossie = () => {
                           <p className="mt-1 text-sm font-medium text-foreground">
                             Impacto: R$ {Number(evento.meta.valor_impacto).toFixed(2)}
                           </p>
+                        )}
+                        {!hasExpandableContent && (
+                          <div className="flex justify-end mt-1">
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         )}
                       </CardContent>
                     </Card>
