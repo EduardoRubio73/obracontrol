@@ -542,7 +542,9 @@ const CotacoesContent = () => {
           .price-col { width: 150px; border-bottom: 1px dotted #999; }
           .footer { margin-top: 50px; border-top: 1px solid #e5e7eb; padding-top: 24px; }
           .footer .signature-line { display: flex; justify-content: space-between; margin-top: 40px; }
-          .footer .signature-line div { width: 45%; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
+          .footer .signature-line .sig-block { width: 45%; text-align: center; }
+          .footer .signature-line .sig-block .sig-img { height: 60px; object-fit: contain; margin-bottom: -4px; }
+          .footer .signature-line .sig-block .sig-label { border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
           @media print {
             body { margin: 20px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             button, .no-print { display: none !important; }
@@ -591,8 +593,14 @@ const CotacoesContent = () => {
         <div class="footer">
           ${profileName ? `<p style="font-size:13px;color:#444;"><strong>Responsável:</strong> ${profileName}${profilePhone ? ` | ${profilePhone}` : ""}${profileEmail ? ` | ${profileEmail}` : ""}</p>` : ""}
           <div class="signature-line">
-            <div>Assinatura do Fornecedor</div>
-            <div>Assinatura do Responsável</div>
+            <div class="sig-block">
+              <div style="height:60px"></div>
+              <div class="sig-label">Assinatura do Fornecedor</div>
+            </div>
+            <div class="sig-block">
+              ${sigBase64 ? `<img src="${sigBase64}" class="sig-img" alt="Assinatura" />` : `<div style="height:60px"></div>`}
+              <div class="sig-label">Assinatura do Responsável</div>
+            </div>
           </div>
         </div>
       </body>
