@@ -1,8 +1,14 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
@@ -44,11 +50,16 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { obraAtiva, obraAtivaId } = useObraAtiva();
 
   const hasObraSelected = !!obraAtiva && obraAtivaId !== "all";
 
   const handleNav = () => { if (isMobile) setOpenMobile(false); };
+
+  // Check if any item in a group is active
+  const isGroupActive = (items: typeof principalItems) =>
+    items.some((item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/"));
 
   const renderItems = (items: typeof principalItems, highlight = false) =>
     items.map((item) => (
@@ -71,7 +82,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarContent>
-        <div className="flex items-center gap-2 px-4 py-5 cursor-pointer" onClick={() => navigate("/dashboard")}>
+        <div className="flex items-center gap-2 px-4 py-5 cursor-pointer" onClick={() => navigate("/")}>
           <img
             src={logoImg}
             alt="ObraControl"
@@ -84,37 +95,65 @@ export function AppSidebar() {
           )}
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "📌 Principal"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(principalItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {hasObraSelected && (
+        {/* Principal - collapsible, default closed */}
+        <Collapsible defaultOpen={isGroupActive(principalItems)}>
           <SidebarGroup>
-            <SidebarGroupLabel>
-              {!collapsed && (
-                <span className="flex items-center gap-1">
-                  🏗️ Gestão da Obra
-                  <span className="ml-1 text-[10px] font-normal text-primary bg-primary/10 rounded-full px-2 py-0.5 truncate max-w-[120px]">
-                    {obraAtiva.nome}
-                  </span>
-                </span>
-              )}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>{renderItems(gestaoObraItems, true)}</SidebarMenu>
-            </SidebarGroupContent>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
+                {!collapsed && <span>📌 Principal</span>}
+                {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>{renderItems(principalItems)}</SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
           </SidebarGroup>
+        </Collapsible>
+
+        {/* Gestão da Obra - collapsible, default closed */}
+        {hasObraSelected && (
+          <Collapsible defaultOpen={isGroupActive(gestaoObraItems)}>
+            <SidebarGroup>
+              <CollapsibleTrigger className="w-full">
+                <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
+                  {!collapsed && (
+                    <span className="flex items-center gap-1">
+                      🏗️ Gestão da Obra
+                      <span className="ml-1 text-[10px] font-normal text-primary bg-primary/10 rounded-full px-2 py-0.5 truncate max-w-[120px]">
+                        {obraAtiva.nome}
+                      </span>
+                    </span>
+                  )}
+                  {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>{renderItems(gestaoObraItems, true)}</SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
         )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "⚙️ Configurações"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(configItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Configurações - collapsible, default closed */}
+        <Collapsible defaultOpen={isGroupActive(configItems)}>
+          <SidebarGroup>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
+                {!collapsed && <span>⚙️ Configurações</span>}
+                {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>{renderItems(configItems)}</SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
 
       <SidebarFooter>
