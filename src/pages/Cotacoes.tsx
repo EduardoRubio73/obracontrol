@@ -645,12 +645,12 @@ const CotacoesContent = () => {
           ${profileName ? `<p style="font-size:13px;color:#444;"><strong>Responsável:</strong> ${profileName}${profilePhone ? ` | ${profilePhone}` : ""}${profileEmail ? ` | ${profileEmail}` : ""}</p>` : ""}
           <div class="signature-line">
             <div class="sig-block">
-              <div style="height:60px"></div>
-              <div class="sig-label">Assinatura do Fornecedor</div>
-            </div>
-            <div class="sig-block">
               ${sigBase64 ? `<img src="${sigBase64}" class="sig-img" alt="Assinatura" />` : `<div style="height:60px"></div>`}
               <div class="sig-label">Assinatura do Responsável</div>
+            </div>
+            <div class="sig-block">
+              <div style="height:60px"></div>
+              <div class="sig-label">Assinatura do Fornecedor</div>
             </div>
           </div>
         </div>
