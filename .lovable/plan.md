@@ -1,62 +1,36 @@
 
 
-# Plano: Agente IA com CRUD Total — Gestão Completa via Chat
+# Plano: Melhorias no Formulário Financeiro
 
-## Resumo
-Expandir a edge function `chat-assistente` de 4 tools para ~15 tools cobrindo CRUD completo em todos os módulos: obras, etapas, financeiro, compras, cotações, fornecedores, produtos e documentos.
+## 1. Combobox Inteligente para Descrição
 
-## Mudanças na Edge Function (`supabase/functions/chat-assistente/index.ts`)
+Criar um componente `DescricaoCombobox` que:
+- Consulta descrições únicas já cadastradas na tabela `financeiro` (filtradas por `obra_id`)
+- Usa Popover + Command (cmdk) para dropdown com busca
+- Se o texto digitado não existir na lista, mostra opção "Adicionar: [texto]"
+- `autocomplete="off"` no input
+- Valor controlado via state, integrado ao form via hidden input `name="descricao"`
 
-### Novos Tools
+## 2. Upload Estilizado com Preview
 
-**READ (consultas):**
-- `consultar_financeiro` — Soma gastos/receitas, saldo, lista movimentações. Responde "quanto gastei?", "qual o saldo?"
-- `consultar_compras` — Lista compras por status, totais pendentes
-- `consultar_cotacoes` — Lista cotações abertas/fechadas, contagem
-- `consultar_documentos` — Lista documentos da obra por nome/tipo
-- `consultar_fornecedores` — Lista fornecedores do usuário, filtro por categoria/status
-- `consultar_produtos` — Lista produtos cadastrados
+Substituir o `<Input type="file">` por:
+- Botão estilizado com ícone 📎 e texto "Anexar comprovante"
+- Ao selecionar arquivo de imagem: exibe miniatura (thumbnail) via `URL.createObjectURL`
+- Ao selecionar PDF: exibe ícone de PDF com nome do arquivo
+- Após upload concluído (no submit): ícone ✅ verde
+- Input file oculto, acionado pelo botão customizado
+- 100% largura no mobile
 
-**CREATE (novos):**
-- `criar_compra` — Registra compra em `compras` (e opcionalmente em `financeiro` se status=comprado)
-- `criar_fornecedor` — Cadastra fornecedor em `fornecedores`
-- `criar_cotacao` — Cria cotação em `cotacoes` com itens
+## 3. Responsividade
 
-**UPDATE:**
-- `atualizar_etapa` — Muda status/progresso de uma fase por nome. Ex: "marcar Pintura como concluída"
-- `atualizar_obra` — Muda status, valor_previsto, datas de uma obra
-- `atualizar_compra` — Muda status de compra (pendente → comprado)
+- Combobox e upload ocupam `w-full` em todos os breakpoints
+- Manter grid 2 colunas para Valor/Tipo no desktop, empilhar no mobile (`grid-cols-1 sm:grid-cols-2`)
 
-**DELETE:**
-- `excluir_gasto` — Remove registro do financeiro por descrição
-- `excluir_etapa` — Remove etapa por nome
-
-### System Prompt Expandido
-
-Adicionar ao system prompt:
-- Mapeamento completo das tabelas e campos disponíveis
-- Instruções para usar `consultar_*` ANTES de responder perguntas sobre dados
-- Instruções para confirmar ações com ✅ e detalhes
-- Regra: sempre usar `user_id` do token autenticado em todas as operações
-- Regra: usar `obra_id` do contexto ativo quando não especificado
-
-### Segurança
-
-- Todas as operações INSERT/UPDATE/DELETE usam `supabaseAdmin` com `user_id` do token JWT validado
-- Queries de leitura filtram por `user_id = userId` ou via join com `obras.user_id`
-- Sem uso de tenant_id (projeto usa `user_id = auth.uid()` conforme mem://features/security)
-
-### Contexto Dinâmico
-
-A função `buildObraContext` já carrega dados reais. Será expandida para incluir também fornecedores e produtos do usuário quando relevante.
-
-## Nenhuma mudança no frontend
-
-O `Chat.tsx` já suporta `acoes` e `executado` — o backend faz todo o trabalho.
-
-## Arquivo Modificado
+## Arquivos Modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `supabase/functions/chat-assistente/index.ts` | Expandir de 4 para ~15 tools, atualizar system prompt, adicionar executeTool cases |
+| `src/pages/Financeiro.tsx` | Substituir campo descrição pelo Combobox, substituir input file pelo upload estilizado com preview, ajustar grid responsivo |
+
+Nenhuma mudança no banco de dados — apenas consulta SELECT DISTINCT para sugestões.
 
