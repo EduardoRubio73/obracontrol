@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { DescricaoCombobox } from "@/components/financeiro/DescricaoCombobox";
+import { FileUploadPreview } from "@/components/financeiro/FileUploadPreview";
 
 const fmt = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -27,6 +29,7 @@ function FinanceiroContent() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [formDefaults, setFormDefaults] = useState<Record<string, string>>({});
+  const [descricaoValue, setDescricaoValue] = useState("");
 
   const { data: transacoes, isLoading } = useQuery({
     queryKey: ["financeiro", obraAtivaId],
@@ -92,6 +95,7 @@ function FinanceiroContent() {
   const openNew = () => {
     setEditId(null);
     setFormDefaults({});
+    setDescricaoValue("");
     setOpen(true);
   };
 
@@ -103,6 +107,7 @@ function FinanceiroContent() {
       descricao: t.descricao ?? "",
       data_transacao: t.data_transacao ?? "",
     });
+    setDescricaoValue(t.descricao ?? "");
     setOpen(true);
   };
 
@@ -256,7 +261,7 @@ function FinanceiroContent() {
             <DialogTitle>{editId ? "Editar Lançamento" : "Novo Lançamento"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor</Label>
                 <Input
@@ -285,11 +290,10 @@ function FinanceiroContent() {
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Input
-                name="descricao"
-                placeholder="Ex: Cimento"
-                defaultValue={formDefaults.descricao ?? ""}
-                className="h-12 text-base"
+              <DescricaoCombobox
+                obraId={obraAtivaId}
+                value={descricaoValue}
+                onChange={setDescricaoValue}
               />
             </div>
             <div className="space-y-2">
@@ -303,7 +307,7 @@ function FinanceiroContent() {
             </div>
             <div className="space-y-2">
               <Label>Comprovante / NF</Label>
-              <Input name="comprovante" type="file" accept="image/*,.pdf" className="h-12 text-base" />
+              <FileUploadPreview name="comprovante" />
             </div>
             <Button
               type="submit"
