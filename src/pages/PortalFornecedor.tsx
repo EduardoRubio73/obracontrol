@@ -19,12 +19,13 @@ const PortalFornecedor = () => {
   // Fetch cotação by token
   const { data: cotacao, isLoading: loadingCotacao, error: cotacaoError } = useQuery({
     queryKey: ["portal-cotacao", token],
+    enabled: !!token,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cotacoes")
         .select("id, descricao, data_expiracao, obras(nome)")
         .eq("token_publico", token!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -150,7 +151,7 @@ const PortalFornecedor = () => {
     );
   }
 
-  if (cotacaoError || !cotacao) {
+  if (cotacaoError || !token || !cotacao) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -158,7 +159,7 @@ const PortalFornecedor = () => {
             <AlertTriangle className="h-12 w-12 text-destructive" />
             <h2 className="text-xl font-bold">Link Inválido</h2>
             <p className="text-muted-foreground text-center">
-              Esta cotação não foi encontrada ou o link expirou.
+              ⚠️ Gerando link de acesso... tente novamente em instantes.
             </p>
           </CardContent>
         </Card>
