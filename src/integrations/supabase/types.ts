@@ -1913,11 +1913,43 @@ export type Database = {
             }[]
           }
       gerar_alertas_sistema: { Args: { p_user_id: string }; Returns: undefined }
+      get_public_cotacao_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          data_expiracao: string
+          descricao: string
+          id: string
+          obra_nome: string
+        }[]
+      }
+      get_public_itens_cotacao_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          created_at: string
+          id: string
+          nome: string
+          quantidade: number
+          unidade: string
+        }[]
+      }
       interpretar_comando_voz: { Args: { p_texto: string }; Returns: string }
       is_admin_global: { Args: never; Returns: boolean }
       marcar_comprado: { Args: { p_compra_id: string }; Returns: undefined }
       mensagem_dia: { Args: { p_obra: string }; Returns: string }
       processar_alertas: { Args: never; Returns: undefined }
+      submit_public_proposta: {
+        Args: {
+          p_empresa: string
+          p_itens: Json
+          p_prazo_dias: number
+          p_token: string
+        }
+        Returns: string
+      }
+      track_public_cotacao_view: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
     }
     Enums: {
       status_cotacao:
