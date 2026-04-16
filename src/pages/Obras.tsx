@@ -10,13 +10,36 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock, Building2 } from "lucide-react";
+import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock, Building2, CalendarClock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
 type Obra = Tables<"obras">;
+
+/** Calcula countdown e retorna texto + classe semântica de cor */
+function getCountdown(dataPrevista?: string | null) {
+  if (!dataPrevista) return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const fim = new Date(dataPrevista + "T00:00:00");
+  const diff = Math.ceil((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diff < 0) {
+    return { text: `Atrasada ${Math.abs(diff)} dia(s)`, className: "bg-destructive/15 text-destructive border-destructive/30" };
+  }
+  if (diff === 0) {
+    return { text: "Vence hoje", className: "bg-destructive/15 text-destructive border-destructive/30" };
+  }
+  if (diff < 7) {
+    return { text: `Faltam ${diff} dia(s)`, className: "bg-destructive/10 text-destructive border-destructive/30" };
+  }
+  if (diff <= 30) {
+    return { text: `Faltam ${diff} dias`, className: "bg-warning/15 text-warning border-warning/30" };
+  }
+  return { text: `Faltam ${diff} dias`, className: "bg-success/10 text-success border-success/30" };
+}
 
 const statusColors: Record<string, string> = {
   planejamento: "bg-primary/10 text-primary",
@@ -253,7 +276,17 @@ const Obras = () => {
                   </TableCell>
                   <TableCell className="font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/obras/${obra.id}/dossie`)}>{obra.nome}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
+                      {(() => {
+                        const cd = getCountdown(obra.data_prevista_conclusao);
+                        return cd ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${cd.className}`}>
+                            <CalendarClock className="h-3 w-3" />{cd.text}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   </TableCell>
                   <TableCell>{fmt(obra.valor_previsto)}</TableCell>
                   <TableCell>{obra.localizacao ?? "—"}</TableCell>
@@ -294,11 +327,19 @@ const Obras = () => {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-medium truncate">{obra.nome}</span>
                     <Badge variant="secondary" className={statusColors[obra.status ?? ""] ?? ""}>{obra.status}</Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{fmt(obra.valor_previsto)}</p>
+                  {(() => {
+                    const cd = getCountdown(obra.data_prevista_conclusao);
+                    return cd ? (
+                      <span className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md border text-[11px] font-medium ${cd.className}`}>
+                        <CalendarClock className="h-3 w-3" />{cd.text}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             </CardContent>

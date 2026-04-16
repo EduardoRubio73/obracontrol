@@ -5,11 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, HelpCircle } from "lucide-react";
 
 type CrudItem = { id: string; nome: string; descricao?: string | null };
 
@@ -32,6 +32,11 @@ function useCrudTab(table: string) {
 
   const add = useMutation({
     mutationFn: async ({ nome, descricao }: { nome: string; descricao?: string }) => {
+      // Anti-duplicidade
+      const dup = (items ?? []).find(
+        (i) => i.nome.toLowerCase().trim() === nome.toLowerCase().trim()
+      );
+      if (dup) throw new Error(`Já existe um item com o nome "${nome}".`);
       const { error } = await supabase
         .from(table as any)
         .insert({ nome, descricao: descricao || null, user_id: user!.id } as any);
@@ -52,6 +57,10 @@ function useCrudTab(table: string) {
 
   const update = useMutation({
     mutationFn: async ({ id, nome, descricao }: { id: string; nome: string; descricao?: string }) => {
+      const dup = (items ?? []).find(
+        (i) => i.id !== id && i.nome.toLowerCase().trim() === nome.toLowerCase().trim()
+      );
+      if (dup) throw new Error(`Já existe outro item com o nome "${nome}".`);
       const { error } = await supabase
         .from(table as any)
         .update({ nome, descricao: descricao || null } as any)
@@ -89,7 +98,17 @@ function useCrudTab(table: string) {
   return { items, isLoading, add, update, del };
 }
 
-function CrudTabContent({ table, label }: { table: string; label: string }) {
+function CrudSection({
+  table,
+  label,
+  title,
+  tooltip,
+}: {
+  table: string;
+  label: string;
+  title: string;
+  tooltip?: string;
+}) {
   const { items, isLoading, add, update, del } = useCrudTab(table);
   const [novoNome, setNovoNome] = useState("");
   const [novaDescricao, setNovaDescricao] = useState("");
@@ -97,8 +116,12 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
   const [editingNome, setEditingNome] = useState("");
   const [editingDescricao, setEditingDescricao] = useState("");
 
+  const dupName = !!items?.find(
+    (i) => i.nome.toLowerCase().trim() === novoNome.toLowerCase().trim()
+  );
+
   const handleAdd = () => {
-    if (!novoNome.trim()) return;
+    if (!novoNome.trim() || dupName) return;
     add.mutate(
       { nome: novoNome.trim(), descricao: novaDescricao.trim() },
       { onSuccess: () => { setNovoNome(""); setNovaDescricao(""); } }
@@ -126,7 +149,23 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        {tooltip && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">{tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Input
           placeholder={`Novo(a) ${label}...`}
@@ -134,34 +173,41 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
           onChange={(e) => setNovoNome(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
+        {dupName && novoNome.trim() && (
+          <p className="text-xs text-warning">⚠️ Já existe "{novoNome}"</p>
+        )}
         <Input
           placeholder="Descrição (opcional)"
           value={novaDescricao}
           onChange={(e) => setNovaDescricao(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
-        <Button onClick={handleAdd} disabled={!novoNome.trim() || add.isPending} className="w-full sm:w-auto">
+        <Button
+          onClick={handleAdd}
+          disabled={!novoNome.trim() || dupName || add.isPending}
+          className="w-full sm:w-auto"
+        >
           <Plus className="h-4 w-4 mr-1" />
           Adicionar
         </Button>
       </div>
 
       <Card>
-        <CardContent className="p-4 space-y-1">
+        <CardContent className="p-3 space-y-1">
           {isLoading && (
-            <p className="text-muted-foreground text-sm text-center py-6">Carregando...</p>
+            <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>
           )}
 
           {!isLoading && !items?.length && (
-            <p className="text-muted-foreground text-sm text-center py-6">
-              Nenhum(a) {label} cadastrado(a). Adicione acima.
+            <p className="text-muted-foreground text-sm text-center py-4">
+              Nenhum(a) {label} cadastrado(a).
             </p>
           )}
 
           {items?.map((item) => (
             <div
               key={item.id}
-              className="flex items-start justify-between py-3 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors"
+              className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors"
             >
               {editingId === item.id ? (
                 <div className="flex flex-col gap-2 flex-1 mr-2">
@@ -198,9 +244,9 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
               ) : (
                 <>
                   <div className="flex-1">
-                    <span className="font-semibold text-base text-foreground">{item.nome}</span>
+                    <span className="font-semibold text-sm text-foreground">{item.nome}</span>
                     {item.descricao && (
-                      <p className="text-sm text-muted-foreground mt-1">{item.descricao}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -224,38 +270,74 @@ function CrudTabContent({ table, label }: { table: string; label: string }) {
 const Configuracoes = () => {
   return (
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
-      <h1 className="text-xl sm:text-2xl font-bold">Configurações</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">Config. Sistema</h1>
+      <p className="text-sm text-muted-foreground">
+        Gerencie os cadastros base do sistema.
+      </p>
 
-      <Tabs defaultValue="categorias">
+      <Tabs defaultValue="materiais">
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto min-w-full">
-            <TabsTrigger value="categorias">Categorias</TabsTrigger>
-            <TabsTrigger value="tipos">Tipos de Obra</TabsTrigger>
-            <TabsTrigger value="unidades">Unidades</TabsTrigger>
-            <TabsTrigger value="fornecedor_tipos">Tipos Fornecedor</TabsTrigger>
-            <TabsTrigger value="etapas_padrao">Etapas Padrão</TabsTrigger>
-            <TabsTrigger value="tarefas_padrao">Tarefas Padrão</TabsTrigger>
+            <TabsTrigger value="materiais">📦 Materiais</TabsTrigger>
+            <TabsTrigger value="fornecedores">👥 Fornecedores</TabsTrigger>
+            <TabsTrigger value="etapas">📋 Etapas & Tarefas</TabsTrigger>
+            <TabsTrigger value="tipos_obra">🏗️ Tipos de Obra</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        <TabsContent value="categorias">
-          <CrudTabContent table="categorias_produtos" label="categoria" />
+        <TabsContent value="materiais" className="space-y-6 mt-4">
+          <CrudSection
+            table="unidades_medida"
+            label="unidade"
+            title="Unidades de Medida"
+            tooltip="Defina as unidades usadas em produtos e compras (ex: un, m, kg, m²)."
+          />
+          <CrudSection
+            table="categorias_produtos"
+            label="categoria"
+            title="Categorias de Produto"
+            tooltip="Agrupe produtos por categoria para facilitar buscas e relatórios."
+          />
+          <p className="text-xs text-muted-foreground pt-2">
+            Para cadastrar produtos, acesse a página <strong>Produtos</strong>.
+          </p>
         </TabsContent>
-        <TabsContent value="tipos">
-          <CrudTabContent table="tipos_obra" label="tipo de obra" />
+
+        <TabsContent value="fornecedores" className="space-y-6 mt-4">
+          <CrudSection
+            table="tipos_fornecedor"
+            label="tipo de fornecedor"
+            title="Tipos de Fornecedor"
+            tooltip="Classifique fornecedores (ex: pedreiro, eletricista, loja de material)."
+          />
+          <p className="text-xs text-muted-foreground pt-2">
+            Para cadastrar fornecedores (profissionais e lojas), acesse a página <strong>Fornecedores</strong>.
+          </p>
         </TabsContent>
-        <TabsContent value="unidades">
-          <CrudTabContent table="unidades_medida" label="unidade" />
+
+        <TabsContent value="etapas" className="space-y-6 mt-4">
+          <CrudSection
+            table="etapas_padrao"
+            label="etapa padrão"
+            title="Etapas Padrão"
+            tooltip="Modelos de etapas reutilizadas ao criar novas obras."
+          />
+          <CrudSection
+            table="tarefas_padrao"
+            label="tarefa padrão"
+            title="Tarefas Padrão"
+            tooltip="Tarefas frequentes que aparecem ao adicionar itens a uma etapa."
+          />
         </TabsContent>
-        <TabsContent value="fornecedor_tipos">
-          <CrudTabContent table="tipos_fornecedor" label="tipo de fornecedor" />
-        </TabsContent>
-        <TabsContent value="etapas_padrao">
-          <CrudTabContent table="etapas_padrao" label="etapa padrão" />
-        </TabsContent>
-        <TabsContent value="tarefas_padrao">
-          <CrudTabContent table="tarefas_padrao" label="tarefa padrão" />
+
+        <TabsContent value="tipos_obra" className="space-y-6 mt-4">
+          <CrudSection
+            table="tipos_obra"
+            label="tipo de obra"
+            title="Tipos de Obra"
+            tooltip="Categorize obras por tipo (ex: residencial, comercial, reforma)."
+          />
         </TabsContent>
       </Tabs>
     </div>

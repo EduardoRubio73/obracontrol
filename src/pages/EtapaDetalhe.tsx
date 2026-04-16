@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -14,9 +16,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Search } from "lucide-react";
+import { ArrowLeft, Plus, Search, CalendarDays, Clock } from "lucide-react";
 import { FasePhotos } from "@/components/FasePhotos";
 import { cn } from "@/lib/utils";
+
+/** Diferença em dias entre duas datas (yyyy-mm-dd) */
+function diffDays(a?: string | null, b?: string | null): number | null {
+  if (!a || !b) return null;
+  const da = new Date(a + "T00:00:00");
+  const db = new Date(b + "T00:00:00");
+  return Math.ceil((db.getTime() - da.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/** Status visual de uma tarefa pelo executar_em */
+function getTarefaUrgencia(executarEm?: string | null) {
+  if (!executarEm) return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const exec = new Date(executarEm + "T00:00:00");
+  const diff = Math.ceil((exec.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return { label: `Atrasada ${Math.abs(diff)}d`, className: "bg-destructive/15 text-destructive border-destructive/30" };
+  if (diff === 0) return { label: "Hoje", className: "bg-destructive/10 text-destructive border-destructive/30" };
+  if (diff <= 3) return { label: `Em ${diff}d`, className: "bg-warning/15 text-warning border-warning/30" };
+  return { label: `Em ${diff}d`, className: "bg-success/10 text-success border-success/30" };
+}
+
+const fmtDate = (d?: string | null) =>
+  d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
 
 export default function EtapaDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +52,7 @@ export default function EtapaDetalhe() {
   const [searchValue, setSearchValue] = useState("");
   const [selectedTarefas, setSelectedTarefas] = useState<string[]>([]);
   const [customNome, setCustomNome] = useState("");
+  const [executarEm, setExecutarEm] = useState("");
 
   const { data: fase } = useQuery({
     queryKey: ["fase", id],
@@ -41,6 +68,7 @@ export default function EtapaDetalhe() {
   });
 
   const obraId = (fase as any)?.obras?.id ?? (fase as any)?.obra_id;
+  const duracaoFase = diffDays(fase?.data_inicio, fase?.data_fim);
 
   const { data: itens } = useQuery({
     queryKey: ["fase-itens", id],
@@ -51,7 +79,7 @@ export default function EtapaDetalhe() {
         .eq("fase_id", id!)
         .order("created_at");
       if (error) throw error;
-      return data;
+      return data as any[];
     },
   });
 
@@ -68,13 +96,13 @@ export default function EtapaDetalhe() {
   });
 
   const total = itens?.length ?? 0;
-  const done = itens?.filter((i) => i.status === "concluido").length ?? 0;
+  const done = itens?.filter((i: any) => i.status === "concluido").length ?? 0;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  const existingNames = new Set(itens?.map((i) => i.nome.toLowerCase()) ?? []);
+  const existingNames = new Set(itens?.map((i: any) => i.nome.toLowerCase()) ?? []);
 
   const createItems = useMutation({
-    mutationFn: async (nomes: string[]) => {
+    mutationFn: async ({ nomes, executar_em }: { nomes: string[]; executar_em: string | null }) => {
       for (const nome of nomes) {
         const exists = tarefasPadrao?.some(
           (e) => e.nome.toLowerCase() === nome.toLowerCase()
@@ -86,6 +114,7 @@ export default function EtapaDetalhe() {
           fase_id: id!,
           nome,
           status: "pendente",
+          executar_em,
         } as any);
         if (error) throw error;
       }
@@ -98,6 +127,7 @@ export default function EtapaDetalhe() {
       setSelectedTarefas([]);
       setSearchValue("");
       setCustomNome("");
+      setExecutarEm("");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -145,7 +175,7 @@ export default function EtapaDetalhe() {
       toast.error("Selecione pelo menos uma tarefa");
       return;
     }
-    createItems.mutate(selectedTarefas);
+    createItems.mutate({ nomes: selectedTarefas, executar_em: executarEm || null });
   };
 
   const filteredTarefas = tarefasPadrao?.filter(
@@ -170,6 +200,30 @@ export default function EtapaDetalhe() {
           {fase?.nome ?? "Carregando..."}
         </h1>
       </div>
+
+      {/* Datas/Duração da fase */}
+      {(fase?.data_inicio || fase?.data_fim) && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4 flex flex-wrap items-center gap-3 text-sm">
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Início:</span>
+              <span className="font-semibold">{fmtDate(fase?.data_inicio)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Fim:</span>
+              <span className="font-semibold">{fmtDate(fase?.data_fim)}</span>
+            </div>
+            {duracaoFase !== null && (
+              <Badge variant="secondary" className="ml-auto">
+                <Clock className="h-3 w-3 mr-1" />
+                {duracaoFase} dia(s)
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Progress */}
       <Card className="shadow-sm">
@@ -203,14 +257,15 @@ export default function EtapaDetalhe() {
 
       {/* Checklist */}
       <div className="space-y-3">
-        {itens?.map((item) => {
+        {itens?.map((item: any) => {
           const isDone = item.status === "concluido";
+          const urg = !isDone ? getTarefaUrgencia(item.executar_em) : null;
           return (
             <Card
               key={item.id}
               className={`shadow-sm transition-colors ${isDone ? "opacity-60" : ""}`}
             >
-              <CardContent className="p-5 flex items-center gap-5">
+              <CardContent className="p-5 flex items-start gap-5">
                 <Checkbox
                   checked={isDone}
                   onCheckedChange={() =>
@@ -219,13 +274,33 @@ export default function EtapaDetalhe() {
                       currentStatus: item.status,
                     })
                   }
-                  className="h-7 w-7 rounded-lg border-2"
+                  className="h-7 w-7 rounded-lg border-2 mt-0.5"
                 />
-                <p
-                  className={`font-semibold text-lg flex-1 ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}
-                >
-                  {item.nome}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`font-semibold text-lg ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}
+                  >
+                    {item.nome}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                    {item.executar_em && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarDays className="h-3 w-3" />
+                        {fmtDate(item.executar_em)}
+                      </span>
+                    )}
+                    {urg && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${urg.className}`}>
+                        {urg.label}
+                      </span>
+                    )}
+                    {item.criado_em && (
+                      <span className="text-[10px] text-muted-foreground">
+                        criado {new Date(item.criado_em).toLocaleDateString("pt-BR")}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           );
@@ -244,7 +319,7 @@ export default function EtapaDetalhe() {
       </div>
 
       {/* Photos */}
-      {obraId && id && <FasePhotos faseId={id} obraId={obraId} />}
+      {obraId && id && <FasePhotos faseId={id} obraId={obraId} faseNome={fase?.nome} />}
 
       {/* Dialog multi-select */}
       <Dialog
@@ -255,10 +330,11 @@ export default function EtapaDetalhe() {
             setSelectedTarefas([]);
             setSearchValue("");
             setCustomNome("");
+            setExecutarEm("");
           }
         }}
       >
-        <DialogContent className="max-h-[85vh] flex flex-col">
+        <DialogContent className="max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Adicionar tarefas</DialogTitle>
           </DialogHeader>
@@ -276,7 +352,7 @@ export default function EtapaDetalhe() {
             </div>
 
             {/* Selection list */}
-            <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-[40vh] border rounded-lg p-2">
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-[35vh] border rounded-lg p-2">
               {filteredTarefas?.map((t) => {
                 const isSelected = selectedTarefas.includes(t.nome);
                 return (
@@ -329,6 +405,23 @@ export default function EtapaDetalhe() {
               >
                 <Plus className="h-4 w-4" />
               </Button>
+            </div>
+
+            {/* Executar em (data) */}
+            <div className="space-y-1.5">
+              <Label className="text-sm flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4" />
+                Executar em (opcional)
+              </Label>
+              <Input
+                type="date"
+                value={executarEm}
+                onChange={(e) => setExecutarEm(e.target.value)}
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                Data prevista para execução. Aplica a todas as tarefas adicionadas.
+              </p>
             </div>
 
             {/* Selected summary */}

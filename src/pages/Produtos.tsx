@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,24 +7,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SmartCombobox } from "@/components/ui/smart-combobox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, FolderOpen, Filter } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Trash2, Package, Search, HelpCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Produtos = () => {
   const queryClient = useQueryClient();
-  const [catDialog, setCatDialog] = useState(false);
-  const [editCat, setEditCat] = useState<{ id: string; nome: string } | null>(null);
-  const [catName, setCatName] = useState("");
 
   const [prodDialog, setProdDialog] = useState(false);
   const [editProd, setEditProd] = useState<any>(null);
   const [prodName, setProdName] = useState("");
-  const [prodUnit, setProdUnit] = useState("un");
+  const [prodUnit, setProdUnit] = useState("");
   const [prodCatId, setProdCatId] = useState("");
 
   const [filterCat, setFilterCat] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "cat" | "prod"; id: string; nome: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: categorias } = useQuery({
     queryKey: ["categorias_produtos"],
@@ -38,64 +47,87 @@ const Produtos = () => {
     },
   });
 
-  const { data: produtos, isLoading } = useQuery({
-    queryKey: ["produtos", filterCat],
+  const { data: unidades } = useQuery({
+    queryKey: ["unidades_medida"],
     queryFn: async () => {
-      let q = supabase
-        .from("produtos")
-        .select("*, categorias_produtos!produtos_categoria_id_fkey(nome)")
+      const { data, error } = await supabase
+        .from("unidades_medida")
+        .select("*")
         .order("nome");
-      if (filterCat) q = q.eq("categoria_id", filterCat);
-      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
 
-  // Category mutations
-  const saveCat = useMutation({
-    mutationFn: async () => {
-      if (editCat) {
-        const { error } = await supabase
-          .from("categorias_produtos")
-          .update({ nome: catName })
-          .eq("id", editCat.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("categorias_produtos")
-          .insert({ nome: catName });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categorias_produtos"] });
-      toast.success(editCat ? "Categoria atualizada!" : "Categoria criada!");
-      setCatDialog(false);
-      setEditCat(null);
-      setCatName("");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const deleteCat = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("categorias_produtos").delete().eq("id", id);
+  const { data: produtos, isLoading } = useQuery({
+    queryKey: ["produtos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("produtos")
+        .select("*, categorias_produtos!produtos_categoria_id_fkey(nome)")
+        .order("nome");
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+  });
+
+  const filteredProdutos = useMemo(() => {
+    return (produtos ?? []).filter((p: any) => {
+      if (filterCat && p.categoria_id !== filterCat) return false;
+      if (search.trim() && !p.nome.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [produtos, filterCat, search]);
+
+  // Create new category inline
+  const createCategoria = useMutation({
+    mutationFn: async (nome: string) => {
+      const { data, error } = await supabase
+        .from("categorias_produtos")
+        .insert({ nome })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (newCat: any) => {
       queryClient.invalidateQueries({ queryKey: ["categorias_produtos"] });
-      queryClient.invalidateQueries({ queryKey: ["produtos"] });
-      toast.success("Categoria excluída!");
+      setProdCatId(newCat.id);
+      toast.success("Categoria criada!");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Product mutations
+  const createUnidade = useMutation({
+    mutationFn: async (nome: string) => {
+      const { data, error } = await supabase
+        .from("unidades_medida")
+        .insert({ nome })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (newUnit: any) => {
+      queryClient.invalidateQueries({ queryKey: ["unidades_medida"] });
+      setProdUnit(newUnit.nome);
+      toast.success("Unidade criada!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const saveProd = useMutation({
     mutationFn: async () => {
+      // Anti-duplicidade
+      const dup = (produtos ?? []).find(
+        (p: any) =>
+          p.nome.toLowerCase().trim() === prodName.toLowerCase().trim() &&
+          p.id !== editProd?.id
+      );
+      if (dup) throw new Error(`Já existe um produto com o nome "${prodName}".`);
+
       const payload = {
-        nome: prodName,
+        nome: prodName.trim(),
         unidade: prodUnit || "un",
         categoria_id: prodCatId || null,
       };
@@ -130,18 +162,6 @@ const Produtos = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const openEditCat = (cat: any) => {
-    setEditCat(cat);
-    setCatName(cat.nome);
-    setCatDialog(true);
-  };
-
-  const openNewCat = () => {
-    setEditCat(null);
-    setCatName("");
-    setCatDialog(true);
-  };
-
   const openEditProd = (p: any) => {
     setEditProd(p);
     setProdName(p.nome);
@@ -153,7 +173,7 @@ const Produtos = () => {
   const openNewProd = () => {
     setEditProd(null);
     setProdName("");
-    setProdUnit("un");
+    setProdUnit("");
     setProdCatId("");
     setProdDialog(true);
   };
@@ -162,229 +182,232 @@ const Produtos = () => {
     setProdDialog(false);
     setEditProd(null);
     setProdName("");
-    setProdUnit("un");
+    setProdUnit("");
     setProdCatId("");
   };
 
+  const dupNameInDialog = (produtos ?? []).some(
+    (p: any) =>
+      p.nome.toLowerCase().trim() === prodName.toLowerCase().trim() &&
+      p.id !== editProd?.id
+  );
+
+  const categoriaOptions = useMemo(
+    () => [
+      { value: "", label: "Todas as categorias" },
+      ...((categorias ?? []).map((c) => ({ value: c.id, label: c.nome }))),
+    ],
+    [categorias]
+  );
+
+  const categoriaOptionsModal = useMemo(
+    () => (categorias ?? []).map((c) => ({ value: c.id, label: c.nome })),
+    [categorias]
+  );
+
+  const unidadeOptions = useMemo(
+    () => (unidades ?? []).map((u) => ({ value: u.nome, label: u.nome })),
+    [unidades]
+  );
+
   return (
-    <div className="space-y-5 px-1">
-      {/* Header */}
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold">Produtos</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="lg" className="flex-1 h-12 text-base font-semibold rounded-xl" onClick={openNewCat}>
-            <FolderOpen className="mr-2 h-5 w-5" /> Nova Categoria
-          </Button>
-          <Button size="lg" className="flex-1 h-12 text-base font-semibold rounded-xl" onClick={openNewProd}>
+    <TooltipProvider>
+      <div className="space-y-5 px-1 max-w-4xl mx-auto pb-28">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h1 className="text-2xl sm:text-3xl font-bold">Produtos</h1>
+          <Button size="lg" className="h-12 text-base font-semibold rounded-xl" onClick={openNewProd}>
             <Plus className="mr-2 h-5 w-5" /> Novo Produto
           </Button>
         </div>
-      </div>
 
-      {/* Categories */}
-      <Card className="rounded-2xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FolderOpen className="h-5 w-5" /> Categorias
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2.5">
-            <Badge
-              variant={filterCat === "" ? "default" : "outline"}
-              className="cursor-pointer text-base px-4 py-2 rounded-full"
-              onClick={() => setFilterCat("")}
-            >
-              Todas
-            </Badge>
-            {categorias?.map((cat) => (
-              <div key={cat.id} className="group flex items-center gap-1">
-                <Badge
-                  variant={filterCat === cat.id ? "default" : "outline"}
-                  className="cursor-pointer text-base px-4 py-2 rounded-full"
-                  onClick={() => setFilterCat(filterCat === cat.id ? "" : cat.id)}
-                >
-                  {cat.nome}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity"
-                  onClick={() => openEditCat(cat)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity"
-                  onClick={() => setDeleteConfirm({ type: "cat", id: cat.id, nome: cat.nome })}
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </div>
-            ))}
-            {!categorias?.length && (
-              <p className="text-base text-muted-foreground">Nenhuma categoria criada</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        {/* Search + Filter */}
+        <Card className="rounded-2xl">
+          <CardContent className="p-4 space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar produto pelo nome..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-11 text-base rounded-xl"
+              />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground mb-1.5 block">
+                Filtrar por categoria
+              </Label>
+              <SmartCombobox
+                options={categoriaOptions}
+                value={filterCat}
+                onChange={setFilterCat}
+                placeholder="Todas as categorias"
+                allowCreate={false}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Products — card list for mobile */}
-      <Card className="rounded-2xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Package className="h-5 w-5" /> Produtos
-            {filterCat && (
-              <Badge variant="secondary" className="ml-2 text-sm px-3 py-1 rounded-full">
-                <Filter className="mr-1 h-3.5 w-3.5" />
-                Filtrando por categoria
+        {/* Products list */}
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Package className="h-5 w-5" /> Produtos
+              <Badge variant="secondary" className="ml-2">
+                {filteredProdutos.length}
               </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {produtos?.length ? (
-            <div className="space-y-3">
-              {produtos.map((p: any) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-xl border p-4 gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold truncate">{p.nome}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <Badge variant="secondary" className="text-sm px-3 py-0.5 rounded-full">
-                        {p.unidade || "un"}
-                      </Badge>
-                      {p.categorias_produtos?.nome && (
-                        <Badge variant="outline" className="text-sm px-3 py-0.5 rounded-full">
-                          {p.categorias_produtos.nome}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {filteredProdutos.length ? (
+              <div className="space-y-3">
+                {filteredProdutos.map((p: any) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between rounded-xl border p-4 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-semibold truncate">{p.nome}</p>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <Badge variant="secondary" className="text-sm px-3 py-0.5 rounded-full">
+                          {p.unidade || "un"}
                         </Badge>
-                      )}
+                        {p.categorias_produtos?.nome && (
+                          <Badge variant="outline" className="text-sm px-3 py-0.5 rounded-full">
+                            {p.categorias_produtos.nome}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => openEditProd(p)}>
+                        <Pencil className="h-5 w-5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setDeleteConfirm({ id: p.id, nome: p.nome })}>
+                        <Trash2 className="h-5 w-5 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => openEditProd(p)}>
-                      <Pencil className="h-5 w-5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setDeleteConfirm({ type: "prod", id: p.id, nome: p.nome })}>
-                      <Trash2 className="h-5 w-5 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground text-base py-8">
-              {isLoading ? "Carregando..." : "Nenhum produto cadastrado"}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Category Dialog */}
-      <Dialog open={catDialog} onOpenChange={(v) => { if (!v) { setCatDialog(false); setEditCat(null); setCatName(""); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{editCat ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-base">Nome</Label>
-              <Input
-                className="h-12 text-base rounded-xl"
-                value={catName}
-                onChange={(e) => setCatName(e.target.value)}
-                placeholder="Ex: Material Elétrico"
-              />
-            </div>
-            <Button
-              className="w-full h-12 text-base font-semibold rounded-xl"
-              onClick={() => saveCat.mutate()}
-              disabled={!catName.trim() || saveCat.isPending}
-            >
-              {saveCat.isPending ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Product Dialog */}
-      <Dialog open={prodDialog} onOpenChange={(v) => { if (!v) closeProdDialog(); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{editProd ? "Editar Produto" : "Novo Produto"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-base">Nome</Label>
-              <Input
-                className="h-12 text-base rounded-xl"
-                value={prodName}
-                onChange={(e) => setProdName(e.target.value)}
-                placeholder="Ex: Fio 2.5mm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-base">Unidade</Label>
-              <Input
-                className="h-12 text-base rounded-xl"
-                value={prodUnit}
-                onChange={(e) => setProdUnit(e.target.value)}
-                placeholder="un, m, kg, etc."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-base">Categoria</Label>
-              <select
-                value={prodCatId}
-                onChange={(e) => setProdCatId(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-base"
-              >
-                <option value="">Sem categoria</option>
-                {categorias?.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nome}</option>
                 ))}
-              </select>
-            </div>
-            <Button
-              className="w-full h-12 text-base font-semibold rounded-xl"
-              onClick={() => saveProd.mutate()}
-              disabled={!prodName.trim() || saveProd.isPending}
-            >
-              {saveProd.isPending ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground text-base py-8">
+                {isLoading ? "Carregando..." : (search || filterCat ? "Nenhum produto encontrado com os filtros aplicados" : "Nenhum produto cadastrado")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => { if (!v) setDeleteConfirm(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl">Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
-              Tem certeza que deseja excluir <strong>{deleteConfirm?.nome}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-11 text-base rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-11 text-base rounded-xl"
-              onClick={() => {
-                if (deleteConfirm?.type === "cat") deleteCat.mutate(deleteConfirm.id);
-                else if (deleteConfirm?.type === "prod") deleteProd.mutate(deleteConfirm.id);
-                setDeleteConfirm(null);
-              }}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        {/* Product Dialog */}
+        <Dialog open={prodDialog} onOpenChange={(v) => { if (!v) closeProdDialog(); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl">{editProd ? "Editar Produto" : "Novo Produto"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-base">Nome</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs max-w-xs">Use um nome descritivo. Não é permitido nomes duplicados.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Input
+                  className="h-12 text-base rounded-xl"
+                  value={prodName}
+                  onChange={(e) => setProdName(e.target.value)}
+                  placeholder="Ex: Fio elétrico 2.5mm"
+                />
+                {dupNameInDialog && prodName.trim() && (
+                  <p className="text-xs text-warning">⚠️ Já existe um produto com esse nome</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-base">Unidade</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs max-w-xs">Informe a unidade de medida para controle de estoque (ex: un, m, kg, m²).</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <SmartCombobox
+                  options={unidadeOptions}
+                  value={prodUnit}
+                  onChange={setProdUnit}
+                  onCreateNew={(label) => createUnidade.mutate(label)}
+                  placeholder="Digite ou selecione (ex: un, m, kg)"
+                  emptyText="Nenhuma unidade. Digite para criar."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-base">Categoria</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs max-w-xs">Categorize o produto. Você pode criar uma nova categoria digitando.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <SmartCombobox
+                  options={categoriaOptionsModal}
+                  value={prodCatId}
+                  onChange={setProdCatId}
+                  onCreateNew={(label) => createCategoria.mutate(label)}
+                  placeholder="Digite ou selecione uma categoria"
+                  emptyText="Nenhuma categoria. Digite para criar."
+                />
+              </div>
+
+              <Button
+                className="w-full h-12 text-base font-semibold rounded-xl"
+                onClick={() => saveProd.mutate()}
+                disabled={!prodName.trim() || dupNameInDialog || saveProd.isPending}
+              >
+                {saveProd.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => { if (!v) setDeleteConfirm(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl">Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription className="text-base">
+                Tem certeza que deseja excluir <strong>{deleteConfirm?.nome}</strong>? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="h-11 text-base rounded-xl">Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-11 text-base rounded-xl"
+                onClick={() => {
+                  if (deleteConfirm) deleteProd.mutate(deleteConfirm.id);
+                  setDeleteConfirm(null);
+                }}
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 };
 

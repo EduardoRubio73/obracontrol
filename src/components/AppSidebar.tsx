@@ -37,12 +37,10 @@ const gestaoObraItems = [
 ];
 
 const configItems = [
-  { title: "Fornecedores", url: "/fornecedores", emoji: "👥" },
-  { title: "Produtos", url: "/produtos", emoji: "📦" },
-  { title: "Relatórios", url: "/relatorios", emoji: "📈" },
-  { title: "Configurações", url: "/configuracoes", emoji: "⚙️" },
   { title: "Assistente IA", url: "/chat", emoji: "🤖" },
   { title: "Perfil", url: "/perfil", emoji: "👤" },
+  { title: "Relatórios", url: "/relatorios", emoji: "📈" },
+  { title: "Config. Sistema", url: "/configuracoes", emoji: "⚙️" },
 ];
 
 export function AppSidebar() {
@@ -143,7 +141,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
               <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
-                {!collapsed && <span>⚙️ Configurações</span>}
+                {!collapsed && <span>⚙️ Gestão</span>}
                 {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
               </SidebarGroupLabel>
             </CollapsibleTrigger>
