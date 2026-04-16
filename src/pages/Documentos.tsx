@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, FileText, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Trash2, Eye, ExternalLink } from "lucide-react";
 
 const Documentos = () => {
   const { id: routeId } = useParams<{ id: string }>();
@@ -165,7 +165,7 @@ const Documentos = () => {
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" title="Visualizar" asChild>
                             <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </a>
                           </Button>
                           <Button
@@ -198,7 +198,7 @@ const Documentos = () => {
                   <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                       <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </a>
                     </Button>
                     <Button
