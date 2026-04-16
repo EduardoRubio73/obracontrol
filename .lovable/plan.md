@@ -1,51 +1,138 @@
 
 
-# Plano: Seletor Visual de Obras com Cards e Imagem
+# Plano: Refatoração UI/UX — Sistema ObraControl
 
-## Resumo
-Substituir o dropdown `<Select>` na página Index por um seletor visual baseado em cards com imagem da obra, grid expansível e collapse automático.
+Este e um plano extenso com 5 frentes. Recomendo implementar em etapas para manter estabilidade.
 
 ---
 
-## 1. Migration SQL — Coluna `main_image` na tabela `obras`
+## Etapa 1 — Reestruturação do Sidebar
 
-```sql
-ALTER TABLE obras ADD COLUMN IF NOT EXISTS main_image text;
+**Arquivo:** `src/components/AppSidebar.tsx`
+
+Reorganizar os 3 grupos de menu:
+
+```text
+📌 Principal
+  ├── Dashboard    /dashboard
+  └── Obras        /obras
+
+🏗️ Gestão da Obra (quando obra selecionada)
+  ├── Etapas       /etapas
+  ├── Compras      /compras
+  ├── Financeiro   /financeiro
+  ├── Cotações     /cotacoes
+  ├── Galeria      /galeria
+  └── Documentos   /documentos
+
+⚙️ Gestão
+  ├── Assistente IA   /chat
+  ├── Perfil          /perfil
+  ├── Relatórios      /relatorios
+  └── Config. Sistema /configuracoes
 ```
 
-Sem imagem obrigatória — fallback: buscar a primeira foto de `fase_fotos` para a obra, ou mostrar placeholder.
+Remover Fornecedores e Produtos como itens de sidebar — migram para dentro de Configuracoes.
 
-## 2. Atualizar `useObraAtiva` — Incluir `main_image`
+---
 
-- Adicionar `main_image: string | null` na interface `Obra`
-- Incluir `main_image` no select da query: `.select("id, nome, valor_previsto, status, main_image")`
+## Etapa 2 — Refatorar Configuracoes com novas abas agrupadas
 
-## 3. Novo Componente `ObraSelectorVisual`
+**Arquivo:** `src/pages/Configuracoes.tsx`
 
-Componente independente em `src/components/ObraSelectorVisual.tsx`:
+Reorganizar as tabs:
 
-- **Props**: `obras`, `selectedId`, `onSelect`
-- **State**: `expanded` (boolean)
-- **Header fixo**: Texto "Para onde vamos agora?"
-- **Card selecionado** (sempre visível): mostra imagem (thumbnail 40x40), nome e status. Clique toggle expand.
-- **Grid expandido**: `grid-cols-1 md:grid-cols-3`, cada card com imagem no topo (h-28 object-cover), nome centralizado abaixo
-- **Regra de imagem**: Para obras sem `main_image`, buscar a primeira `fase_fotos.url` via query separada. Se nenhuma imagem existir, mostrar placeholder com ícone 🏗️
-- **Opção "Todas as Obras"**: Manter como primeiro card especial (ícone de grid, sem foto)
-- **Animação**: CSS transition para expand/collapse suave
-- **Ao selecionar**: chama `onSelect(id)`, fecha grid
+| Aba | Conteudo |
+|-----|---------|
+| **Materiais** | Unidades de Medida, Categorias de Produto, Produtos (CRUD completo) |
+| **Fornecedores** | Tipos de Fornecedor, Fornecedores (lista completa com CRUD) |
+| **Etapas & Tarefas** | Etapas Padrao, Tarefas Padrao |
+| **Tipos de Obra** | Tipos de Obra (manter) |
 
-## 4. Atualizar `Index.tsx`
+Cada aba tera sub-secoes com titulo e o CrudTabContent existente. A aba Materiais incluira tambem uma versao inline do cadastro de Produtos. A aba Fornecedores incluira a listagem de fornecedores.
 
-- Remover imports do `Select`/`SelectContent`/`SelectItem`/`SelectTrigger`/`SelectValue` e `Building2`
-- Substituir o bloco do dropdown (linhas ~167-198) pelo `<ObraSelectorVisual>`
-- Passar `obras`, `obraAtivaId`, `setObraAtivaId`
+---
 
-## Arquivos Modificados
+## Etapa 3 — Combobox padrao + Validacao anti-duplicidade + Tooltips
 
-| Arquivo | Mudança |
-|---------|---------|
-| Migration SQL | `ALTER TABLE obras ADD COLUMN main_image text` |
-| `src/hooks/useObraAtiva.tsx` | Adicionar `main_image` ao select e interface |
-| `src/components/ObraSelectorVisual.tsx` | Novo componente visual |
-| `src/pages/Index.tsx` | Trocar dropdown pelo seletor visual |
+**Novo componente:** `src/components/ui/smart-combobox.tsx`
+
+- Input de texto com dropdown filtrado
+- Opcao "Criar novo" quando digitado nao existe
+- Verificacao em tempo real contra lista existente (badge "Ja existe" se duplicado)
+- Usado em: modal Novo Produto (campo Categoria, campo Unidade), Etapas, Compras, etc.
+
+**Tooltips:** Adicionar `<Tooltip>` do shadcn/ui (ja existe no projeto) nos campos de formularios com textos explicativos. Aplicar progressivamente nas paginas principais (Produtos, Etapas, Financeiro, Compras).
+
+**Placeholders:** Revisar e padronizar placeholders descritivos em todos os campos de input.
+
+---
+
+## Etapa 4 — Refatorar pagina Produtos
+
+**Arquivo:** `src/pages/Produtos.tsx`
+
+- Remover botao "Nova Categoria" e card de categorias da pagina
+- Manter apenas: search bar + filtro por categoria (dropdown) + grid de produtos
+- Modal Novo Produto: campo Unidade carrega dinamicamente da tabela `unidades_medida`
+- Campo Categoria usa o SmartCombobox
+
+---
+
+## Etapa 5 — Logica de Datas e Prazos
+
+### 5a. Cards de Obra (`src/pages/Obras.tsx`, `src/pages/Index.tsx`)
+- Calcular e exibir "Faltam X dias" com base em `data_prevista_conclusao`
+- Badge colorido: verde (>30d), amarelo (7-30d), vermelho (<7d), cinza (sem data)
+
+### 5b. Etapas (`src/pages/EtapaDetalhe.tsx`)
+- Exibir duracao calculada (data_fim - data_inicio) em dias
+- No modal Adicionar Tarefa: campo `executar_em` (date input)
+- Exibir datas das tarefas nos cards
+
+### 5c. Migration SQL
+```sql
+ALTER TABLE fase_itens ADD COLUMN IF NOT EXISTS executar_em date;
+ALTER TABLE fase_itens ADD COLUMN IF NOT EXISTS criado_em timestamptz DEFAULT now();
+```
+
+---
+
+## Etapa 6 — Gestao de Midia (Timestamps e Contexto)
+
+### Fotos (`src/components/FasePhotos.tsx`, galeria)
+- Exibir timestamp (`created_at`) no modal de visualizacao
+- Exibir nome da obra e nome da etapa no modal
+
+### Documentos (`src/pages/Documentos.tsx`)
+- Exibir data/hora de upload na tabela e no modal de visualizacao
+- Exibir nome da obra associada
+
+---
+
+## Arquivos Criados/Modificados
+
+| Arquivo | Acao |
+|---------|------|
+| Migration SQL | `fase_itens`: add `executar_em`, `criado_em` |
+| `src/components/ui/smart-combobox.tsx` | Novo componente padrao |
+| `src/components/AppSidebar.tsx` | Reorganizar grupos |
+| `src/pages/Configuracoes.tsx` | Novas abas agrupadas |
+| `src/pages/Produtos.tsx` | Remover categorias, add search + filtro |
+| `src/pages/Obras.tsx` / `Index.tsx` | Contador regressivo |
+| `src/pages/EtapaDetalhe.tsx` | Datas, duracao, campo executar_em |
+| `src/pages/Documentos.tsx` | Timestamps |
+| `src/components/FasePhotos.tsx` | Contexto obra/etapa no modal |
+
+---
+
+## Ordem de Implementacao Sugerida
+
+1. Migration SQL (base para tudo)
+2. Sidebar (navegacao)
+3. SmartCombobox (componente reutilizavel)
+4. Configuracoes (abas agrupadas)
+5. Produtos (refatoracao)
+6. Datas e prazos
+7. Gestao de midia
 
