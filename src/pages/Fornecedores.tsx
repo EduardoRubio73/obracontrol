@@ -110,7 +110,7 @@ function FornecedorCard({ f, onEdit }: { f: Fornecedor; onEdit: () => void }) {
             {f.email && <p className="text-xs sm:text-sm text-muted-foreground truncate">📧 {f.email}</p>}
           </div>
         </div>
-        <div className="flex gap-2 sm:gap-3">
+        <div className="flex gap-2 sm:gap-3 flex-wrap">
           {phoneDigits && (
             <Button variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-semibold text-sm sm:text-base gap-1 sm:gap-2" asChild>
               <a href={`tel:+55${phoneDigits}`}><Phone className="h-4 w-4 sm:h-5 sm:w-5" />Ligar</a>
@@ -121,6 +121,11 @@ function FornecedorCard({ f, onEdit }: { f: Fornecedor; onEdit: () => void }) {
               <a href={`https://wa.me/55${phoneDigits}`} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />WhatsApp
               </a>
+            </Button>
+          )}
+          {f.email && (
+            <Button variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-semibold text-sm sm:text-base gap-1 sm:gap-2" asChild>
+              <a href={`mailto:${f.email}`}>📧 Email</a>
             </Button>
           )}
         </div>
