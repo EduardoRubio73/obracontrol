@@ -236,8 +236,9 @@ function EtapasContent() {
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {fases?.map((f) => {
+      {fases?.map((f, idx) => {
         const st = f.status ?? "pendente";
+        const numero = f.ordem ?? idx + 1;
         return (
           <Card
             key={f.id}
@@ -247,6 +248,9 @@ function EtapasContent() {
             <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                   <span className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 text-primary font-black text-sm sm:text-base flex-shrink-0">
+                     {numero}
+                   </span>
                    {faseFotos?.[f.id] ? (
                      <img src={faseFotos[f.id]} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover flex-shrink-0" />
                    ) : (
