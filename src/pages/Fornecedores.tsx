@@ -118,14 +118,14 @@ function FornecedorCard({ f, onEdit }: { f: Fornecedor; onEdit: () => void }) {
           )}
           {phoneDigits && (
             <Button className="flex-1 h-10 sm:h-12 rounded-xl font-semibold text-sm sm:text-base gap-1 sm:gap-2 bg-success hover:bg-success/90 text-success-foreground" asChild>
-              <a href={`https://wa.me/55${phoneDigits}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://wa.me/55${phoneDigits}?text=${encodeURIComponent(`Olá, ${f.nome}, Digite sua mensagem aqui...`)}`} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />WhatsApp
               </a>
             </Button>
           )}
           {f.email && (
             <Button variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-semibold text-sm sm:text-base gap-1 sm:gap-2" asChild>
-              <a href={`mailto:${f.email}`}>📧 Email</a>
+              <a href={`mailto:${f.email}?subject=${encodeURIComponent('Digite o assunto aqui...')}&body=${encodeURIComponent(`Olá, ${f.nome}, Digite sua mensagem aqui...`)}`}>📧 Email</a>
             </Button>
           )}
         </div>
