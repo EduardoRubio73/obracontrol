@@ -37,12 +37,10 @@ const gestaoObraItems = [
 ];
 
 const configItems = [
-  { title: "Fornecedores", url: "/fornecedores", emoji: "👥" },
-  { title: "Produtos", url: "/produtos", emoji: "📦" },
-  { title: "Relatórios", url: "/relatorios", emoji: "📈" },
-  { title: "Configurações", url: "/configuracoes", emoji: "⚙️" },
   { title: "Assistente IA", url: "/chat", emoji: "🤖" },
   { title: "Perfil", url: "/perfil", emoji: "👤" },
+  { title: "Relatórios", url: "/relatorios", emoji: "📈" },
+  { title: "Config. Sistema", url: "/configuracoes", emoji: "⚙️" },
 ];
 
 export function AppSidebar() {
