@@ -31,6 +31,7 @@ import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
 import Chat from "./pages/Chat";
+import Comparacao from "./pages/Comparacao";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
