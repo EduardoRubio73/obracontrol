@@ -1,0 +1,1 @@
+ALTER TABLE public.fase_itens ADD COLUMN IF NOT EXISTS ordem integer;

@@ -576,6 +576,7 @@ export type Database = {
           fase_id: string
           id: string
           nome: string
+          ordem: number | null
           status: string | null
           tenant_id: string | null
           valor_previsto: number | null
@@ -588,6 +589,7 @@ export type Database = {
           fase_id: string
           id?: string
           nome: string
+          ordem?: number | null
           status?: string | null
           tenant_id?: string | null
           valor_previsto?: number | null
@@ -600,6 +602,7 @@ export type Database = {
           fase_id?: string
           id?: string
           nome?: string
+          ordem?: number | null
           status?: string | null
           tenant_id?: string | null
           valor_previsto?: number | null

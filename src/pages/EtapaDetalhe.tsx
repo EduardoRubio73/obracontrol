@@ -16,9 +16,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Search, CalendarDays, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Search, CalendarDays, Clock, GripVertical } from "lucide-react";
 import { FasePhotos } from "@/components/FasePhotos";
 import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /** Diferença em dias entre duas datas (yyyy-mm-dd) */
 function diffDays(a?: string | null, b?: string | null): number | null {
@@ -43,6 +59,88 @@ function getTarefaUrgencia(executarEm?: string | null) {
 
 const fmtDate = (d?: string | null) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+
+interface SortableTaskProps {
+  item: any;
+  onToggle: () => void;
+}
+
+function SortableTask({ item, onToggle }: SortableTaskProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const isDone = item.status === "concluido";
+  const urg = !isDone ? getTarefaUrgencia(item.executar_em) : null;
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "shadow-sm transition-colors",
+        isDone && "opacity-60",
+        isDragging && "ring-2 ring-primary z-10"
+      )}
+    >
+      <CardContent className="p-5 flex items-start gap-3">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 -ml-1 mt-0.5"
+          aria-label="Arrastar"
+        >
+          <GripVertical className="h-5 w-5" />
+        </button>
+        <Checkbox
+          checked={isDone}
+          onCheckedChange={onToggle}
+          className="h-7 w-7 rounded-lg border-2 mt-0.5"
+        />
+        <div className="flex-1 min-w-0">
+          <p
+            className={cn(
+              "font-semibold text-lg",
+              isDone ? "line-through text-muted-foreground" : "text-foreground"
+            )}
+          >
+            {item.nome}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            {item.executar_em && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3" />
+                {fmtDate(item.executar_em)}
+              </span>
+            )}
+            {urg && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${urg.className}`}>
+                {urg.label}
+              </span>
+            )}
+            {item.criado_em && (
+              <span className="text-[10px] text-muted-foreground">
+                criado {new Date(item.criado_em).toLocaleDateString("pt-BR")}
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function EtapaDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -77,6 +175,7 @@ export default function EtapaDetalhe() {
         .from("fase_itens")
         .select("*")
         .eq("fase_id", id!)
+        .order("ordem", { ascending: true, nullsFirst: false })
         .order("created_at");
       if (error) throw error;
       return data as any[];
@@ -103,7 +202,9 @@ export default function EtapaDetalhe() {
 
   const createItems = useMutation({
     mutationFn: async ({ nomes, executar_em }: { nomes: string[]; executar_em: string | null }) => {
-      for (const nome of nomes) {
+      const baseOrdem = (itens?.length ?? 0);
+      for (let i = 0; i < nomes.length; i++) {
+        const nome = nomes[i];
         const exists = tarefasPadrao?.some(
           (e) => e.nome.toLowerCase() === nome.toLowerCase()
         );
@@ -115,6 +216,7 @@ export default function EtapaDetalhe() {
           nome,
           status: "pendente",
           executar_em,
+          ordem: baseOrdem + i,
         } as any);
         if (error) throw error;
       }
@@ -154,6 +256,45 @@ export default function EtapaDetalhe() {
       queryClient.invalidateQueries({ queryKey: ["progresso-geral"] });
     },
   });
+
+  const reorderItems = useMutation({
+    mutationFn: async (ordered: any[]) => {
+      const updates = ordered.map((it, idx) =>
+        supabase.from("fase_itens").update({ ordem: idx } as any).eq("id", it.id)
+      );
+      const results = await Promise.all(updates);
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) throw firstError;
+    },
+    onMutate: async (ordered: any[]) => {
+      await queryClient.cancelQueries({ queryKey: ["fase-itens", id] });
+      const previous = queryClient.getQueryData(["fase-itens", id]);
+      queryClient.setQueryData(["fase-itens", id], ordered);
+      return { previous };
+    },
+    onError: (e: any, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["fase-itens", id], ctx.previous);
+      toast.error("Erro ao reordenar: " + e.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["fase-itens", id] });
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !itens) return;
+    const oldIndex = itens.findIndex((i: any) => i.id === active.id);
+    const newIndex = itens.findIndex((i: any) => i.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const newOrder = arrayMove(itens, oldIndex, newIndex);
+    reorderItems.mutate(newOrder);
+  };
 
   const toggleSelection = (nome: string) => {
     setSelectedTarefas((prev) =>
@@ -255,68 +396,45 @@ export default function EtapaDetalhe() {
         Nova tarefa
       </Button>
 
-      {/* Checklist */}
-      <div className="space-y-3">
-        {itens?.map((item: any) => {
-          const isDone = item.status === "concluido";
-          const urg = !isDone ? getTarefaUrgencia(item.executar_em) : null;
-          return (
-            <Card
-              key={item.id}
-              className={`shadow-sm transition-colors ${isDone ? "opacity-60" : ""}`}
-            >
-              <CardContent className="p-5 flex items-start gap-5">
-                <Checkbox
-                  checked={isDone}
-                  onCheckedChange={() =>
+      {/* Checklist com drag-and-drop */}
+      {itens && itens.length > 0 && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={itens.map((i: any) => i.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {itens.map((item: any) => (
+                <SortableTask
+                  key={item.id}
+                  item={item}
+                  onToggle={() =>
                     toggleItem.mutate({
                       itemId: item.id,
                       currentStatus: item.status,
                     })
                   }
-                  className="h-7 w-7 rounded-lg border-2 mt-0.5"
                 />
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`font-semibold text-lg ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}
-                  >
-                    {item.nome}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                    {item.executar_em && (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <CalendarDays className="h-3 w-3" />
-                        {fmtDate(item.executar_em)}
-                      </span>
-                    )}
-                    {urg && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${urg.className}`}>
-                        {urg.label}
-                      </span>
-                    )}
-                    {item.criado_em && (
-                      <span className="text-[10px] text-muted-foreground">
-                        criado {new Date(item.criado_em).toLocaleDateString("pt-BR")}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
 
-        {!itens?.length && (
-          <Card className="border-dashed border-2 shadow-none">
-            <CardContent className="py-14 text-center text-muted-foreground">
-              <p className="text-lg font-medium">Nenhuma tarefa ainda</p>
-              <p className="text-base mt-2">
-                Adicione tarefas para acompanhar
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {!itens?.length && (
+        <Card className="border-dashed border-2 shadow-none">
+          <CardContent className="py-14 text-center text-muted-foreground">
+            <p className="text-lg font-medium">Nenhuma tarefa ainda</p>
+            <p className="text-base mt-2">
+              Adicione tarefas para acompanhar
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Photos */}
       {obraId && id && <FasePhotos faseId={id} obraId={obraId} faseNome={fase?.nome} />}
