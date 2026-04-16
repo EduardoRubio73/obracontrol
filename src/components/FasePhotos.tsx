@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Camera, ImageIcon, Loader2 } from "lucide-react";
+import { Camera, ImageIcon, Loader2, Building2, Layers, Clock } from "lucide-react";
 
 const tipoLabels: Record<string, string> = {
   antes: "📷 Antes",
@@ -24,13 +24,27 @@ const tipoLabels: Record<string, string> = {
 interface FasePhotosProps {
   faseId: string;
   obraId: string;
+  faseNome?: string;
 }
 
-export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
+export function FasePhotos({ faseId, obraId, faseNome }: FasePhotosProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [viewing, setViewing] = useState<any | null>(null);
+
+  const { data: obra } = useQuery({
+    queryKey: ["obra-nome", obraId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("obras")
+        .select("nome")
+        .eq("id", obraId)
+        .single();
+      return data;
+    },
+  });
 
   const { data: fotos } = useQuery({
     queryKey: ["fase-fotos", faseId],
@@ -89,7 +103,6 @@ export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
         });
       if (insertError) throw insertError;
 
-      // Register in dossier
       await (supabase.from("obra_dossie" as any) as any).insert({
         obra_id: obraId,
         user_id: user!.id,
@@ -109,6 +122,17 @@ export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
   };
 
   const totalFotos = fotos?.length ?? 0;
+
+  const fmtDateTime = (d?: string) =>
+    d
+      ? new Date(d).toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
 
   return (
     <div className="space-y-4">
@@ -143,9 +167,11 @@ export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {items.map((foto: any) => (
-                  <div
+                  <button
                     key={foto.id}
-                    className="aspect-square rounded-xl overflow-hidden bg-muted"
+                    type="button"
+                    onClick={() => setViewing({ ...foto, _tipo: tipo })}
+                    className="aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity"
                   >
                     <img
                       src={foto.url}
@@ -153,7 +179,7 @@ export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -161,6 +187,7 @@ export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
         )
       )}
 
+      {/* Upload Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -213,6 +240,53 @@ export function FasePhotos({ faseId, obraId }: FasePhotosProps) {
               )}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Dialog with context */}
+      <Dialog open={!!viewing} onOpenChange={(v) => !v && setViewing(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {viewing && tipoLabels[viewing._tipo]}
+            </DialogTitle>
+          </DialogHeader>
+          {viewing && (
+            <div className="space-y-3">
+              <div className="rounded-xl overflow-hidden bg-muted">
+                <img
+                  src={viewing.url}
+                  alt={viewing.descricao || ""}
+                  className="w-full h-auto max-h-[60vh] object-contain"
+                />
+              </div>
+              {viewing.descricao && (
+                <p className="text-sm font-medium text-foreground">
+                  {viewing.descricao}
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span className="font-medium text-foreground truncate">
+                    {obra?.nome ?? "—"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Layers className="h-3.5 w-3.5" />
+                  <span className="font-medium text-foreground truncate">
+                    {faseNome ?? "—"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="font-medium text-foreground">
+                    {fmtDateTime(viewing.created_at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

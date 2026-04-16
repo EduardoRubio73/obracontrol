@@ -97,6 +97,17 @@ const Documentos = () => {
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
+  const fmtDateTime = (d?: string | null) =>
+    d
+      ? new Date(d).toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "—";
+
   if (!obraId) {
     return (
       <RequireObra pageName="Documentos">
@@ -152,6 +163,7 @@ const Documentos = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Tamanho</TableHead>
+                    <TableHead>Enviado em</TableHead>
                     <TableHead className="w-32">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -161,6 +173,7 @@ const Documentos = () => {
                       <TableCell className="font-medium">{doc.nome}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{doc.tipo}</TableCell>
                       <TableCell className="text-sm">{fmtSize(doc.tamanho_bytes)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{fmtDateTime(doc.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" title="Visualizar" asChild>
@@ -194,6 +207,7 @@ const Documentos = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{doc.nome}</p>
                     <p className="text-xs text-muted-foreground">{doc.tipo ?? "—"} · {fmtSize(doc.tamanho_bytes)}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">📅 {fmtDateTime(doc.created_at)} · 🏗️ {obra?.nome}</p>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
