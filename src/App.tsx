@@ -31,6 +31,7 @@ import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
 import Chat from "./pages/Chat";
+import Comparacao from "./pages/Comparacao";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/compras" element={<Compras />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/cotacoes" element={<Cotacoes />} />
+              <Route path="/cotacoes/:id/comparar" element={<Comparacao />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/nova-obra" element={<NovaObra />} />
