@@ -242,8 +242,9 @@ const MenuPrincipal = () => {
         </button>
       </div>
 
-      {/* Botão flutuante: Assistente */}
-      <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8">
+      {/* Floating controls cluster */}
+      <div className="fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8 flex flex-col items-end gap-3">
+        <FloatingZoomTextToolbar />
         <Button
           onClick={() => navigate("/chat")}
           className="h-16 w-16 rounded-full shadow-xl bg-primary hover:bg-primary/90 transition-transform duration-100 active:scale-[0.93]"
