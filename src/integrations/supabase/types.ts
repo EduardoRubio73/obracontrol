@@ -571,6 +571,8 @@ export type Database = {
       fase_itens: {
         Row: {
           created_at: string | null
+          criado_em: string | null
+          executar_em: string | null
           fase_id: string
           id: string
           nome: string
@@ -581,6 +583,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          criado_em?: string | null
+          executar_em?: string | null
           fase_id: string
           id?: string
           nome: string
@@ -591,6 +595,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          criado_em?: string | null
+          executar_em?: string | null
           fase_id?: string
           id?: string
           nome?: string
