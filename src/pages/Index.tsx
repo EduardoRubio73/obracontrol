@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { LayoutDashboard, Bot } from "lucide-react";
 import { ObraSelectorVisual } from "@/components/ObraSelectorVisual";
+import { FloatingZoomTextToolbar } from "@/components/FloatingZoomTextToolbar";
 
 /* ── animation style helper ── */
 const stagger = (step: number) => ({
