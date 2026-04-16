@@ -15,8 +15,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, ChevronRight } from "lucide-react";
+import { Plus, ChevronRight, Pencil, Trash2, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 function EtapaCombobox({
   value,
@@ -87,8 +114,18 @@ function EtapaCombobox({
   );
 }
 
-function EtapaForm({ onSubmit, isPending }: { onSubmit: (nome: string, isNew: boolean) => void; isPending: boolean }) {
-  const [nomeCustom, setNomeCustom] = useState("");
+function EtapaForm({
+  initialNome = "",
+  onSubmit,
+  isPending,
+  submitLabel = "Criar etapa",
+}: {
+  initialNome?: string;
+  onSubmit: (nome: string, isNew: boolean) => void;
+  isPending: boolean;
+  submitLabel?: string;
+}) {
+  const [nomeCustom, setNomeCustom] = useState(initialNome);
 
   const { data: etapasPadrao } = useQuery({
     queryKey: ["etapas-padrao"],
@@ -126,13 +163,12 @@ function EtapaForm({ onSubmit, isPending }: { onSubmit: (nome: string, isNew: bo
           </p>
         )}
       </div>
-      <input type="hidden" name="nome" value={nomeCustom} />
       <Button
         type="submit"
         className="w-full h-14 rounded-2xl font-bold text-lg"
         disabled={isPending || !nomeCustom.trim()}
       >
-        {isPending ? "Criando..." : "Criar etapa"}
+        {isPending ? "Salvando..." : submitLabel}
       </Button>
     </form>
   );
@@ -150,10 +186,114 @@ const statusLabel: Record<string, string> = {
   concluido: "Concluído",
 };
 
+type Fase = {
+  id: string;
+  nome: string;
+  status: string | null;
+  progresso: number | null;
+  ordem: number | null;
+};
+
+function SortableFaseCard({
+  fase,
+  numero,
+  fotoUrl,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  fase: Fase;
+  numero: number;
+  fotoUrl?: string;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: fase.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  const st = fase.status ?? "pendente";
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card
+        className="shadow-sm cursor-pointer hover:border-primary/30 transition-colors"
+        onClick={onOpen}
+      >
+        <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <button
+                type="button"
+                className="touch-none p-1 -ml-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+                {...attributes}
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Arrastar para reordenar"
+              >
+                <GripVertical className="h-5 w-5" />
+              </button>
+              <span className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 text-primary font-black text-sm sm:text-base flex-shrink-0">
+                {numero}
+              </span>
+              {fotoUrl ? (
+                <img src={fotoUrl} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover flex-shrink-0" />
+              ) : (
+                <div className={`h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full shrink-0 ${statusDot[st]}`} />
+              )}
+              <h3 className="text-base sm:text-xl font-bold text-foreground truncate">
+                {fase.nome}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                aria-label="Editar etapa"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-destructive hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                aria-label="Excluir etapa"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Progress
+              value={fase.progresso ?? 0}
+              className="h-3 sm:h-4 flex-1 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
+            />
+            <span className="text-sm sm:text-lg font-black tabular-nums w-12 sm:w-14 text-right text-foreground">
+              {fase.progresso ?? 0}%
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {statusLabel[st] ?? st}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function EtapasContent() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editFase, setEditFase] = useState<Fase | null>(null);
+  const [deleteFase, setDeleteFase] = useState<Fase | null>(null);
   const { obraAtivaId, obraAtiva } = useObraAtiva();
 
   const { data: fases, isLoading } = useQuery({
@@ -166,7 +306,7 @@ function EtapasContent() {
         .eq("obra_id", obraAtivaId!)
         .order("ordem", { ascending: true });
       if (error) throw error;
-      return data;
+      return data as Fase[];
     },
   });
 
@@ -190,7 +330,6 @@ function EtapasContent() {
 
   const createFase = useMutation({
     mutationFn: async ({ nome, isNew }: { nome: string; isNew: boolean }) => {
-      // Auto-insert into etapas_padrao if new
       if (isNew) {
         await supabase.from("etapas_padrao").insert({ nome } as any);
       }
@@ -212,6 +351,66 @@ function EtapasContent() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateFase = useMutation({
+    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
+      const { error } = await supabase
+        .from("obra_fases")
+        .update({ nome })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      toast.success("Etapa atualizada!");
+      setEditFase(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteFaseMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("obra_fases").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      toast.success("Etapa excluída!");
+      setDeleteFase(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const reorderFases = useMutation({
+    mutationFn: async (ordered: Fase[]) => {
+      await Promise.all(
+        ordered.map((f, idx) =>
+          supabase.from("obra_fases").update({ ordem: idx + 1 }).eq("id", f.id)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      toast.success("Ordem atualizada!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !fases) return;
+    const oldIndex = fases.findIndex((f) => f.id === active.id);
+    const newIndex = fases.findIndex((f) => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newOrder = arrayMove(fases, oldIndex, newIndex);
+    queryClient.setQueryData(["obra-fases", obraAtivaId], newOrder);
+    reorderFases.mutate(newOrder);
+  };
+
   const handleSubmit = (nome: string, isNew: boolean) => {
     createFase.mutate({ nome, isNew });
   };
@@ -223,7 +422,7 @@ function EtapasContent() {
           Etapas {obraAtiva ? `— ${obraAtiva.nome}` : "da obra"}
         </h1>
         <p className="text-sm sm:text-lg text-muted-foreground mt-1">
-          Divida sua obra em partes
+          Divida sua obra em partes — arraste para reordenar
         </p>
       </div>
 
@@ -235,50 +434,25 @@ function EtapasContent() {
         Nova etapa
       </Button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {fases?.map((f, idx) => {
-        const st = f.status ?? "pendente";
-        const numero = f.ordem ?? idx + 1;
-        return (
-          <Card
-            key={f.id}
-            className="shadow-sm cursor-pointer hover:border-primary/30 transition-colors"
-            onClick={() => navigate(`/etapas/${f.id}`)}
-          >
-            <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                   <span className="flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 text-primary font-black text-sm sm:text-base flex-shrink-0">
-                     {numero}
-                   </span>
-                   {faseFotos?.[f.id] ? (
-                     <img src={faseFotos[f.id]} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover flex-shrink-0" />
-                   ) : (
-                     <div className={`h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full shrink-0 ${statusDot[st]}`} />
-                   )}
-                   <h3 className="text-base sm:text-xl font-bold text-foreground truncate">
-                     {f.nome}
-                   </h3>
-                 </div>
-                <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground shrink-0" />
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Progress
-                  value={f.progresso ?? 0}
-                  className="h-3 sm:h-4 flex-1 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
+      {fases && fases.length > 0 && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={fases.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {fases.map((f, idx) => (
+                <SortableFaseCard
+                  key={f.id}
+                  fase={f}
+                  numero={idx + 1}
+                  fotoUrl={faseFotos?.[f.id]}
+                  onOpen={() => navigate(`/etapas/${f.id}`)}
+                  onEdit={() => setEditFase(f)}
+                  onDelete={() => setDeleteFase(f)}
                 />
-                <span className="text-sm sm:text-lg font-black tabular-nums w-12 sm:w-14 text-right text-foreground">
-                  {f.progresso ?? 0}%
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {statusLabel[st] ?? st}
-              </p>
-            </CardContent>
-          </Card>
-        );
-      })}
-      </div>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
 
       {!isLoading && !fases?.length && (
         <Card className="border-dashed border-2 shadow-none">
@@ -307,6 +481,42 @@ function EtapasContent() {
           <EtapaForm onSubmit={handleSubmit} isPending={createFase.isPending} />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!editFase} onOpenChange={(o) => !o && setEditFase(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar etapa</DialogTitle>
+          </DialogHeader>
+          {editFase && (
+            <EtapaForm
+              initialNome={editFase.nome}
+              submitLabel="Salvar alterações"
+              onSubmit={(nome) => updateFase.mutate({ id: editFase.id, nome })}
+              isPending={updateFase.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteFase} onOpenChange={(o) => !o && setDeleteFase(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir etapa "{deleteFase?.nome}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível e removerá também todos os itens, fotos e dados vinculados a esta etapa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteFase && deleteFaseMut.mutate(deleteFase.id)}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
