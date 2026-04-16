@@ -16,7 +16,7 @@ export function FloatingZoomTextToolbar({ onZoomChange, onTextToolActivate }: Fl
   }, [onZoomChange]);
 
   return (
-    <div className="fixed bottom-16 right-16 z-50 flex flex-col items-end gap-1.5">
+    <div className="flex flex-col items-end gap-1.5">
       {/* Zoom controls bar */}
       <div className="flex items-center gap-0.5 rounded-lg border bg-card p-0.5 shadow-lg">
         <button
