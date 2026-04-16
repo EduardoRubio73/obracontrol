@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Minus, Plus, RotateCcw, Type } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Minus, Plus, RotateCcw, Type, ChevronDown, ChevronUp } from "lucide-react";
 
 interface FloatingZoomTextToolbarProps {
   onZoomChange?: (zoom: number) => void;
@@ -8,45 +8,71 @@ interface FloatingZoomTextToolbarProps {
 
 export function FloatingZoomTextToolbar({ onZoomChange, onTextToolActivate }: FloatingZoomTextToolbarProps) {
   const [zoom, setZoom] = useState(100);
+  const [collapsed, setCollapsed] = useState(true);
 
   const updateZoom = useCallback((newZoom: number) => {
-    const clamped = Math.min(200, Math.max(25, newZoom));
+    const clamped = Math.min(200, Math.max(50, newZoom));
     setZoom(clamped);
     onZoomChange?.(clamped);
+
+    // Apply zoom to the main scrollable content
+    const main = document.querySelector("main") || document.querySelector("[class*='max-w-']");
+    if (main) {
+      (main as HTMLElement).style.transformOrigin = "top center";
+      (main as HTMLElement).style.transform = `scale(${clamped / 100})`;
+    }
   }, [onZoomChange]);
 
-  return (
-    <div className="flex flex-col items-end gap-1.5">
-      {/* Zoom controls bar */}
-      <div className="flex items-center gap-0.5 rounded-lg border bg-card p-0.5 shadow-lg">
-        <button
-          onClick={() => updateZoom(zoom - 10)}
-          className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={() => updateZoom(100)}
-          className="flex items-center gap-0.5 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {zoom}%
-          <RotateCcw className="h-3 w-3" />
-        </button>
-        <button
-          onClick={() => updateZoom(zoom + 10)}
-          className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-      </div>
+  // Reset on unmount
+  useEffect(() => {
+    return () => {
+      const main = document.querySelector("main") || document.querySelector("[class*='max-w-']");
+      if (main) {
+        (main as HTMLElement).style.transform = "";
+      }
+    };
+  }, []);
 
-      {/* Floating text tool button */}
+  if (collapsed) {
+    return (
       <button
-        onClick={onTextToolActivate}
-        draggable
-        className="inline-flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 rounded-full shadow-lg cursor-grab active:cursor-grabbing transition-colors"
+        onClick={() => setCollapsed(false)}
+        className="inline-flex items-center justify-center bg-card border rounded-full h-10 w-10 shadow-lg hover:bg-accent transition-colors"
+        title="Zoom"
       >
-        <Type className="h-4 w-4" />
+        <Type className="h-4 w-4 text-muted-foreground" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 rounded-xl border bg-card p-1 shadow-lg animate-in fade-in zoom-in-95 duration-200">
+      <button
+        onClick={() => updateZoom(zoom - 10)}
+        className="inline-flex items-center justify-center rounded-lg h-8 w-8 hover:bg-accent hover:text-accent-foreground transition-colors"
+      >
+        <Minus className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={() => updateZoom(100)}
+        className="flex items-center gap-0.5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {zoom}%
+        <RotateCcw className="h-3 w-3" />
+      </button>
+      <button
+        onClick={() => updateZoom(zoom + 10)}
+        className="inline-flex items-center justify-center rounded-lg h-8 w-8 hover:bg-accent hover:text-accent-foreground transition-colors"
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </button>
+      <div className="w-px h-5 bg-border mx-0.5" />
+      <button
+        onClick={() => setCollapsed(true)}
+        className="inline-flex items-center justify-center rounded-lg h-8 w-8 hover:bg-accent hover:text-accent-foreground transition-colors"
+        title="Ocultar"
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
       </button>
     </div>
   );
