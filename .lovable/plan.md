@@ -1,89 +1,51 @@
 
 
-# Plano: Melhorias Críticas no Módulo de Cotações
+# Plano: Seletor Visual de Obras com Cards e Imagem
 
 ## Resumo
-Adicionar número de orçamento, envio individualizado de e-mails com link personalizado por fornecedor, seção de fornecedores convidados com badges de status, reenvio individual, e visualização de resposta.
+Substituir o dropdown `<Select>` na página Index por um seletor visual baseado em cards com imagem da obra, grid expansível e collapse automático.
 
 ---
 
-## 1. Número do Orçamento (#ID curto)
-
-- No card da cotação e no modal de detalhes, exibir `#{cotacao.id.slice(0,8)}` como referência
-- Incluir no espelho do orçamento impresso
-
-## 2. Envio Individualizado com Link Personalizado
-
-**Mudança no `handleSendToFornecedores`:**
-- Em vez de abrir um único `mailto` com CC, abrir múltiplos `mailto` individuais (um por fornecedor)
-- Cada e-mail terá link personalizado: `/cotacao/[token]?fornecedor=[fornecedor_id]`
-
-**Mudança no `PortalFornecedor.tsx`:**
-- Ler `?fornecedor=` da URL
-- Se presente, buscar nome do fornecedor via RPC e preencher o campo "Nome da Empresa" como `disabled`
-- Criar nova RPC `get_public_fornecedor_nome(p_id uuid)` (SECURITY DEFINER) para buscar o nome
-
-## 3. Botão "Link Avulso" no Card
-
-- Renomear o botão "Link" para "Link Avulso" no card da cotação
-
-## 4. Modal de Detalhes — Ajustes
-
-**Botão Espelho Azul:**
-- Trocar `variant="outline"` para classe azul: `bg-blue-100 text-blue-700 hover:bg-blue-200`
-
-**Seção "Fornecedores Convidados":**
-- Mover a seção de tracking existente para ABAIXO da lista de itens (printItens)
-- Renomear título para "Fornecedores Convidados"
-- Adicionar busca de itens (printItens) no modal de detalhes para exibir antes dos fornecedores
-
-## 5. Badges de Status com Cores Vivas
-
-Substituir a lógica de status por:
-- 🟢 **Respondido** (`bg-green-100 text-green-700`): `data_resposta` preenchida
-- 🟡 **Pendente** (`bg-yellow-100 text-yellow-700`): sem resposta, envio ≤ 2 dias
-- 🔴 **Atrasado** (`bg-red-100 text-red-700`): sem resposta, envio > 2 dias
-
-Colunas na tabela: Fornecedor | Data Envio | Data Resposta | Status | Ações
-
-## 6. Botão Reenviar
-
-- Cada linha de fornecedor convidado terá botão 🔄 **Reenviar**
-- Se status = "Respondido", botão fica oculto
-- Ao clicar: abre mini-dialog para editar e-mail, depois:
-  1. Atualiza `data_envio` e `email` na `cotacao_fornecedores`
-  2. Abre `mailto` individual com link personalizado `/cotacao/[token]?fornecedor=[id]`
-
-## 7. Visualização de Resposta
-
-- Se fornecedor respondeu, clicar na linha abre um dialog mostrando:
-  - Dados da proposta (valor total, prazo, itens com valores unitários)
-  - Query: buscar `propostas` + `proposta_itens` pelo `fornecedor_id` e `cotacao_id`
-
-## 8. Mobile-First na Lista de Convidados
-
-- No mobile, transformar a tabela em mini-cards empilhados com:
-  - Nome + Badge de status
-  - Datas empilhadas
-  - Botão Reenviar ocupando largura total
-
-## Migração SQL
-
-Nova RPC para buscar nome do fornecedor anonimamente:
+## 1. Migration SQL — Coluna `main_image` na tabela `obras`
 
 ```sql
-CREATE FUNCTION get_public_fornecedor_nome(p_id uuid)
-RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT nome FROM fornecedores WHERE id = p_id LIMIT 1;
-$$;
-GRANT EXECUTE ON FUNCTION get_public_fornecedor_nome(uuid) TO anon;
+ALTER TABLE obras ADD COLUMN IF NOT EXISTS main_image text;
 ```
+
+Sem imagem obrigatória — fallback: buscar a primeira foto de `fase_fotos` para a obra, ou mostrar placeholder.
+
+## 2. Atualizar `useObraAtiva` — Incluir `main_image`
+
+- Adicionar `main_image: string | null` na interface `Obra`
+- Incluir `main_image` no select da query: `.select("id, nome, valor_previsto, status, main_image")`
+
+## 3. Novo Componente `ObraSelectorVisual`
+
+Componente independente em `src/components/ObraSelectorVisual.tsx`:
+
+- **Props**: `obras`, `selectedId`, `onSelect`
+- **State**: `expanded` (boolean)
+- **Header fixo**: Texto "Para onde vamos agora?"
+- **Card selecionado** (sempre visível): mostra imagem (thumbnail 40x40), nome e status. Clique toggle expand.
+- **Grid expandido**: `grid-cols-1 md:grid-cols-3`, cada card com imagem no topo (h-28 object-cover), nome centralizado abaixo
+- **Regra de imagem**: Para obras sem `main_image`, buscar a primeira `fase_fotos.url` via query separada. Se nenhuma imagem existir, mostrar placeholder com ícone 🏗️
+- **Opção "Todas as Obras"**: Manter como primeiro card especial (ícone de grid, sem foto)
+- **Animação**: CSS transition para expand/collapse suave
+- **Ao selecionar**: chama `onSelect(id)`, fecha grid
+
+## 4. Atualizar `Index.tsx`
+
+- Remover imports do `Select`/`SelectContent`/`SelectItem`/`SelectTrigger`/`SelectValue` e `Building2`
+- Substituir o bloco do dropdown (linhas ~167-198) pelo `<ObraSelectorVisual>`
+- Passar `obras`, `obraAtivaId`, `setObraAtivaId`
 
 ## Arquivos Modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Cotacoes.tsx` | Número do orçamento, link avulso, espelho azul, fornecedores convidados com badges/reenvio/visualização, envio individual |
-| `src/pages/PortalFornecedor.tsx` | Ler `?fornecedor=`, travar campo nome |
-| Migration SQL | RPC `get_public_fornecedor_nome` |
+| Migration SQL | `ALTER TABLE obras ADD COLUMN main_image text` |
+| `src/hooks/useObraAtiva.tsx` | Adicionar `main_image` ao select e interface |
+| `src/components/ObraSelectorVisual.tsx` | Novo componente visual |
+| `src/pages/Index.tsx` | Trocar dropdown pelo seletor visual |
 
