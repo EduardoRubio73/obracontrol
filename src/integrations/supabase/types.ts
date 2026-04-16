@@ -1253,6 +1253,7 @@ export type Database = {
           id: string
           justificativa_status: string | null
           localizacao: string | null
+          main_image: string | null
           nome: string
           profissional_recomendado: string | null
           status: Database["public"]["Enums"]["status_obra"] | null
@@ -1273,6 +1274,7 @@ export type Database = {
           id?: string
           justificativa_status?: string | null
           localizacao?: string | null
+          main_image?: string | null
           nome: string
           profissional_recomendado?: string | null
           status?: Database["public"]["Enums"]["status_obra"] | null
@@ -1293,6 +1295,7 @@ export type Database = {
           id?: string
           justificativa_status?: string | null
           localizacao?: string | null
+          main_image?: string | null
           nome?: string
           profissional_recomendado?: string | null
           status?: Database["public"]["Enums"]["status_obra"] | null
