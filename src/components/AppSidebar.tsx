@@ -141,7 +141,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <CollapsibleTrigger className="w-full">
               <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
-                {!collapsed && <span>⚙️ Configurações</span>}
+                {!collapsed && <span>⚙️ Gestão</span>}
                 {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
               </SidebarGroupLabel>
             </CollapsibleTrigger>
