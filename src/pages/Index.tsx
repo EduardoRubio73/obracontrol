@@ -5,19 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import {
-  LayoutDashboard,
-  Bot,
-  Building2,
-} from "lucide-react";
+import { LayoutDashboard, Bot } from "lucide-react";
+import { ObraSelectorVisual } from "@/components/ObraSelectorVisual";
 
 /* ── animation style helper ── */
 const stagger = (step: number) => ({
@@ -163,36 +153,14 @@ const MenuPrincipal = () => {
         </p>
       </div>
 
-      {/* Obra selector */}
+      {/* Obra selector visual */}
       {obras.length > 0 && (
         <div className="mt-4" style={stagger(1)}>
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-muted-foreground shrink-0" />
-            <Select value={obraAtivaId ?? ""} onValueChange={(v) => setObraAtivaId(v)}>
-              <SelectTrigger className="w-full h-12 rounded-xl text-base font-medium">
-                <SelectValue placeholder="Selecionar obra" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  <span className="flex items-center gap-2">
-                    Todas as Obras
-                    <span className="text-xs text-muted-foreground">• Visão geral</span>
-                  </span>
-                </SelectItem>
-                {obras.map((o) => {
-                  const statusLabel = o.status ? o.status.charAt(0).toUpperCase() + o.status.slice(1) : "Planejamento";
-                  return (
-                    <SelectItem key={o.id} value={o.id}>
-                      <span className="flex items-center gap-2">
-                        {o.nome}
-                        <span className="text-xs text-muted-foreground">• {statusLabel}</span>
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
+          <ObraSelectorVisual
+            obras={obras}
+            selectedId={obraAtivaId}
+            onSelect={(id) => setObraAtivaId(id)}
+          />
         </div>
       )}
 

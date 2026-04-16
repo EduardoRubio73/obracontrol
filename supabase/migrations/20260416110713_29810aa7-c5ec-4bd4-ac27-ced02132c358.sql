@@ -1,0 +1,1 @@
+ALTER TABLE obras ADD COLUMN IF NOT EXISTS main_image text;

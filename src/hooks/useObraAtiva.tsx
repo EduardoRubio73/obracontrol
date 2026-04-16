@@ -8,6 +8,7 @@ interface Obra {
   nome: string;
   valor_previsto: number | null;
   status: string | null;
+  main_image: string | null;
 }
 
 interface ObraAtivaContextType {
@@ -49,7 +50,7 @@ export function ObraAtivaProvider({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obras")
-        .select("id, nome, valor_previsto, status")
+        .select("id, nome, valor_previsto, status, main_image")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Obra[];
