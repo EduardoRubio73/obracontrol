@@ -43,7 +43,7 @@ const Produtos = () => {
     queryFn: async () => {
       let q = supabase
         .from("produtos")
-        .select("*, categorias_produtos(nome)")
+        .select("*, categorias_produtos!produtos_categoria_id_fkey(nome)")
         .order("nome");
       if (filterCat) q = q.eq("categoria_id", filterCat);
       const { data, error } = await q;
