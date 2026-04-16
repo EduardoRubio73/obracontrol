@@ -198,7 +198,7 @@ const Documentos = () => {
                   <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                       <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </a>
                     </Button>
                     <Button
