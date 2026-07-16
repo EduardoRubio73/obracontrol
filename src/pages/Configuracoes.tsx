@@ -28,7 +28,7 @@ import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown, Upload, Settin
 import { ImportarProdutosDialog } from "@/components/produtos/ImportarProdutosDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type CrudItem = { id: string; nome: string; descricao?: string | null };
+type CrudItem = { id: string; nome: string; descricao?: string | null; etapa_padrao_id?: string | null };
 
 /* ----------------- Collapsible Section Wrapper ----------------- */
 function CollapsibleCard({
@@ -101,10 +101,10 @@ function useCrudTab(table: string) {
   });
 
   const add = useMutation({
-    mutationFn: async ({ nome, descricao }: { nome: string; descricao?: string }) => {
+    mutationFn: async ({ nome, descricao, extra }: { nome: string; descricao?: string; extra?: Record<string, unknown> }) => {
       const dup = (items ?? []).find((i) => (i.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim());
       if (dup) throw new Error(`Já existe um item com o nome "${nome}".`);
-      const { error } = await supabase.from(table as any).insert({ nome, descricao: descricao || null, user_id: user!.id } as any);
+      const { error } = await supabase.from(table as any).insert({ nome, descricao: descricao || null, user_id: user!.id, ...extra } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -119,10 +119,10 @@ function useCrudTab(table: string) {
   });
 
   const update = useMutation({
-    mutationFn: async ({ id, nome, descricao }: { id: string; nome: string; descricao?: string }) => {
+    mutationFn: async ({ id, nome, descricao, extra }: { id: string; nome: string; descricao?: string; extra?: Record<string, unknown> }) => {
       const dup = (items ?? []).find((i) => i.id !== id && (i.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim());
       if (dup) throw new Error(`Já existe outro item com o nome "${nome}".`);
-      const { error } = await supabase.from(table as any).update({ nome, descricao: descricao || null } as any).eq("id", id);
+      const { error } = await supabase.from(table as any).update({ nome, descricao: descricao || null, ...extra } as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -245,6 +245,281 @@ function CrudBody({ table, label }: { table: string; label: string }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ----------------- Tarefa Padrão body (com grupo/etapa) ----------------- */
+function TarefaPadraoBody() {
+  const { items, isLoading, add, update, del } = useCrudTab("tarefas_padrao");
+  const [novoNome, setNovoNome] = useState("");
+  const [novaDescricao, setNovaDescricao] = useState("");
+  const [novoEtapaId, setNovoEtapaId] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingNome, setEditingNome] = useState("");
+  const [editingDescricao, setEditingDescricao] = useState("");
+  const [editingEtapaId, setEditingEtapaId] = useState("");
+
+  const { data: etapasPadrao } = useQuery({
+    queryKey: ["etapas_padrao-select"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("etapas_padrao").select("id, nome").order("nome");
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
+
+  const etapaNomeById = (id?: string | null) => etapasPadrao?.find((e) => e.id === id)?.nome ?? null;
+  const dupName = !!items?.find((i) => (i.nome ?? "").toLowerCase().trim() === novoNome.toLowerCase().trim());
+
+  const handleAdd = () => {
+    if (!novoNome.trim() || dupName) return;
+    add.mutate(
+      { nome: novoNome.trim(), descricao: novaDescricao.trim(), extra: { etapa_padrao_id: novoEtapaId || null } },
+      { onSuccess: () => { setNovoNome(""); setNovaDescricao(""); setNovoEtapaId(""); } }
+    );
+  };
+
+  const startEdit = (item: CrudItem) => {
+    setEditingId(item.id);
+    setEditingNome(item.nome);
+    setEditingDescricao(item.descricao ?? "");
+    setEditingEtapaId(item.etapa_padrao_id ?? "");
+  };
+  const cancelEdit = () => { setEditingId(null); setEditingNome(""); setEditingDescricao(""); setEditingEtapaId(""); };
+  const saveEdit = () => {
+    if (!editingNome.trim() || !editingId) return;
+    update.mutate(
+      { id: editingId, nome: editingNome.trim(), descricao: editingDescricao.trim(), extra: { etapa_padrao_id: editingEtapaId || null } },
+      { onSuccess: cancelEdit }
+    );
+  };
+
+  const EtapaSelect = ({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) => (
+    <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
+      <SelectTrigger className={className}><SelectValue placeholder="Pertence à etapa (opcional)" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Nenhuma (tarefa avulsa)</SelectItem>
+        {(etapasPadrao ?? []).map((e) => (
+          <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  return (
+    <div className="space-y-3 pt-3">
+      <div className="space-y-2">
+        <Input placeholder="Nova tarefa padrão..." value={novoNome} onChange={(e) => setNovoNome(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        {dupName && novoNome.trim() && <p className="text-xs text-warning">⚠️ Já existe "{novoNome}"</p>}
+        <Input placeholder="Descrição (opcional)" value={novaDescricao} onChange={(e) => setNovaDescricao(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        <EtapaSelect value={novoEtapaId} onChange={setNovoEtapaId} />
+        <Button onClick={handleAdd} disabled={!novoNome.trim() || dupName || add.isPending} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-1" /> Adicionar
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
+        {!isLoading && !items?.length && (
+          <p className="text-muted-foreground text-sm text-center py-4">Nenhuma tarefa padrão cadastrada.</p>
+        )}
+        {items?.map((item) => (
+          <div key={item.id} className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
+            {editingId === item.id ? (
+              <div className="flex flex-col gap-2 flex-1 mr-2">
+                <Input value={editingNome} onChange={(e) => setEditingNome(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                  className="h-9" autoFocus placeholder="Nome" />
+                <Input value={editingDescricao} onChange={(e) => setEditingDescricao(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                  className="h-9" placeholder="Descrição (opcional)" />
+                <EtapaSelect value={editingEtapaId} onChange={setEditingEtapaId} className="h-9" />
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={saveEdit} disabled={!editingNome.trim()} className="text-primary shrink-0">
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={cancelEdit} className="shrink-0">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1">
+                  <span className="font-semibold text-sm text-foreground">{item.nome}</span>
+                  {item.descricao && <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>}
+                  {etapaNomeById(item.etapa_padrao_id) && (
+                    <Badge variant="outline" className="text-xs mt-1">{etapaNomeById(item.etapa_padrao_id)}</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => startEdit(item)} className="h-8 w-8">
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => del.mutate(item.id)} disabled={del.isPending} className="h-8 w-8">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------- Etapa Padrão body (com contagem de tarefas do grupo) ----------------- */
+function EtapaPadraoBody() {
+  const { items, isLoading, add, update, del } = useCrudTab("etapas_padrao");
+  const [novoNome, setNovoNome] = useState("");
+  const [novaDescricao, setNovaDescricao] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingNome, setEditingNome] = useState("");
+  const [editingDescricao, setEditingDescricao] = useState("");
+
+  const { data: contagemPorEtapa } = useQuery({
+    queryKey: ["tarefas-padrao-contagem-por-etapa"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tarefas_padrao" as any)
+        .select("etapa_padrao_id")
+        .not("etapa_padrao_id", "is", null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of (data ?? []) as { etapa_padrao_id: string }[]) {
+        counts[row.etapa_padrao_id] = (counts[row.etapa_padrao_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+  });
+
+  const dupName = !!items?.find((i) => (i.nome ?? "").toLowerCase().trim() === novoNome.toLowerCase().trim());
+
+  const handleAdd = () => {
+    if (!novoNome.trim() || dupName) return;
+    add.mutate({ nome: novoNome.trim(), descricao: novaDescricao.trim() }, {
+      onSuccess: () => { setNovoNome(""); setNovaDescricao(""); },
+    });
+  };
+
+  const startEdit = (item: CrudItem) => {
+    setEditingId(item.id);
+    setEditingNome(item.nome);
+    setEditingDescricao(item.descricao ?? "");
+  };
+  const cancelEdit = () => { setEditingId(null); setEditingNome(""); setEditingDescricao(""); };
+  const saveEdit = () => {
+    if (!editingNome.trim() || !editingId) return;
+    update.mutate({ id: editingId, nome: editingNome.trim(), descricao: editingDescricao.trim() }, { onSuccess: cancelEdit });
+  };
+
+  return (
+    <div className="space-y-3 pt-3">
+      <div className="space-y-2">
+        <Input placeholder="Nova etapa padrão..." value={novoNome} onChange={(e) => setNovoNome(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        {dupName && novoNome.trim() && <p className="text-xs text-warning">⚠️ Já existe "{novoNome}"</p>}
+        <Input placeholder="Descrição (opcional)" value={novaDescricao} onChange={(e) => setNovaDescricao(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        <Button onClick={handleAdd} disabled={!novoNome.trim() || dupName || add.isPending} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-1" /> Adicionar
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
+        {!isLoading && !items?.length && (
+          <p className="text-muted-foreground text-sm text-center py-4">Nenhuma etapa padrão cadastrada.</p>
+        )}
+        {items?.map((item) => (
+          <div key={item.id} className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
+            {editingId === item.id ? (
+              <div className="flex flex-col gap-2 flex-1 mr-2">
+                <Input value={editingNome} onChange={(e) => setEditingNome(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                  className="h-9" autoFocus placeholder="Nome" />
+                <Input value={editingDescricao} onChange={(e) => setEditingDescricao(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                  className="h-9" placeholder="Descrição (opcional)" />
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={saveEdit} disabled={!editingNome.trim()} className="text-primary shrink-0">
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={cancelEdit} className="shrink-0">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1">
+                  <span className="font-semibold text-sm text-foreground">{item.nome}</span>
+                  {item.descricao && <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>}
+                  {!!contagemPorEtapa?.[item.id] && (
+                    <Badge variant="secondary" className="text-xs mt-1">{contagemPorEtapa[item.id]} tarefa(s)</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => startEdit(item)} className="h-8 w-8">
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => del.mutate(item.id)} disabled={del.isPending} className="h-8 w-8">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EtapasPadraoCollapsible() {
+  const { user } = useAuth();
+  const { data: items } = useQuery({
+    queryKey: ["etapas_padrao", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("etapas_padrao").select("id");
+      return data ?? [];
+    },
+  });
+  return (
+    <CollapsibleCard
+      title="Etapas Padrão"
+      icon="📋"
+      tooltip="Modelos de etapas reutilizadas ao criar novas obras. O contador mostra quantas tarefas padrão já estão vinculadas a cada uma."
+      count={items?.length}
+    >
+      <EtapaPadraoBody />
+    </CollapsibleCard>
+  );
+}
+
+function TarefasPadraoCollapsible() {
+  const { user } = useAuth();
+  const { data: items } = useQuery({
+    queryKey: ["tarefas_padrao", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("tarefas_padrao").select("id");
+      return data ?? [];
+    },
+  });
+  return (
+    <CollapsibleCard
+      title="Tarefas Padrão"
+      icon="✅"
+      tooltip="Tarefas frequentes que aparecem ao adicionar itens a uma etapa. Vincule a uma etapa padrão para poder carregar todas de uma vez ao criar uma etapa com esse nome."
+      count={items?.length}
+    >
+      <TarefaPadraoBody />
+    </CollapsibleCard>
   );
 }
 
@@ -659,20 +934,8 @@ const Configuracoes = () => {
         </TabsContent>
 
         <TabsContent value="etapas" className="space-y-3 mt-4">
-          <CrudCollapsible
-            table="etapas_padrao"
-            label="etapa padrão"
-            title="Etapas Padrão"
-            icon="📋"
-            tooltip="Modelos de etapas reutilizadas ao criar novas obras."
-          />
-          <CrudCollapsible
-            table="tarefas_padrao"
-            label="tarefa padrão"
-            title="Tarefas Padrão"
-            icon="✅"
-            tooltip="Tarefas frequentes que aparecem ao adicionar itens a uma etapa."
-          />
+          <EtapasPadraoCollapsible />
+          <TarefasPadraoCollapsible />
         </TabsContent>
 
         <TabsContent value="tipos_obra" className="space-y-3 mt-4">
