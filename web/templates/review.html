@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if errors %}
+  {% for e in errors %}
+    <div class="error-box">Erro ao processar {{ e }}</div>
+  {% endfor %}
+{% endif %}
+
+<h1>Revisão da importação</h1>
+<p class="muted">Itens com match forte já vêm marcados para associação automática. Revise os itens ambíguos (⚠️) antes de confirmar.</p>
+
+{% for preview in previews %}
+<div class="doc-block" data-doc-idx="{{ loop.index0 }}">
+  <div class="doc-header">
+    <div>
+      <div class="file">{{ preview['source_file'] }}</div>
+      <div class="meta">
+        Fornecedor: {{ preview['meta'].fornecedor_nome or '—' }}
+        {% if preview['meta'].fornecedor_cnpj %} · CNPJ {{ preview['meta'].fornecedor_cnpj }}{% endif %}
+        {% if preview['meta'].cidade %} · {{ preview['meta'].cidade }}{% endif %}
+      </div>
+    </div>
+    <div>
+      <span class="badge tipo">{{ preview['tipo_documento'] }}</span>
+      {% if preview['fornecedor_match'] %}
+        <span class="badge {{ preview['fornecedor_match'].decision }}">
+          fornecedor: {{ preview['fornecedor_match'].decision }}
+          {% if preview['fornecedor_match'].match %} ({{ "%.0f"|format(preview['fornecedor_match'].score*100) }}%){% endif %}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Produto (extraído)</th><th>UN</th><th>Qtd</th><th>Valor</th><th>Categoria sugerida</th><th>Match de produto</th></tr>
+    </thead>
+    <tbody>
+    {% for item in preview['items'] %}
+      <tr>
+        <td>{{ item['nome_original'] }}</td>
+        <td>{{ item['unidade'] }}</td>
+        <td>{{ item['quantidade'] }}</td>
+        <td>R$ {{ "%.2f"|format(item['valor']) }}</td>
+        <td class="muted">{{ item['categoria_sugerida'] }}</td>
+        <td>
+          {% set pm = item['produto_match'] %}
+          {% if pm.decision == 'auto' %}
+            <span class="badge auto">✓ {{ pm.match.nome }}</span>
+            <input type="hidden" class="decision-input" data-item-idx="{{ loop.index0 }}" value="auto">
+          {% elif pm.decision == 'review' %}
+            <span class="badge review">⚠️ {{ "%.0f"|format(pm.score*100) }}% parecido: {{ pm.match.nome }}</span>
+            <select class="decision-input" data-item-idx="{{ loop.index0 }}">
+              <option value="link:{{ pm.match.id }}">Usar "{{ pm.match.nome }}" (existente)</option>
+              <option value="new">Criar como produto novo</option>
+            </select>
+          {% else %}
+            <span class="badge new">+ novo produto</span>
+            <input type="hidden" class="decision-input" data-item-idx="{{ loop.index0 }}" value="new">
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <p class="muted">Nenhum documento processado.</p>
+{% endfor %}
+
+<div class="footer-actions">
+  <a href="{{ url_for('index') }}"><button class="secondary" type="button">Cancelar</button></a>
+  <button id="confirmBtn" type="button">Confirmar e gravar no banco</button>
+</div>
+
+<script>
+document.getElementById('confirmBtn').addEventListener('click', async () => {
+  const payload = {};
+  document.querySelectorAll('.doc-block').forEach(block => {
+    const docIdx = block.getAttribute('data-doc-idx');
+    payload[docIdx] = {};
+    block.querySelectorAll('.decision-input').forEach(inp => {
+      payload[docIdx][inp.getAttribute('data-item-idx')] = inp.value;
+    });
+  });
+  const res = await fetch("{{ url_for('commit', batch_id=batch_id) }}", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload)
+  });
+  if (res.ok) {
+    window.location.href = "{{ url_for('catalogo') }}";
+  } else {
+    alert("Erro ao gravar. Veja o console do servidor.");
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}ObraApp — Importação Inteligente{% endblock %}</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --border: #2a2f3a;
+    --text: #e8eaed; --muted: #9aa4b2; --accent: #4f8cff; --green: #35c48a;
+    --amber: #f0a938; --red: #f0554d;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin:0; }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 32px; display:flex; justify-content:space-between; align-items:center; }
+  header a { color: var(--text); text-decoration:none; font-weight:600; }
+  nav a { color: var(--muted); text-decoration:none; margin-left: 24px; font-size:14px; }
+  nav a:hover { color: var(--accent); }
+  main { padding: 32px; max-width: 1200px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .stats { display:grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat { background: var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+  .stat .num { font-size: 28px; font-weight:700; color: var(--accent); }
+  .stat .label { font-size: 12px; color: var(--muted); margin-top:4px; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 16px; color: var(--muted); font-weight:600; text-transform: uppercase; letter-spacing: .04em; }
+  table { width:100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align:left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .badge { display:inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.auto { background: rgba(53,196,138,.15); color: var(--green); }
+  .badge.review { background: rgba(240,169,56,.15); color: var(--amber); }
+  .badge.new { background: rgba(79,140,255,.15); color: var(--accent); }
+  .badge.tipo { background: rgba(255,255,255,.08); color: var(--text); }
+  .dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 48px; text-align:center; color: var(--muted); cursor:pointer; transition: .15s; }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); color: var(--text); background: rgba(79,140,255,.05); }
+  button, .btn { background: var(--accent); color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  button.secondary { background: var(--panel2); color: var(--text); border:1px solid var(--border); }
+  button:hover { opacity:.9; }
+  input[type=file] { display:none; }
+  .doc-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow:hidden; }
+  .doc-header { background: var(--panel2); padding: 14px 18px; display:flex; justify-content:space-between; align-items:center; }
+  .doc-header .file { font-weight:600; }
+  .doc-header .meta { color: var(--muted); font-size: 13px; }
+  select { background: var(--panel2); color: var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:13px; }
+  .footer-actions { position: sticky; bottom:0; background: var(--panel); border-top:1px solid var(--border); padding: 16px 32px; display:flex; justify-content:flex-end; gap:12px; margin: 0 -32px -32px; }
+  .muted { color: var(--muted); }
+  .error-box { background: rgba(240,85,77,.1); border:1px solid var(--red); color: var(--red); border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:14px;}
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('index') }}">🏗️ ObraApp — Importação Inteligente</a>
+  <nav>
+    <a href="{{ url_for('index') }}">Início</a>
+    <a href="{{ url_for('catalogo') }}">Catálogo</a>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

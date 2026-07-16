@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Catálogo consolidado</h1>
+
+<div class="card">
+  <h2>Produtos ({{ produtos|length }})</h2>
+  <table>
+    <thead><tr><th>Produto</th><th>Categoria</th><th>Unidade</th><th>Último preço</th></tr></thead>
+    <tbody>
+    {% for p in produtos %}
+      <tr>
+        <td>{{ p.nome }}</td>
+        <td class="muted">{{ p.categoria_nome or '—' }}</td>
+        <td>{{ p.unidade }}</td>
+        <td>R$ {{ "%.2f"|format(p.preco_ultimo) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Fornecedores ({{ fornecedores|length }})</h2>
+  <table>
+    <thead><tr><th>Nome</th><th>CNPJ</th><th>Cidade</th></tr></thead>
+    <tbody>
+    {% for f in fornecedores %}
+      <tr>
+        <td>{{ f.nome }}</td>
+        <td class="muted">{{ f.cnpj or '—' }}</td>
+        <td>{{ f.cidade or '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

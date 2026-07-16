@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="stats">
+  <div class="stat"><div class="num">{{ stats.produtos }}</div><div class="label">Produtos</div></div>
+  <div class="stat"><div class="num">{{ stats.fornecedores }}</div><div class="label">Fornecedores</div></div>
+  <div class="stat"><div class="num">{{ stats.categorias }}</div><div class="label">Categorias</div></div>
+  <div class="stat"><div class="num">{{ stats.compras }}</div><div class="label">Compras/Itens</div></div>
+  <div class="stat"><div class="num">{{ stats.cotacoes }}</div><div class="label">Cotações</div></div>
+</div>
+
+<div class="card">
+  <h2>Importar documentos</h2>
+  <p class="muted">Envie PDF, CSV, XLSX, DOCX, MD ou TXT — ordens de venda, pedidos, cotações ou listas de preço. A IA classifica, extrai e cruza com o cadastro existente antes de gravar.</p>
+  <form id="uploadForm" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <label class="dropzone" id="dropzone" for="fileInput">
+      <div id="dzText">📄 Arraste os arquivos aqui ou clique para selecionar</div>
+    </label>
+    <input type="file" id="fileInput" name="files" multiple>
+    <div style="margin-top:16px; text-align:right;">
+      <button type="submit">Processar arquivos</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Últimas importações</h2>
+  <table>
+    <thead><tr><th>Arquivo</th><th>Tipo detectado</th><th>Confiança</th><th>Data</th></tr></thead>
+    <tbody>
+    {% for i in imports %}
+      <tr>
+        <td>{{ i.source_file }}</td>
+        <td><span class="badge tipo">{{ i.tipo_documento }}</span></td>
+        <td>{{ "%.0f"|format(i.confianca*100) }}%</td>
+        <td class="muted">{{ i.criado_em }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Nenhuma importação ainda.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const dropzone = document.getElementById('dropzone');
+const dzText = document.getElementById('dzText');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  fileInput.files = e.dataTransfer.files;
+  updateText();
+});
+fileInput.addEventListener('change', updateText);
+function updateText() {
+  if (fileInput.files.length) {
+    dzText.textContent = fileInput.files.length + ' arquivo(s) selecionado(s) — clique em "Processar arquivos"';
+  }
+}
+</script>
+{% endblock %}
