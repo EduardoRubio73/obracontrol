@@ -120,3 +120,40 @@ sem mudanças de schema nesta migração.
   `src/pages/Dossie.tsx`, `src/pages/Obras.tsx` — removidos
   `src/components/ObraContextTabs.tsx`, `src/components/ObraSelectorVisual.tsx`,
   `src/components/MobileBottomNav.tsx`, `src/pages/ObraDetalhe.tsx`
+
+### 17/07/2026 — Grupo de Tarefas Padrão por Etapa Padrão (✅ Completo)
+- **Tipo:** [FEATURE]
+- **Descrição:** "Etapas Padrão" e "Tarefas Padrão" (Configurações → Etapas & Tarefas)
+  eram catálogos independentes — cada tarefa tinha que ser adicionada manualmente toda
+  vez que se criava uma etapa numa obra, mesmo quando o conjunto de tarefas já era
+  conhecido de antemão (ex: "Demolição" sempre tem as mesmas 5 tarefas). Agora uma
+  Tarefa Padrão pode opcionalmente pertencer a uma Etapa Padrão (relação N:1); ao criar
+  uma etapa numa obra com um nome que bate com uma Etapa Padrão que tem tarefas
+  vinculadas, aparece um checkbox (marcado por padrão) "Carregar as N tarefa(s) padrão
+  desse grupo" que, se confirmado, cria a etapa e já insere todas as tarefas do grupo
+  como itens do checklist de uma vez.
+  1. Nova coluna `tarefas_padrao.etapa_padrao_id` (uuid, nullable, FK →
+     `etapas_padrao.id`, `ON DELETE SET NULL`) — migration aplicada manualmente pelo
+     usuário via SQL Editor do Supabase (`xsqnkptdbabnvjcrvaob`).
+  2. `src/lib/etapaPadrao.ts` — `findEtapaPadraoPorNome`, com testes reais (vitest).
+  3. `Configuracoes.tsx` — seletor "Pertence à etapa (opcional)" no formulário de Tarefa
+     Padrão, badge com o nome do grupo em cada linha, e contador "N tarefa(s)" em cada
+     linha de Etapa Padrão.
+  4. `Etapas.tsx` — checkbox de carregar tarefas do grupo ao criar etapa; falha ao
+     inserir as tarefas não desfaz a criação da etapa (toast diferenciado).
+  5. Regeneração de `src/integrations/supabase/types.ts` **adiada**: nenhuma conta
+     Supabase (MCP nem CLI) disponível nesta sessão tem acesso ao projeto
+     `xsqnkptdbabnvjcrvaob` (MCP só enxerga os projetos "zrfilhosdaluz" e
+     "filhosdaluz_captacao_site"; CLI local só enxerga "OCR & ADV") — todo código novo
+     usa o padrão já existente `supabase.from("tarefas_padrao" as any)` para não
+     depender disso. Pendência: regenerar os tipos quando houver acesso (CLI com PAT do
+     projeto certo, ou copiar do painel do Supabase).
+- **Processo:** desenhado via `/brainstorm` (spec em
+  `docs/superpowers/specs/2026-07-16-grupo-tarefas-padrao-por-etapa-design.md`),
+  implementado via plano + subagentes (`docs/superpowers/plans/2026-07-16-grupo-tarefas-padrao-por-etapa.md`,
+  5 tasks, cada uma com implementador + revisor dedicados, mais revisão final de
+  branch). Único achado Important (contador de tarefas ficando desatualizado na mesma
+  sessão) corrigido e re-revisado antes de fechar a task.
+- **Arquivos:** `supabase/migrations/20260717090000_add_etapa_padrao_id_tarefas_padrao.sql`,
+  `src/lib/etapaPadrao.ts` (novo), `src/lib/etapaPadrao.test.ts` (novo),
+  `src/pages/Configuracoes.tsx`, `src/pages/Etapas.tsx`
