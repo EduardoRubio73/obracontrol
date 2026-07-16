@@ -59,17 +59,23 @@ function ChatContent({ obraId }: { obraId: string }) {
 
   // Reinicia a conversa ao trocar de obra — cada obra tem contexto isolado
   useEffect(() => {
+    const outrasObras = obras.filter((o) => o.id !== obraId);
     setMessages([
       {
         id: "welcome",
         role: "assistant",
-        content: `Olá! 👋 Sou seu assistente de obra.\n\n${obraAtiva ? `Obra ativa: **${obraAtiva.nome}**\n\n` : ""}Como posso te ajudar?`,
+        content: obraAtiva
+          ? `Olá! 👋 Sou seu assistente de obra.\n\nEstou te ajudando com a obra **${obraAtiva.nome}**.${outrasObras.length > 0 ? " É essa obra que você quer gerenciar?" : ""}\n\nComo posso te ajudar?`
+          : `Olá! 👋 Sou seu assistente de obra.\n\nComo posso te ajudar?`,
+        acoes: outrasObras.length > 0
+          ? outrasObras.map((o) => ({ label: `Trocar para "${o.nome}"`, route: `/obras/${o.id}/chat` }))
+          : undefined,
         timestamp: new Date(),
       },
     ]);
     setPendingFiles([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [obraId]);
+  }, [obraId, obras.length]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {

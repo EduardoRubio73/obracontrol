@@ -6,6 +6,15 @@
 
 ---
 
+## [16/07/2026 - 19:05:22] Tarefa #6 Concluída: Assistente IA confirma/pergunta a obra ao abrir (✅ Completo)
+- **Tipo:** [FEATURE] [UX]
+- **Descrição:** Hoje o link "Assistente IA" na sidebar só aparece depois que uma obra já está selecionada na URL (`hasObraSelected`), então a ambiguidade real só existia na rota legada `/chat` (sem obra na URL), que já escolhia silenciosamente a última obra usada ou a primeira da lista — sem nunca perguntar. Confirmado com o usuário: o escopo certo é a **primeira mensagem do chat** confirmar a obra ativa e oferecer troca rápida, sem precisar sair da tela.
+  1. `Chat.tsx` — mensagem de boas-vindas (`useEffect` que roda ao trocar de `obraId`) agora calcula `outrasObras` (demais obras do usuário) e, se houver mais de uma obra cadastrada, acrescenta "É essa obra que você quer gerenciar?" ao texto e popula `acoes` com um botão "Trocar para '{nome}'" por obra, reaproveitando o mecanismo de `acoes`/`route` que já existia no componente de mensagem (clicar navega para `/obras/{id}/chat`, que reinicia a conversa isolada por obra — comportamento já existente, preservado).
+  2. Se só existe 1 obra cadastrada, comportamento inalterado (sem oferecer troca, já que não há para onde trocar).
+- **Verificação:** `tsc --noEmit` limpo. `eslint` — mesmo warning pré-existente de antes (`uploadFiles` missing dep em `useCallback`, confirmado via `git stash`), nenhum novo. `npm run build` ok. `npx vitest run` 5/5. Confirmado via CLI que hoje há 4 obras cadastradas no total (poucas por usuário) — `flex-wrap` nos botões de ação já existente é suficiente, sem necessidade de paginação/limite.
+- **Teste manual pendente do usuário:** logar com um usuário que tenha 2+ obras, abrir `/obras/:id/chat` para cada obra e conferir que a mensagem de boas-vindas lista as outras obras como botões e que clicar troca corretamente (reinicia a conversa, isolada por obra).
+- **Arquivos:** `src/pages/Chat.tsx`
+
 ## [16/07/2026 - 18:45:47] Tarefa #5 Concluída: Combobox pesquisável para Tipo de Obra (✅ Completo)
 - **Tipo:** [FEATURE] [UX]
 - **Descrição:** `NovaObra.tsx` (wizard de criação de obra, passo 1) usava um grid fixo de 4 botões hardcoded (`casa`/`reforma`/`apartamento`/`comercial`, com emoji/ícone), totalmente desconectado da tabela `tipos_obra` que já existe no banco (15 tipos cadastrados: Acabamento, Ampliação, Comercial, Construção, Demolição, Industrial, Infraestrutura, Instalações, Manutenção, Paisagismo, Predial, Reforma, Regularização, Residencial, Urbanização) e já tem CRUD completo em Configurações → Tipos de Obra. Substituído o grid de botões pelo componente reutilizável `SmartCombobox` (`src/components/ui/smart-combobox.tsx`, já usado em `Produtos.tsx`) — busca em tempo real, seleção, e criação inline de novo tipo direto no wizard (mesmo padrão de `categorias_produtos`/`tipos_fornecedor`). `obras.tipo_obra` é texto livre (não FK), então nenhuma migration foi necessária — troquei os values de string livre também (antes strings em inglês tipo "casa", agora os nomes reais da tabela como "Residencial").
