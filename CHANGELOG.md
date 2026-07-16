@@ -157,3 +157,32 @@ sem mudanças de schema nesta migração.
 - **Arquivos:** `supabase/migrations/20260717090000_add_etapa_padrao_id_tarefas_padrao.sql`,
   `src/lib/etapaPadrao.ts` (novo), `src/lib/etapaPadrao.test.ts` (novo),
   `src/pages/Configuracoes.tsx`, `src/pages/Etapas.tsx`
+
+### 16/07/2026 — Assistente IA escopado por obra, via URL (✅ Completo)
+- **Tipo:** [REFATORAÇÃO] [UX]
+- **Descrição:** O Assistente IA (`/chat`) tinha ficado de fora do refactor de
+  navegação de mais cedo hoje (rota global dependente de `useObraAtiva()`, cujo único
+  jeito de trocar de obra — o dropdown do header — foi removido nesse mesmo refactor).
+  Resultado: o assistente ficava travado na obra mais recente, sem nenhuma forma de o
+  usuário mudar isso pela interface. Migrado para o mesmo padrão URL-first do resto do
+  app:
+  1. Nova rota `/obras/:id/chat` (`App.tsx`), envolvida em `RequireObra` — mesmo guard
+     usado por Etapas/Financeiro/etc.
+  2. Rota antiga `/chat` vira um `LegacyObraRedirect` (`section="chat"`), redirecionando
+     para a última obra usada — preserva links antigos.
+  3. Sidebar: "Assistente IA" saiu da seção sempre-visível "Gestão" e entrou em "Gestão
+     da Obra" (`AppSidebar.tsx`), só aparece com obra selecionada na URL.
+  4. `Chat.tsx` passa a ler a obra via `useParams()` em vez do context; o histórico da
+     conversa reinicia ao trocar de obra (decisão de design — cada obra tem conversa
+     isolada, evita vazar contexto textual de uma obra pra outra).
+  5. `supabase/functions/chat-assistente/index.ts` não mudou — a validação de posse da
+     obra (`userOwnsObra`, corrigida no sweep de segurança de mais cedo hoje) já
+     independe da origem do `obra_id`.
+- **Processo:** desenhado via `/brainstorm` (spec em
+  `docs/superpowers/specs/2026-07-16-assistente-ia-por-obra-design.md`), implementado
+  via plano + subagentes (`docs/superpowers/plans/2026-07-16-assistente-ia-por-obra.md`,
+  4 tasks, cada uma com implementador + revisor dedicados, mais revisão final de
+  branch). Revisão final: nenhum achado Critical/Important; 2 Minor aceitos e não
+  bloqueantes (flash de um render antes da mensagem de boas-vindas; blob URL de preview
+  de imagem não revogado ao trocar de obra com anexo pendente).
+- **Arquivos:** `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/pages/Chat.tsx`
