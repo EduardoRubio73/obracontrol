@@ -72,12 +72,9 @@ sem mudanças de schema nesta migração.
      não trava mais em `"listening"` quando o reconhecimento termina sem `onresult`.
   8. `src/lib/regras-decisao.ts` — `CATEGORIAS_PROFISSIONAL`/`CATEGORIAS_LOJA` não são
      mais exportadas (uso só interno).
-- **⚠️ Pendente de ação manual:** a migration `20260716132938_fix_portal_publico_seguranca.sql`
-  foi criada no repo mas **ainda não foi aplicada** ao banco Supabase remoto
-  (`xsqnkptdbabnvjcrvaob`) — não há conexão MCP/CLI ativa com esse projeto nesta
-  sessão. Aplicar via dashboard do Supabase (SQL editor) ou `supabase db push` assim
-  que possível. Até lá, `get_public_fornecedor_nome(uuid)` (assinatura antiga) ainda
-  está ativo no banco em produção.
+- **✅ Migration aplicada:** `20260716132938_fix_portal_publico_seguranca.sql` foi
+  aplicada manualmente pelo usuário via SQL Editor do Supabase (`xsqnkptdbabnvjcrvaob`)
+  no mesmo dia. As 4 correções críticas estão ativas em produção.
 - **Arquivos:** `supabase/functions/chat-assistente/index.ts`,
   `supabase/functions/commitar-importacao/index.ts`,
   `supabase/migrations/20260716132938_fix_portal_publico_seguranca.sql`,
