@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown, Upload, Settings2, FileSpreadsheet } from "lucide-react";
+import { ImportarProdutosDialog } from "@/components/produtos/ImportarProdutosDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CrudItem = { id: string; nome: string; descricao?: string | null };
@@ -509,51 +510,9 @@ function ProdutosBody() {
         )}
       </div>
 
-      {/* Gerenciar / Importar modal (placeholder — sem função ainda) */}
-      <Dialog open={manageDialog} onOpenChange={setManageDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5" /> Gerenciar Produtos
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Importe listas de produtos de terceiros (fornecedores, catálogos, planilhas) para o seu cadastro.
-            </p>
-            <div className="rounded-xl border-2 border-dashed p-6 flex flex-col items-center gap-3 text-center">
-              <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
-              <div>
-                <p className="font-semibold">Importar lista de produtos</p>
-                <p className="text-xs text-muted-foreground">Arraste um arquivo (.csv, .xlsx) ou clique para selecionar</p>
-              </div>
-              <Button variant="outline" disabled>
-                <Upload className="h-4 w-4 mr-1" /> Selecionar arquivo
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" disabled className="justify-start">
-                📥 Baixar modelo (.csv)
-              </Button>
-              <Button variant="outline" disabled className="justify-start">
-                🔗 Importar por URL
-              </Button>
-              <Button variant="outline" disabled className="justify-start">
-                🏭 Catálogo de fornecedor
-              </Button>
-              <Button variant="outline" disabled className="justify-start">
-                🧹 Remover duplicados
-              </Button>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-              ⚙️ Funcionalidade em desenvolvimento. Em breve você poderá importar produtos em massa.
-            </div>
-            <Button className="w-full" variant="secondary" onClick={() => setManageDialog(false)}>
-              Fechar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Importar documento (pedido/cotação/OV/lista de preços) */}
+      <ImportarProdutosDialog open={manageDialog} onOpenChange={setManageDialog} />
+
 
 
       <Dialog open={dialog} onOpenChange={(v) => { if (!v) close(); }}>
