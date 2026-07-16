@@ -1,15 +1,16 @@
 import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2 } from "lucide-react";
 
 interface RequireObraProps {
   children: React.ReactNode;
-  /** Page name shown when "all" is selected */
+  /** Obra id resolvido a partir da URL (useParams) */
+  obraId: string | null | undefined;
+  /** Page name shown when a obra não é encontrada */
   pageName?: string;
 }
 
-export function RequireObra({ children, pageName }: RequireObraProps) {
-  const { obraAtivaId, isAll, obras, isLoading } = useObraAtiva();
+export function RequireObra({ children, obraId, pageName }: RequireObraProps) {
+  const { obras, isLoading } = useObraAtiva();
 
   if (isLoading) {
     return (
@@ -33,33 +34,15 @@ export function RequireObra({ children, pageName }: RequireObraProps) {
     );
   }
 
-  if (isAll) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center px-4">
-        <Card className="max-w-md w-full border-dashed border-2 rounded-2xl shadow-sm">
-          <CardContent className="py-14 text-center">
-            <p className="text-5xl mb-4">🏗️</p>
-            <p className="text-xl font-bold text-foreground">
-              Selecione uma obra específica
-            </p>
-            <p className="text-base text-muted-foreground mt-2">
-              Para gerenciar {pageName || "esta seção"}, selecione uma obra específica no menu superior.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!obraAtivaId) {
+  if (!obraId || !obras.some((o) => o.id === obraId)) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-4">
         <Card className="max-w-sm w-full border-dashed border-2 rounded-2xl shadow-sm">
           <CardContent className="py-14 text-center">
             <p className="text-5xl mb-4">🏗️</p>
-            <p className="text-xl font-bold text-foreground">Selecione uma obra</p>
+            <p className="text-xl font-bold text-foreground">Obra não encontrada</p>
             <p className="text-base text-muted-foreground mt-2">
-              Use o seletor no topo para escolher a obra ativa.
+              Selecione uma obra na lista para gerenciar {pageName || "esta seção"}.
             </p>
           </CardContent>
         </Card>

@@ -283,7 +283,7 @@ const Dossie = () => {
             <Card
               key={fase.id}
               className="rounded-2xl cursor-pointer active:scale-[0.98] transition-transform"
-              onClick={() => navigate(`/etapas/${fase.id}`)}
+              onClick={() => navigate(`/obras/${id}/etapas/${fase.id}`)}
             >
               <CardContent className="p-4 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
@@ -355,10 +355,10 @@ const Dossie = () => {
 
                 // Route map for non-expandable cards
                 const routeMap: Record<string, string> = {
-                  financeiro: "/financeiro",
-                  compra: "/compras",
+                  financeiro: `/obras/${id}/financeiro`,
+                  compra: `/obras/${id}/compras`,
                   dossie: `/obras/${id}/dossie`,
-                  fase: "/etapas",
+                  fase: `/obras/${id}/etapas`,
                 };
 
                 const handleClick = () => {

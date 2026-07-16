@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ObraAtivaProvider } from "@/hooks/useObraAtiva";
 import { AppLayout } from "@/components/AppLayout";
+import { LegacyObraRedirect } from "@/components/LegacyObraRedirect";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Hoje from "./pages/Hoje";
@@ -44,6 +45,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+function ObraHomeRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/obras/${id}/dashboard`} replace />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -88,22 +94,35 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/obras" element={<Obras />} />
               <Route path="/hoje" element={<Hoje />} />
-              <Route path="/etapas" element={<Etapas />} />
-              <Route path="/etapas/:id" element={<EtapaDetalhe />} />
-              <Route path="/compras" element={<Compras />} />
-              <Route path="/financeiro" element={<Financeiro />} />
-              <Route path="/cotacoes" element={<Cotacoes />} />
-              <Route path="/cotacoes/:id/comparar" element={<Comparacao />} />
+
+              {/* Rotas por obra — fonte de verdade é a URL, não o context */}
+              <Route path="/obras/:id" element={<ObraHomeRedirect />} />
+              <Route path="/obras/:id/dashboard" element={<Dashboard />} />
+              <Route path="/obras/:id/etapas" element={<Etapas />} />
+              <Route path="/obras/:id/etapas/:faseId" element={<EtapaDetalhe />} />
+              <Route path="/obras/:id/compras" element={<Compras />} />
+              <Route path="/obras/:id/financeiro" element={<Financeiro />} />
+              <Route path="/obras/:id/cotacoes" element={<Cotacoes />} />
+              <Route path="/obras/:id/cotacoes/:cotId/comparar" element={<Comparacao />} />
+              <Route path="/obras/:id/galeria" element={<Galeria />} />
+              <Route path="/obras/:id/documentos" element={<Documentos />} />
+              <Route path="/obras/:id/dossie" element={<Dossie />} />
+              <Route path="/obras/:id/materiais" element={<Materiais />} />
+              <Route path="/obras/:id/alteracoes" element={<ObraAlteracoes />} />
+
+              {/* Compatibilidade — links antigos redirecionam para a última obra usada */}
+              <Route path="/etapas" element={<LegacyObraRedirect section="etapas" />} />
+              <Route path="/etapas/:faseId" element={<LegacyObraRedirect section="etapas" sub={(p) => `/${p.faseId}`} />} />
+              <Route path="/compras" element={<LegacyObraRedirect section="compras" />} />
+              <Route path="/financeiro" element={<LegacyObraRedirect section="financeiro" />} />
+              <Route path="/cotacoes" element={<LegacyObraRedirect section="cotacoes" />} />
+              <Route path="/cotacoes/:cotId/comparar" element={<LegacyObraRedirect section="cotacoes" sub={(p) => `/${p.cotId}/comparar`} />} />
+              <Route path="/galeria" element={<LegacyObraRedirect section="galeria" />} />
+              <Route path="/documentos" element={<LegacyObraRedirect section="documentos" />} />
+
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/nova-obra" element={<NovaObra />} />
-              <Route path="/galeria" element={<Galeria />} />
-              <Route path="/documentos" element={<Documentos />} />
-              <Route path="/obras/:id/dossie" element={<Dossie />} />
-              <Route path="/obras/:id/galeria" element={<Galeria />} />
-              <Route path="/obras/:id/materiais" element={<Materiais />} />
-              <Route path="/obras/:id/documentos" element={<Documentos />} />
-              <Route path="/obras/:id/alteracoes" element={<ObraAlteracoes />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/auditoria" element={<Auditoria />} />

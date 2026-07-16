@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { useAuth } from "@/hooks/useAuth";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,9 +43,8 @@ const getInviteStatus = (t: any): { label: string; color: string } => {
   return { label: "Pendente", color: "bg-yellow-100 text-yellow-700" };
 };
 
-const CotacoesContent = () => {
+const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const { user } = useAuth();
-  const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -81,14 +79,22 @@ const CotacoesContent = () => {
     },
   });
 
+  const { data: obra } = useQuery({
+    queryKey: ["obra", obraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("nome").eq("id", obraId).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: cotacoes, isLoading } = useQuery({
-    queryKey: ["cotacoes", obraAtivaId],
-    enabled: !!obraAtivaId,
+    queryKey: ["cotacoes", obraId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cotacoes")
         .select("*, obras(nome)")
-        .eq("obra_id", obraAtivaId!)
+        .eq("obra_id", obraId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -400,7 +406,7 @@ const CotacoesContent = () => {
     const fd = new FormData(e.currentTarget);
     const token = crypto.randomUUID();
     createCotacao.mutate({
-      obra_id: obraAtivaId!,
+      obra_id: obraId,
       descricao: fd.get("descricao"),
       data_expiracao: fd.get("data_expiracao") || null,
       token_publico: token,
@@ -666,7 +672,7 @@ const CotacoesContent = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold truncate">
-          Cotações {obraAtiva ? `— ${obraAtiva.nome}` : ""}
+          Cotações {obra ? `— ${obra.nome}` : ""}
         </h1>
         <Dialog open={newCotacao} onOpenChange={setNewCotacao}>
           <DialogTrigger asChild>
@@ -680,7 +686,7 @@ const CotacoesContent = () => {
               <div className="space-y-2">
                 <Label>Obra</Label>
                 <p className="text-sm font-medium text-foreground bg-muted rounded-md px-3 py-2">
-                  {obraAtiva?.nome ?? "—"}
+                  {obra?.nome ?? "—"}
                 </p>
               </div>
               <div className="space-y-2">
@@ -1075,10 +1081,10 @@ const CotacoesContent = () => {
             <div className="mt-4 flex flex-col sm:flex-row gap-2">
               {propostas && propostas.length >= 2 && (
                 <>
-                  <Button className="flex-1" onClick={() => { const id = selectedId; setSelectedId(null); navigate(`/cotacoes/${id}/comparar`); }}>
+                  <Button className="flex-1" onClick={() => { const cotId = selectedId; setSelectedId(null); navigate(`/obras/${obraId}/cotacoes/${cotId}/comparar`); }}>
                     <BarChart3 className="mr-2 h-4 w-4" /> Comparar
                   </Button>
-                  <Button variant="outline" className="flex-1" onClick={() => { const id = selectedId; setSelectedId(null); navigate(`/cotacoes/${id}/analise`); }}>
+                  <Button variant="outline" className="flex-1" onClick={() => { const cotId = selectedId; setSelectedId(null); navigate(`/obras/${obraId}/cotacoes/${cotId}/analise`); }}>
                     <Brain className="mr-2 h-4 w-4" /> Análise IA
                   </Button>
                 </>
@@ -1333,9 +1339,10 @@ const CotacoesContent = () => {
 };
 
 export default function Cotacoes() {
+  const { id } = useParams<{ id: string }>();
   return (
-    <RequireObra pageName="Cotações">
-      <CotacoesContent />
+    <RequireObra obraId={id} pageName="Cotações">
+      {id && <CotacoesContent obraId={id} />}
     </RequireObra>
   );
 }

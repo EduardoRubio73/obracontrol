@@ -25,7 +25,7 @@ const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const Comparacao = () => {
-  const { id: cotacaoId } = useParams<{ id: string }>();
+  const { id: obraId, cotId: cotacaoId } = useParams<{ id: string; cotId: string }>();
   const navigate = useNavigate();
   const [iaRecomendacao, setIaRecomendacao] = useState<{
     indice_recomendado: number;
@@ -151,7 +151,7 @@ const Comparacao = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/cotacoes")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(`/obras/${obraId}/cotacoes`)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

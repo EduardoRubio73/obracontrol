@@ -80,3 +80,43 @@ sem mudanças de schema nesta migração.
   `supabase/migrations/20260716132938_fix_portal_publico_seguranca.sql`,
   `src/pages/PortalFornecedor.tsx`, `src/pages/Fornecedores.tsx`, `src/pages/Chat.tsx`,
   `src/hooks/useVoiceCommand.ts`, `src/lib/regras-decisao.ts`
+
+### 16:40 - Navegação reorganizada: tudo por obra, via URL (✅ Completo)
+- **Tipo:** [REFATORAÇÃO] [UX]
+- **Descrição:** A navegação estava duplicada em 3 lugares (abas do topo, sidebar,
+  cards do hub), todos dependendo de um estado de "obra ativa" invisível no
+  `localStorage`/context (`useObraAtiva`), o que quebrava F5, voltar do navegador e
+  compartilhamento de link. Reorganizado para:
+  1. Todas as seções por obra agora vivem sob `/obras/:id/...` (`etapas`,
+     `financeiro`, `compras`, `cotacoes`, `galeria`, `documentos`, `dashboard`) — a
+     URL é a fonte de verdade, não o context. Links antigos sem obra na URL
+     (`/etapas`, `/financeiro` etc.) redirecionam automaticamente para a última obra
+     usada via `LegacyObraRedirect` (novo componente).
+  2. Sidebar única: removidas as abas de topo (`ObraContextTabs`, deletado) e o
+     dropdown de troca de obra no header (`AppLayout.tsx`). A sidebar (`AppSidebar.tsx`)
+     passou a ler a obra ativa da URL (`useParams`) em vez do context, e ganhou um
+     botão único "Gestão de Obra" (abre `/`) no lugar dos itens soltos
+     Dashboard/Obras.
+  3. Dashboard passou a existir por obra também (`/obras/:id/dashboard`, primeiro
+     item do grupo "Gestão da Obra" na sidebar) além da visão agregada
+     "Todas as Obras" em `/dashboard` — mesmo componente, filtro vem da URL.
+  4. Tela inicial (`/`, `Index.tsx`) simplificada: troca o seletor em dropdown
+     (`ObraSelectorVisual`, deletado) por um carrossel de obras
+     (`ObraSwitcherCarousel`, novo) que já leva direto ao dashboard da obra
+     escolhida; removidos os 6 cards de atalho redundantes com a sidebar.
+  5. Código morto removido: `MobileBottomNav.tsx` (nunca importado) e
+     `ObraDetalhe.tsx` (duplicava `Etapas.tsx`, sem rota).
+- **Verificação:** `tsc --noEmit` e `npm run build` sem erros; smoke test headless
+  (Playwright) em todas as rotas novas/antigas confirmando redirecionamento correto
+  para `/login` sem erro de console. QA manual autenticado (trocar de obra, navegar
+  pela sidebar, F5 em `/obras/:id/...`) ainda pendente de confirmação do usuário.
+- **Arquivos:** `src/App.tsx`, `src/components/AppLayout.tsx`,
+  `src/components/AppSidebar.tsx`, `src/components/RequireObra.tsx`,
+  `src/components/LegacyObraRedirect.tsx` (novo),
+  `src/components/ObraSwitcherCarousel.tsx` (novo), `src/pages/Index.tsx`,
+  `src/pages/Dashboard.tsx`, `src/pages/Etapas.tsx`, `src/pages/EtapaDetalhe.tsx`,
+  `src/pages/Compras.tsx`, `src/pages/Financeiro.tsx`, `src/pages/Cotacoes.tsx`,
+  `src/pages/Comparacao.tsx`, `src/pages/Galeria.tsx`, `src/pages/Documentos.tsx`,
+  `src/pages/Dossie.tsx`, `src/pages/Obras.tsx` — removidos
+  `src/components/ObraContextTabs.tsx`, `src/components/ObraSelectorVisual.tsx`,
+  `src/components/MobileBottomNav.tsx`, `src/pages/ObraDetalhe.tsx`

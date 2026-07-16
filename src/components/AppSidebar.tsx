@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,18 +22,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const principalItems = [
-  { title: "Dashboard", url: "/dashboard", emoji: "📊" },
-  { title: "Obras", url: "/obras", emoji: "🏗️" },
-];
-
-const gestaoObraItems = [
-  { title: "Etapas", url: "/etapas", emoji: "📋" },
-  { title: "Compras", url: "/compras", emoji: "🛒" },
-  { title: "Financeiro", url: "/financeiro", emoji: "💰" },
-  { title: "Cotações", url: "/cotacoes", emoji: "📝" },
-  { title: "Galeria", url: "/galeria", emoji: "🖼️" },
-  { title: "Documentos", url: "/documentos", emoji: "📁" },
+const gestaoObraSections = [
+  { title: "Dashboard", segment: "dashboard", emoji: "📊" },
+  { title: "Etapas", segment: "etapas", emoji: "📋" },
+  { title: "Compras", segment: "compras", emoji: "🛒" },
+  { title: "Financeiro", segment: "financeiro", emoji: "💰" },
+  { title: "Cotações", segment: "cotacoes", emoji: "📝" },
+  { title: "Galeria", segment: "galeria", emoji: "🖼️" },
+  { title: "Documentos", segment: "documentos", emoji: "📁" },
 ];
 
 const configItems = [
@@ -49,17 +45,25 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { obraAtiva, obraAtivaId } = useObraAtiva();
+  const { id: obraIdFromUrl } = useParams<{ id: string }>();
+  const { obras } = useObraAtiva();
 
-  const hasObraSelected = !!obraAtiva && obraAtivaId !== "all";
+  const hasObraSelected = !!obraIdFromUrl;
+  const obraAtual = obras.find((o) => o.id === obraIdFromUrl) ?? null;
+
+  const gestaoObraItems = gestaoObraSections.map((s) => ({
+    title: s.title,
+    emoji: s.emoji,
+    url: `/obras/${obraIdFromUrl}/${s.segment}`,
+  }));
 
   const handleNav = () => { if (isMobile) setOpenMobile(false); };
 
   // Check if any item in a group is active
-  const isGroupActive = (items: typeof principalItems) =>
+  const isGroupActive = (items: { url: string }[]) =>
     items.some((item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/"));
 
-  const renderItems = (items: typeof principalItems, highlight = false) =>
+  const renderItems = (items: { title: string; url: string; emoji: string }[], highlight = false) =>
     items.map((item) => (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton asChild>
@@ -93,22 +97,27 @@ export function AppSidebar() {
           )}
         </div>
 
-        {/* Principal - collapsible, default closed */}
-        <Collapsible defaultOpen={isGroupActive(principalItems)}>
-          <SidebarGroup>
-            <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
-                {!collapsed && <span>📌 Principal</span>}
-                {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>{renderItems(principalItems)}</SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        {/* Gestão de Obra - botão único, abre a tela hub */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/"
+                    end
+                    className="flex items-center gap-3 hover:bg-accent"
+                    activeClassName="bg-primary/10 text-primary font-medium"
+                    onClick={handleNav}
+                  >
+                    <span className="w-6 text-center text-base shrink-0">🏗️</span>
+                    {!collapsed && <span>Gestão de Obra</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {/* Gestão da Obra - collapsible, default closed */}
         {hasObraSelected && (
@@ -120,7 +129,7 @@ export function AppSidebar() {
                     <span className="flex items-center gap-1">
                       🏗️ Gestão da Obra
                       <span className="ml-1 text-[10px] font-normal text-primary bg-primary/10 rounded-full px-2 py-0.5 truncate max-w-[120px]">
-                        {obraAtiva.nome}
+                        {obraAtual?.nome ?? ""}
                       </span>
                     </span>
                   )}

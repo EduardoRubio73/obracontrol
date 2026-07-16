@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -49,11 +48,9 @@ const fmt = (v: number) =>
 const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { obraAtiva, filtroObraId, isAll } = useObraAtiva();
+  const { id: filtroId } = useParams<{ id?: string }>();
   const [statusModal, setStatusModal] = useState<{ open: boolean; status: string }>({ open: false, status: "" });
   const [justificativa, setJustificativa] = useState("");
-
-  const filtroId = filtroObraId;
 
   /* ── Queries ── */
   const { data: obras } = useQuery({
@@ -187,7 +184,7 @@ const Dashboard = () => {
   /* ── Status mutation ── */
   const changeStatus = useMutation({
     mutationFn: async ({ obraId, status, justificativa }: { obraId: string; status: string; justificativa?: string }) => {
-      const statusAnterior = obraAtual?.status ?? null;
+      const statusAnterior = obras?.find((o) => o.id === obraId)?.status ?? null;
 
       const { error } = await supabase.from("obras").update({
         status: status as any,
@@ -233,9 +230,9 @@ const Dashboard = () => {
     propostas_count: (propostas ?? []).filter((p) => p.cotacao_id === c.id).length,
   }));
 
-  const dashTitle = obraAtiva ? `Dashboard — ${obraAtiva.nome}` : "Dashboard — Todas as Obras";
-  const obraAtualStatus = obraAtiva?.status ?? null;
   const obraAtual = obras?.find((o) => o.id === filtroId);
+  const dashTitle = obraAtual ? `Dashboard — ${obraAtual.nome}` : "Dashboard — Todas as Obras";
+  const obraAtualStatus = obraAtual?.status ?? null;
   const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
   return (

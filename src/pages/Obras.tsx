@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock, Building2, CalendarClock } from "lucide-react";
+import { Plus, Eye, Pencil, Archive, Copy, Search, FolderOpen, Image, Package, FileText, Clock, Building2, CalendarClock, ClipboardList, ShoppingCart, Wallet, NotebookPen, LayoutDashboard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -292,6 +292,11 @@ const Obras = () => {
                   <TableCell>{obra.localizacao ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" title="Dashboard" onClick={() => navigate(`/obras/${obra.id}/dashboard`)}><LayoutDashboard className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Etapas" onClick={() => navigate(`/obras/${obra.id}/etapas`)}><ClipboardList className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Financeiro" onClick={() => navigate(`/obras/${obra.id}/financeiro`)}><Wallet className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Compras" onClick={() => navigate(`/obras/${obra.id}/compras`)}><ShoppingCart className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Cotações" onClick={() => navigate(`/obras/${obra.id}/cotacoes`)}><NotebookPen className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Dossiê" onClick={() => navigate(`/obras/${obra.id}/dossie`)}><Clock className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Galeria" onClick={() => navigate(`/obras/${obra.id}/galeria`)}><Image className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Materiais" onClick={() => navigate(`/obras/${obra.id}/materiais`)}><Package className="h-4 w-4" /></Button>

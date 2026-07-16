@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -288,22 +287,29 @@ function SortableFaseCard({
   );
 }
 
-function EtapasContent() {
+function EtapasContent({ obraId }: { obraId: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editFase, setEditFase] = useState<Fase | null>(null);
   const [deleteFase, setDeleteFase] = useState<Fase | null>(null);
-  const { obraAtivaId, obraAtiva } = useObraAtiva();
+
+  const { data: obra } = useQuery({
+    queryKey: ["obra", obraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("nome").eq("id", obraId).single();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: fases, isLoading } = useQuery({
-    queryKey: ["obra-fases", obraAtivaId],
-    enabled: !!obraAtivaId,
+    queryKey: ["obra-fases", obraId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obra_fases")
         .select("*")
-        .eq("obra_id", obraAtivaId!)
+        .eq("obra_id", obraId)
         .order("ordem", { ascending: true });
       if (error) throw error;
       return data as Fase[];
@@ -311,13 +317,12 @@ function EtapasContent() {
   });
 
   const { data: faseFotos } = useQuery({
-    queryKey: ["fase-fotos-thumbs", obraAtivaId],
-    enabled: !!obraAtivaId,
+    queryKey: ["fase-fotos-thumbs", obraId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("fase_fotos")
         .select("id, url, fase_id")
-        .eq("obra_id", obraAtivaId!)
+        .eq("obra_id", obraId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       const map: Record<string, string> = {};
@@ -334,7 +339,7 @@ function EtapasContent() {
         await supabase.from("etapas_padrao").insert({ nome } as any);
       }
       const { error } = await supabase.from("obra_fases").insert({
-        obra_id: obraAtivaId!,
+        obra_id: obraId,
         nome,
         status: "pendente",
         progresso: 0,
@@ -343,7 +348,7 @@ function EtapasContent() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraId] });
       queryClient.invalidateQueries({ queryKey: ["etapas-padrao"] });
       toast.success("Etapa criada!");
       setOpen(false);
@@ -360,7 +365,7 @@ function EtapasContent() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraId] });
       toast.success("Etapa atualizada!");
       setEditFase(null);
     },
@@ -373,7 +378,7 @@ function EtapasContent() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraId] });
       toast.success("Etapa excluída!");
       setDeleteFase(null);
     },
@@ -389,7 +394,7 @@ function EtapasContent() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["obra-fases", obraId] });
       toast.success("Ordem atualizada!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -407,7 +412,7 @@ function EtapasContent() {
     const newIndex = fases.findIndex((f) => f.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
     const newOrder = arrayMove(fases, oldIndex, newIndex);
-    queryClient.setQueryData(["obra-fases", obraAtivaId], newOrder);
+    queryClient.setQueryData(["obra-fases", obraId], newOrder);
     reorderFases.mutate(newOrder);
   };
 
@@ -419,7 +424,7 @@ function EtapasContent() {
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-2 sm:pt-4">
         <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
-          Etapas {obraAtiva ? `— ${obraAtiva.nome}` : "da obra"}
+          Etapas {obra ? `— ${obra.nome}` : "da obra"}
         </h1>
         <p className="text-sm sm:text-lg text-muted-foreground mt-1">
           Divida sua obra em partes — arraste para reordenar
@@ -444,7 +449,7 @@ function EtapasContent() {
                   fase={f}
                   numero={idx + 1}
                   fotoUrl={faseFotos?.[f.id]}
-                  onOpen={() => navigate(`/etapas/${f.id}`)}
+                  onOpen={() => navigate(`/obras/${obraId}/etapas/${f.id}`)}
                   onEdit={() => setEditFase(f)}
                   onDelete={() => setDeleteFase(f)}
                 />
@@ -522,9 +527,10 @@ function EtapasContent() {
 }
 
 export default function Etapas() {
+  const { id } = useParams<{ id: string }>();
   return (
-    <RequireObra pageName="Etapas">
-      <EtapasContent />
+    <RequireObra obraId={id} pageName="Etapas">
+      {id && <EtapasContent obraId={id} />}
     </RequireObra>
   );
 }

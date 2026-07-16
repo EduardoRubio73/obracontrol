@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,23 +22,30 @@ import { FileUploadPreview } from "@/components/financeiro/FileUploadPreview";
 const fmt = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function FinanceiroContent() {
+function FinanceiroContent({ obraId }: { obraId: string }) {
   const { user } = useAuth();
-  const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [formDefaults, setFormDefaults] = useState<Record<string, string>>({});
   const [descricaoValue, setDescricaoValue] = useState("");
 
+  const { data: obra } = useQuery({
+    queryKey: ["obra", obraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("nome, valor_previsto").eq("id", obraId).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: transacoes, isLoading } = useQuery({
-    queryKey: ["financeiro", obraAtivaId],
-    enabled: !!obraAtivaId,
+    queryKey: ["financeiro", obraId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financeiro")
         .select("*")
-        .eq("obra_id", obraAtivaId!)
+        .eq("obra_id", obraId)
         .order("data_transacao", { ascending: false });
       if (error) throw error;
       return data;
@@ -50,11 +57,11 @@ function FinanceiroContent() {
       ?.filter((t) => t.tipo === "despesa")
       .reduce((a, t) => a + Number(t.valor), 0) ?? 0;
 
-  const valorAprovado = Number(obraAtiva?.valor_previsto ?? 0);
+  const valorAprovado = Number(obra?.valor_previsto ?? 0);
   const disponivel = valorAprovado - totalGasto;
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["financeiro", obraAtivaId] });
+    queryClient.invalidateQueries({ queryKey: ["financeiro", obraId] });
 
   const saveMutation = useMutation({
     mutationFn: async (values: any) => {
@@ -138,7 +145,7 @@ function FinanceiroContent() {
     if (comprovante_url) payload.comprovante_url = comprovante_url;
 
     if (!editId) {
-      payload.obra_id = obraAtivaId!;
+      payload.obra_id = obraId;
       payload.user_id = user!.id;
     }
 
@@ -149,7 +156,7 @@ function FinanceiroContent() {
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-2 sm:pt-4">
         <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
-          Financeiro {obraAtiva ? `— ${obraAtiva.nome}` : ""}
+          Financeiro {obra ? `— ${obra.nome}` : ""}
         </h1>
       </div>
 
@@ -291,7 +298,7 @@ function FinanceiroContent() {
             <div className="space-y-2">
               <Label>Descrição</Label>
               <DescricaoCombobox
-                obraId={obraAtivaId}
+                obraId={obraId}
                 value={descricaoValue}
                 onChange={setDescricaoValue}
               />
@@ -324,9 +331,10 @@ function FinanceiroContent() {
 }
 
 export default function Financeiro() {
+  const { id } = useParams<{ id: string }>();
   return (
-    <RequireObra pageName="Financeiro">
-      <FinanceiroContent />
+    <RequireObra obraId={id} pageName="Financeiro">
+      {id && <FinanceiroContent obraId={id} />}
     </RequireObra>
   );
 }

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,13 +12,11 @@ import { toast } from "sonner";
 import { ArrowLeft, Upload, FileText, Trash2, Eye, ExternalLink } from "lucide-react";
 
 const Documentos = () => {
-  const { id: routeId } = useParams<{ id: string }>();
+  const { id: obraId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
-  const { obraAtivaId } = useObraAtiva();
-  const obraId = routeId ?? (obraAtivaId && obraAtivaId !== "all" ? obraAtivaId : null);
 
   const { data: obra } = useQuery({
     queryKey: ["obra", obraId],
@@ -110,7 +107,7 @@ const Documentos = () => {
 
   if (!obraId) {
     return (
-      <RequireObra pageName="Documentos">
+      <RequireObra obraId={obraId} pageName="Documentos">
         <></>
       </RequireObra>
     );

@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -141,9 +141,8 @@ function SearchableSelect({
   );
 }
 
-function ComprasContent() {
+function ComprasContent({ obraId }: { obraId: string }) {
   const { user } = useAuth();
-  const { obraAtivaId, obraAtiva } = useObraAtiva();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -156,14 +155,22 @@ function ComprasContent() {
     observacao: "",
   });
 
+  const { data: obra } = useQuery({
+    queryKey: ["obra", obraId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("nome").eq("id", obraId).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: compras, isLoading } = useQuery({
-    queryKey: ["compras", obraAtivaId],
-    enabled: !!obraAtivaId,
+    queryKey: ["compras", obraId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("compras")
         .select("*")
-        .eq("obra_id", obraAtivaId!)
+        .eq("obra_id", obraId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -238,7 +245,7 @@ function ComprasContent() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["compras", obraId] });
       toast.success(editId ? "Compra atualizada!" : "Compra criada!");
       setOpen(false);
       resetForm();
@@ -252,7 +259,7 @@ function ComprasContent() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["compras", obraId] });
       toast.success("Compra removida!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -264,7 +271,7 @@ function ComprasContent() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["compras", obraId] });
       queryClient.invalidateQueries({ queryKey: ["financeiro"] });
       toast.success("Compra registrada e lançada no financeiro!");
     },
@@ -277,7 +284,7 @@ function ComprasContent() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["compras", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["compras", obraId] });
       toast.success("Status atualizado!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -288,7 +295,7 @@ function ComprasContent() {
     const qtd = Number(form.quantidade) || 1;
     const vUnit = Number(form.valor_unitario) || 0;
     save.mutate({
-      obra_id: obraAtivaId!,
+      obra_id: obraId,
       fornecedor_id: form.fornecedor_id || null,
       produto_id: form.produto_id || null,
       descricao: form.descricao || null,
@@ -389,7 +396,7 @@ function ComprasContent() {
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-2 sm:pt-4">
         <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
-          Compras {obraAtiva ? `— ${obraAtiva.nome}` : ""}
+          Compras {obra ? `— ${obra.nome}` : ""}
         </h1>
         <p className="text-sm sm:text-lg text-muted-foreground mt-1">
           Gerencie as compras da obra
@@ -520,9 +527,10 @@ function ComprasContent() {
 }
 
 export default function Compras() {
+  const { id } = useParams<{ id: string }>();
   return (
-    <RequireObra pageName="Compras">
-      <ComprasContent />
+    <RequireObra obraId={id} pageName="Compras">
+      {id && <ComprasContent obraId={id} />}
     </RequireObra>
   );
 }

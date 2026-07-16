@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,12 +41,10 @@ const getStoragePathFromUrl = (url: string) => {
 const getFotoFaseNome = (foto: Foto) => foto.obra_fases?.nome ?? "Sem fase";
 
 const Galeria = () => {
-  const { id: routeId } = useParams<{ id: string }>();
+  const { id: obraId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { obraAtivaId } = useObraAtiva();
-  const obraId = routeId ?? (obraAtivaId && obraAtivaId !== "all" ? obraAtivaId : null);
 
   const [filtro, setFiltro] = useState<string>("todos");
   const [lightbox, setLightbox] = useState<Foto | null>(null);
@@ -149,7 +146,7 @@ const Galeria = () => {
   const openCreate = () => { setEditingFoto(null); setForm({ ...initialForm, fase_id: fases?.[0]?.id ?? "" }); setCreateOpen(true); };
   const openEdit = (foto: Foto) => { setEditingFoto(foto); setForm({ fase_id: foto.fase_id, tipo: foto.tipo, descricao: foto.descricao ?? "", file: null }); setEditOpen(true); };
 
-  if (!obraId) return <RequireObra pageName="Galeria"><></></RequireObra>;
+  if (!obraId) return <RequireObra obraId={obraId} pageName="Galeria"><></></RequireObra>;
 
   return (
     <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 px-4 pb-24">

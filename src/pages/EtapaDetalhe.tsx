@@ -143,7 +143,7 @@ function SortableTask({ item, onToggle }: SortableTaskProps) {
 }
 
 export default function EtapaDetalhe() {
-  const { id } = useParams<{ id: string }>();
+  const { id: obraId, faseId: id } = useParams<{ id: string; faseId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -157,7 +157,7 @@ export default function EtapaDetalhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("obra_fases")
-        .select("*, obras(id)")
+        .select("*")
         .eq("id", id!)
         .single();
       if (error) throw error;
@@ -165,7 +165,6 @@ export default function EtapaDetalhe() {
     },
   });
 
-  const obraId = (fase as any)?.obras?.id ?? (fase as any)?.obra_id;
   const duracaoFase = diffDays(fase?.data_inicio, fase?.data_fim);
 
   const { data: itens } = useQuery({
@@ -332,7 +331,7 @@ export default function EtapaDetalhe() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate("/etapas")}
+          onClick={() => navigate(`/obras/${obraId}/etapas`)}
           className="h-12 w-12 rounded-xl"
         >
           <ArrowLeft className="h-6 w-6" />
