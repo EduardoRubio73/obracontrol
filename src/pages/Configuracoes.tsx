@@ -158,7 +158,7 @@ function CrudBody({ table, label }: { table: string; label: string }) {
   const [editingNome, setEditingNome] = useState("");
   const [editingDescricao, setEditingDescricao] = useState("");
 
-  const dupName = !!items?.find((i) => i.nome.toLowerCase().trim() === novoNome.toLowerCase().trim());
+  const dupName = !!items?.find((i) => (i.nome ?? "").toLowerCase().trim() === novoNome.toLowerCase().trim());
 
   const handleAdd = () => {
     if (!novoNome.trim() || dupName) return;
