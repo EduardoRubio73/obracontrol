@@ -107,6 +107,7 @@ const App = () => (
               <Route path="/obras/:id/cotacoes/:cotId/comparar" element={<Comparacao />} />
               <Route path="/obras/:id/galeria" element={<Galeria />} />
               <Route path="/obras/:id/documentos" element={<Documentos />} />
+              <Route path="/obras/:id/chat" element={<Chat />} />
               <Route path="/obras/:id/dossie" element={<Dossie />} />
               <Route path="/obras/:id/materiais" element={<Materiais />} />
               <Route path="/obras/:id/alteracoes" element={<ObraAlteracoes />} />
@@ -127,7 +128,7 @@ const App = () => (
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/auditoria" element={<Auditoria />} />
-              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat" element={<LegacyObraRedirect section="chat" />} />
               <Route path="/perfil" element={<Perfil />} />
             </Route>
             <Route path="*" element={<NotFound />} />
