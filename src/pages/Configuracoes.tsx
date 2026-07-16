@@ -251,6 +251,7 @@ function CrudBody({ table, label }: { table: string; label: string }) {
 /* ----------------- Tarefa Padrão body (com grupo/etapa) ----------------- */
 function TarefaPadraoBody() {
   const { items, isLoading, add, update, del } = useCrudTab("tarefas_padrao");
+  const queryClient = useQueryClient();
   const [novoNome, setNovoNome] = useState("");
   const [novaDescricao, setNovaDescricao] = useState("");
   const [novoEtapaId, setNovoEtapaId] = useState("");
@@ -275,7 +276,12 @@ function TarefaPadraoBody() {
     if (!novoNome.trim() || dupName) return;
     add.mutate(
       { nome: novoNome.trim(), descricao: novaDescricao.trim(), extra: { etapa_padrao_id: novoEtapaId || null } },
-      { onSuccess: () => { setNovoNome(""); setNovaDescricao(""); setNovoEtapaId(""); } }
+      {
+        onSuccess: () => {
+          setNovoNome(""); setNovaDescricao(""); setNovoEtapaId("");
+          queryClient.invalidateQueries({ queryKey: ["tarefas-padrao-contagem-por-etapa"] });
+        },
+      }
     );
   };
 
@@ -290,7 +296,12 @@ function TarefaPadraoBody() {
     if (!editingNome.trim() || !editingId) return;
     update.mutate(
       { id: editingId, nome: editingNome.trim(), descricao: editingDescricao.trim(), extra: { etapa_padrao_id: editingEtapaId || null } },
-      { onSuccess: cancelEdit }
+      {
+        onSuccess: () => {
+          cancelEdit();
+          queryClient.invalidateQueries({ queryKey: ["tarefas-padrao-contagem-por-etapa"] });
+        },
+      }
     );
   };
 
@@ -358,7 +369,19 @@ function TarefaPadraoBody() {
                   <Button variant="ghost" size="icon" onClick={() => startEdit(item)} className="h-8 w-8">
                     <Pencil className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => del.mutate(item.id)} disabled={del.isPending} className="h-8 w-8">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      del.mutate(item.id, {
+                        onSuccess: () => {
+                          queryClient.invalidateQueries({ queryKey: ["tarefas-padrao-contagem-por-etapa"] });
+                        },
+                      })
+                    }
+                    disabled={del.isPending}
+                    className="h-8 w-8"
+                  >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
