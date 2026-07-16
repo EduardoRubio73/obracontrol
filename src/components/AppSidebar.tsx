@@ -31,10 +31,10 @@ const gestaoObraSections = [
   { title: "Cotações", segment: "cotacoes", emoji: "📝" },
   { title: "Galeria", segment: "galeria", emoji: "🖼️" },
   { title: "Documentos", segment: "documentos", emoji: "📁" },
+  { title: "Assistente IA", segment: "chat", emoji: "🤖" },
 ];
 
 const configItems = [
-  { title: "Assistente IA", url: "/chat", emoji: "🤖" },
   { title: "Perfil", url: "/perfil", emoji: "👤" },
   { title: "Relatórios", url: "/relatorios", emoji: "📈" },
   { title: "Config. Sistema", url: "/configuracoes", emoji: "⚙️" },
