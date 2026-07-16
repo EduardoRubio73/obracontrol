@@ -26,6 +26,9 @@
 - [`22-sequence-diagrams.md`](./22-sequence-diagrams.md) — sequência
 - [`23-architecture.md`](./23-architecture.md) — arquitetura
 
+## Inteligência Artificial
+- [`25-ia-classificacao-obras.md`](./25-ia-classificacao-obras.md) — classificação de tipo de obra, planejamento de fases/etapas, checklist e materiais sugeridos (agentes de IA)
+
 ## Config & referência
 - [`12-dependencies.md`](./12-dependencies.md) — dependências
 - [`13-environment.md`](./13-environment.md) — variáveis
@@ -41,4 +44,4 @@
 - Projeto: **ObraControl** (izaobracontrol.lovable.app)
 - Stack: React 18 + Vite + TS + Supabase + Lovable AI
 - Idioma: PT-BR
-- Última atualização: 2026-07-16
+- Última atualização: 2026-07-16 (adicionado 25-ia-classificacao-obras.md)

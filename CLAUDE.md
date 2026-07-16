@@ -13,6 +13,11 @@ Contexto local deste projeto. As instruções gerais de `C:\Users\ACER\CLAUDE.md
 3. `docs/ai-context/19-ai-development-rules.md` tem a lista vinculante de "nunca
    fazer" / "sempre fazer" para este projeto (não editar `types.ts`, sempre
    GRANT+RLS junto de CREATE TABLE, nunca FK para `auth.users`, etc.).
+4. Trabalhando no subsistema de IA (classificação de tipo de obra, planejamento de
+   fases/etapas, checklist, materiais sugeridos)? Leia também
+   `docs/ai-context/25-ia-classificacao-obras.md` antes de mexer em qualquer tabela
+   `*_padrao` ou nas skills dos agentes (`orquestrador.md`, `agente-classificador.md`,
+   `agente-planejador-fases.md`, `agente-checklist.md`, `agente-materiais.md`).
 
 ## Estado da infraestrutura (16/07/2026)
 
@@ -26,6 +31,20 @@ Contexto local deste projeto. As instruções gerais de `C:\Users\ACER\CLAUDE.md
   Access Token (não é a service_role key).
 - Migrations: sempre via ferramenta de migration do Supabase, nunca editar SQL à mão
   (regra de `docs/ai-context/16-coding-rules.md`).
+
+## Subsistema de IA (classificação/planejamento de obras)
+
+Camada `*_padrao` (tipos, sinônimos, subtipos, fases, etapas, checklist, materiais)
+documentada em `docs/ai-context/25-ia-classificacao-obras.md`. Estado resumido:
+
+- Migrations `01` a `05` (schema + seeds) prontas, aguardando conversão pro formato
+  de migration do Supabase e aplicação neste projeto — checar se `01`-`03` já foram
+  aplicados antes de rodar `04`/`05`.
+- `agente-tipo-novo` citado no `orquestrador.md` mas ainda não implementado.
+- `agente-materiais.md` precisa atualização pra usar `materiais_sugeridos_tenant`
+  em vez de referenciar `produtos` direto no template global.
+- Após aplicar a migration `04`: revisar `obras` com `migracao_tipo_pendente = true`
+  (obras cujo `tipo_obra` legado não bateu com confiança ≥0.8 na migração automática).
 
 ## Pendências de segurança conhecidas (ver CHANGELOG.md para detalhes)
 
