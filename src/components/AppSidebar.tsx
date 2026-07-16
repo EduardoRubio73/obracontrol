@@ -25,6 +25,7 @@ import {
 const gestaoObraSections = [
   { title: "Dashboard", segment: "dashboard", emoji: "📊" },
   { title: "Etapas", segment: "etapas", emoji: "📋" },
+  { title: "Fornecedores", segment: "fornecedores", emoji: "👥" },
   { title: "Compras", segment: "compras", emoji: "🛒" },
   { title: "Financeiro", segment: "financeiro", emoji: "💰" },
   { title: "Cotações", segment: "cotacoes", emoji: "📝" },

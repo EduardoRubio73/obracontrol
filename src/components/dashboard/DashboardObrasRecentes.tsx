@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Building2, Eye, Plus } from "lucide-react";
+import { Building2, Eye } from "lucide-react";
 
 const statusColor: Record<string, string> = {
   planejamento: "bg-muted text-muted-foreground",
@@ -58,13 +58,10 @@ export const DashboardObrasRecentes = ({ obras, fases }: Props) => {
 
   return (
     <Card className="md:col-span-2 rounded-2xl">
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+      <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Building2 className="h-4 w-4" /> Obras Recentes
         </CardTitle>
-        <Button size="sm" className="gap-1" onClick={() => navigate("/nova-obra")}>
-          <Plus className="h-3.5 w-3.5" /> Nova
-        </Button>
       </CardHeader>
       <CardContent className="space-y-3">
         {recentes.length === 0 ? (

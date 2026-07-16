@@ -10,16 +10,18 @@ interface Props {
   obrasAtivas: number;
   totalGasto: number;
   alertasCount: number;
+  /** Id da obra do dashboard atual (quando é um dashboard por obra) */
+  obraId?: string;
 }
 
-export const DashboardSummaryCards = ({ obrasTotal, obrasAtivas, totalGasto, alertasCount }: Props) => {
+export const DashboardSummaryCards = ({ obrasTotal, obrasAtivas, totalGasto, alertasCount, obraId }: Props) => {
   const navigate = useNavigate();
 
   const items = [
-    { label: "Total Obras", value: obrasTotal, icon: Building2, color: "text-primary", route: "/obras" },
-    { label: "Etapas Ativas", value: obrasAtivas, icon: TrendingUp, color: "text-amber-500", route: "/etapas" },
-    { label: "Total Investido", value: fmt(totalGasto), icon: DollarSign, color: "text-emerald-500", route: "/financeiro" },
-    { label: "Alertas", value: alertasCount, icon: AlertTriangle, color: "text-destructive", route: "/dashboard" },
+    { label: "Total Obras", value: obrasTotal, icon: Building2, color: "text-primary", route: obraId ? `/obras/${obraId}/dossie` : "/obras" },
+    { label: "Etapas Ativas", value: obrasAtivas, icon: TrendingUp, color: "text-amber-500", route: obraId ? `/obras/${obraId}/etapas` : "/obras" },
+    { label: "Total Investido", value: fmt(totalGasto), icon: DollarSign, color: "text-emerald-500", route: obraId ? `/obras/${obraId}/financeiro` : "/obras" },
+    { label: "Alertas", value: alertasCount, icon: AlertTriangle, color: "text-destructive", route: "/hoje" },
   ];
 
   return (

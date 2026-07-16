@@ -335,6 +335,7 @@ const Dashboard = () => {
         obrasAtivas={fasesEmAndamento}
         totalGasto={totalGasto}
         alertasCount={alertas?.length ?? 0}
+        obraId={filtroId}
       />
 
       {/* Obras Recentes + Financeiro + Cotações */}

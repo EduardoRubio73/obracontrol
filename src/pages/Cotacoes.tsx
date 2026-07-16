@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import logoImg from "@/assets/logo-obracontrol.png";
@@ -47,7 +47,8 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("open"));
   const [newCotacao, setNewCotacao] = useState(false);
   const [manageDialog, setManageDialog] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
@@ -832,7 +833,18 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       </Dialog>
 
       {/* Detail Dialog */}
-      <Dialog open={!!selectedId} onOpenChange={(v) => !v && setSelectedId(null)}>
+      <Dialog
+        open={!!selectedId}
+        onOpenChange={(v) => {
+          if (!v) {
+            setSelectedId(null);
+            if (searchParams.has("open")) {
+              searchParams.delete("open");
+              setSearchParams(searchParams, { replace: true });
+            }
+          }
+        }}
+      >
         <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

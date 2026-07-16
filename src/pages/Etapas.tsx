@@ -275,7 +275,7 @@ function SortableFaseCard({
               className="h-3 sm:h-4 flex-1 rounded-full bg-secondary [&>div]:bg-primary [&>div]:rounded-full"
             />
             <span className="text-sm sm:text-lg font-black tabular-nums w-12 sm:w-14 text-right text-foreground">
-              {fase.progresso ?? 0}%
+              {Math.round(fase.progresso ?? 0)}%
             </span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,7 +136,7 @@ function FornecedorCard({ f, onEdit }: { f: Fornecedor; onEdit: () => void }) {
 
 export default function Fornecedores() {
   const { user } = useAuth();
-  const { obraAtivaId, obraAtiva } = useObraAtiva();
+  const { id: obraId } = useParams<{ id?: string }>();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Fornecedor | null>(null);
@@ -156,14 +156,24 @@ export default function Fornecedores() {
     },
   });
 
+  const { data: obra } = useQuery({
+    queryKey: ["obra", obraId],
+    enabled: !!obraId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("nome").eq("id", obraId!).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fornecedores vinculados à obra (via financeiro + compras)
   const { data: vinculadosIds } = useQuery({
-    queryKey: ["fornecedores-vinculados", obraAtivaId],
-    enabled: !!obraAtivaId && obraAtivaId !== "all",
+    queryKey: ["fornecedores-vinculados", obraId],
+    enabled: !!obraId,
     queryFn: async () => {
       const [fin, comp] = await Promise.all([
-        supabase.from("financeiro").select("fornecedor_id").eq("obra_id", obraAtivaId!).not("fornecedor_id", "is", null),
-        supabase.from("compras").select("fornecedor_id").eq("obra_id", obraAtivaId!).not("fornecedor_id", "is", null),
+        supabase.from("financeiro").select("fornecedor_id").eq("obra_id", obraId!).not("fornecedor_id", "is", null),
+        supabase.from("compras").select("fornecedor_id").eq("obra_id", obraId!).not("fornecedor_id", "is", null),
       ]);
       if (fin.error) throw fin.error;
       if (comp.error) throw comp.error;
@@ -207,7 +217,7 @@ export default function Fornecedores() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
-      queryClient.invalidateQueries({ queryKey: ["fornecedores-vinculados", obraAtivaId] });
+      queryClient.invalidateQueries({ queryKey: ["fornecedores-vinculados", obraId] });
       toast.success(editing ? "Atualizado!" : "Fornecedor adicionado!");
       setOpen(false);
       setEditing(null);
@@ -251,13 +261,13 @@ export default function Fornecedores() {
 
   const vinculados = filtered?.filter((f) => vinculadosIds?.has(f.id));
   const outros = filtered?.filter((f) => !vinculadosIds?.has(f.id));
-  const hasVinculados = obraAtivaId && vinculados && vinculados.length > 0;
+  const hasVinculados = !!obraId && vinculados && vinculados.length > 0;
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-5xl mx-auto pb-28 px-1">
       <div className="pt-2 sm:pt-4">
         <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
-          Fornecedores {obraAtiva ? `— ${obraAtiva.nome}` : ""}
+          Fornecedores {obra ? `— ${obra.nome}` : ""}
         </h1>
         <p className="text-sm sm:text-lg text-muted-foreground mt-1">Profissionais e lojas</p>
       </div>

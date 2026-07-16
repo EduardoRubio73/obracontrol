@@ -2,7 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Building2, Plus } from "lucide-react";
 
 interface Obra {
   id: string;
@@ -42,9 +43,14 @@ export function ObraSwitcherCarousel({ obras }: { obras: Obra[] }) {
 
   return (
     <div className="w-full">
-      <p className="text-sm font-medium text-muted-foreground mb-3">
-        Suas obras
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-medium text-muted-foreground">
+          Suas obras
+        </p>
+        <Button size="sm" className="gap-1" onClick={() => navigate("/nova-obra")}>
+          <Plus className="h-3.5 w-3.5" /> Nova
+        </Button>
+      </div>
       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 -mx-1 px-1">
         {obras.map((obra) => {
           const img = getImage(obra);
