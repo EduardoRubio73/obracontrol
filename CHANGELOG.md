@@ -186,3 +186,32 @@ sem mudanças de schema nesta migração.
   bloqueantes (flash de um render antes da mensagem de boas-vindas; blob URL de preview
   de imagem não revogado ao trocar de obra com anexo pendente).
 - **Arquivos:** `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/pages/Chat.tsx`
+
+### 16/07/2026 — Perfil não salvava nome/telefone/avatar (🟡 Fix parcial — migration pendente de aplicar)
+- **Tipo:** [BUG] [SEGURANÇA-DE-DADOS]
+- **Descrição:** Investigação (`systematic-debugging`) partiu do relato "não salva
+  perfil nem avatar" e, em vez de mexer direto no `Perfil.tsx`, primeiro confirmou via
+  REST com a `service_role key` (MCP do Supabase não está conectado a este projeto —
+  só a `zrfilhosdaluz` e `filhosdaluz_captacao_site`) que a tabela `public.profiles`
+  tinha **0 linhas para todos os usuários**, incluindo contas criadas desde abril.
+  `docs/ai-context/10-auth.md` documenta um trigger `handle_new_user` que deveria criar
+  a linha de `profiles` no signup — ele nunca existia de fato no banco (ou foi perdido
+  na migração Lovable → local), então `Perfil.tsx` sempre fazia
+  `.update(...).eq("id", user.id)` contra uma linha inexistente: 0 linhas afetadas, o
+  Postgrest não retorna erro nesse caso, o toast de sucesso disparava e nada persistia
+  (mesmo comportamento no upload de avatar, cujo arquivo subia normalmente no Storage
+  mas o `avatar_url` nunca gravava em `profiles`).
+- **Correção aplicada no código:** `Perfil.tsx` trocou os dois `.update()` (dados do
+  perfil e `avatar_url`) por `.upsert(..., { onConflict: "id" })`, como segunda camada
+  de defesa — mesmo que a linha de `profiles` falte de novo no futuro, salvar deixa de
+  falhar silenciosamente.
+- **Correção de banco (raiz do problema) — PENDENTE DE APLICAR:** escrita a migration
+  `supabase/migrations/20260716200000_fix_missing_profiles.sql` recriando o trigger
+  `handle_new_user` (`AFTER INSERT ON auth.users`) e fazendo backfill das linhas de
+  `profiles` ausentes para usuários existentes. **Não foi possível aplicá-la** — nem o
+  MCP do Supabase nem a CLI local (`supabase projects list`) têm acesso ao projeto
+  `xsqnkptdbabnvjcrvaob` (CLI está logada em outra conta, só enxerga o projeto
+  `OCR & ADV`). Precisa rodar essa migration manualmente pelo SQL Editor do dashboard
+  do Supabase, ou conectar o MCP a este projeto via Personal Access Token.
+- **Arquivos:** `src/pages/Perfil.tsx`,
+  `supabase/migrations/20260716200000_fix_missing_profiles.sql` (novo, não aplicado)

@@ -37,7 +37,9 @@ const Perfil = () => {
 
   const update = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("profiles").update({ nome, telefone }).eq("id", user!.id);
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ id: user!.id, email: user!.email, nome, telefone }, { onConflict: "id" });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["profile", user?.id] }); toast.success("Perfil atualizado!"); },
@@ -56,7 +58,9 @@ const Perfil = () => {
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
       const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      const { error: updateError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id);
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .upsert({ id: user.id, email: user.email, avatar_url: avatarUrl }, { onConflict: "id" });
       if (updateError) throw updateError;
       queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
       toast.success("Foto atualizada!");

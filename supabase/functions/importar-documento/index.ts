@@ -155,10 +155,11 @@ function stripHtml(s: string): string {
 // blank or of variable width depending on the source ERP — a rigid single-token match
 // silently drops every row on documents where they aren't exactly one blank letter.
 const PDF_ITEM_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s+(.+?)\s+R\$\s*[\d.,]+\s+R\$\s*[\d.,]+\s+R\$\s*([\d.,]+)\s+.*?R\$\s*[\d.,]+\s*$/;
-// Detects the start of an item row (item, código, qtde, un) without requiring the
-// R$ columns on the same physical line — used to re-join rows that pdf.js splits
-// across two extracted lines when the product name pushes the row past a wrap point.
-const PDF_ROW_START_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s+/;
+// Detects a row-start line that wraps: item, código, qtde, un with NOTHING else on the
+// line (the product name starts fresh on the next physical line, sometimes spanning
+// several). Anchored to end-of-line — a trailing `\s+` here would never match, since the
+// line is already trimmed and has nothing left after the unit code.
+const PDF_ROW_START_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s*$/;
 
 function parsePdfText(text: string): { header_lines: string[]; rows: Row[] } {
   const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -176,7 +177,7 @@ function parsePdfText(text: string): { header_lines: string[]; rows: Row[] } {
       if (/R\$/.test(line)) { lines.push(buf); buf = ""; }
       continue;
     }
-    if (PDF_ROW_START_RE.test(line) && !/R\$/.test(line)) { buf = line; continue; }
+    if (PDF_ROW_START_RE.test(line)) { buf = line; continue; }
     lines.push(line);
   }
   if (buf) lines.push(buf);
