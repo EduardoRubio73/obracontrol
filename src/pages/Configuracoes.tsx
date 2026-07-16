@@ -292,10 +292,33 @@ function ProdutosBody() {
     },
   });
 
-  const filtered = useMemo(
-    () => (produtos ?? []).filter((p: any) => !search.trim() || (p.nome ?? "").toLowerCase().includes(search.toLowerCase())),
-    [produtos, search]
-  );
+  const filtered = useMemo(() => {
+    const list = (produtos ?? []).filter((p: any) => {
+      if (search.trim() && !(p.nome ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+      if (filterCat !== "all" && (p.categoria_id ?? "__none__") !== filterCat) return false;
+      if (filterUnit !== "all" && (p.unidade ?? "") !== filterUnit) return false;
+      return true;
+    });
+    const sorted = [...list].sort((a, b) => {
+      if (sortBy === "nome") return (a.nome ?? "").localeCompare(b.nome ?? "");
+      if (sortBy === "unidade") return (a.unidade ?? "").localeCompare(b.unidade ?? "") || (a.nome ?? "").localeCompare(b.nome ?? "");
+      // categoria: sort by category name then product name
+      const ca = a.categorias_produtos?.nome ?? "zzz_Sem categoria";
+      const cb = b.categorias_produtos?.nome ?? "zzz_Sem categoria";
+      return ca.localeCompare(cb) || (a.nome ?? "").localeCompare(b.nome ?? "");
+    });
+    return sorted;
+  }, [produtos, search, filterCat, filterUnit, sortBy]);
+
+  const grouped = useMemo(() => {
+    if (sortBy !== "categoria") return null;
+    const groups: Record<string, any[]> = {};
+    for (const p of filtered) {
+      const key = p.categorias_produtos?.nome ?? "Sem categoria";
+      (groups[key] ||= []).push(p);
+    }
+    return Object.entries(groups);
+  }, [filtered, sortBy]);
 
   const createCategoria = useMutation({
     mutationFn: async (nome: string) => {
