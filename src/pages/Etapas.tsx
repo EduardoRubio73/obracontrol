@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { findEtapaPadraoPorNome } from "@/lib/etapaPadrao";
 
 function EtapaCombobox({
   value,
@@ -118,13 +120,16 @@ function EtapaForm({
   onSubmit,
   isPending,
   submitLabel = "Criar etapa",
+  allowTarefasPadrao = true,
 }: {
   initialNome?: string;
-  onSubmit: (nome: string, isNew: boolean) => void;
+  onSubmit: (nome: string, isNew: boolean, tarefasParaCarregar: { id: string; nome: string }[]) => void;
   isPending: boolean;
   submitLabel?: string;
+  allowTarefasPadrao?: boolean;
 }) {
   const [nomeCustom, setNomeCustom] = useState(initialNome);
+  const [carregarTarefas, setCarregarTarefas] = useState(true);
 
   const { data: etapasPadrao } = useQuery({
     queryKey: ["etapas-padrao"],
@@ -140,11 +145,32 @@ function EtapaForm({
 
   const allOptions = etapasPadrao?.map((e) => e.nome) ?? [];
   const isNewOption = nomeCustom.trim() !== "" && !allOptions.some((o) => o.toLowerCase() === nomeCustom.toLowerCase());
+  const matchedEtapaPadrao = findEtapaPadraoPorNome(nomeCustom, etapasPadrao ?? []);
+
+  const { data: tarefasDoGrupo } = useQuery({
+    queryKey: ["tarefas-padrao-do-grupo", matchedEtapaPadrao?.id],
+    enabled: allowTarefasPadrao && !!matchedEtapaPadrao,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tarefas_padrao" as any)
+        .select("id, nome")
+        .eq("etapa_padrao_id", matchedEtapaPadrao!.id);
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
+
+  useEffect(() => {
+    setCarregarTarefas(true);
+  }, [matchedEtapaPadrao?.id]);
+
+  const temGrupoDeTarefas = allowTarefasPadrao && (tarefasDoGrupo?.length ?? 0) > 0;
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!nomeCustom.trim()) return;
-    onSubmit(nomeCustom.trim(), isNewOption);
+    const tarefasParaCarregar = temGrupoDeTarefas && carregarTarefas ? (tarefasDoGrupo ?? []) : [];
+    onSubmit(nomeCustom.trim(), isNewOption, tarefasParaCarregar);
   };
 
   return (
@@ -162,6 +188,18 @@ function EtapaForm({
           </p>
         )}
       </div>
+      {temGrupoDeTarefas && (
+        <label className="flex items-start gap-3 rounded-xl border p-3 cursor-pointer">
+          <Checkbox
+            checked={carregarTarefas}
+            onCheckedChange={(v) => setCarregarTarefas(!!v)}
+            className="mt-0.5"
+          />
+          <span className="text-sm">
+            Carregar as {tarefasDoGrupo!.length} tarefa(s) padrão desse grupo
+          </span>
+        </label>
+      )}
       <Button
         type="submit"
         className="w-full h-14 rounded-2xl font-bold text-lg"
@@ -334,23 +372,44 @@ function EtapasContent({ obraId }: { obraId: string }) {
   });
 
   const createFase = useMutation({
-    mutationFn: async ({ nome, isNew }: { nome: string; isNew: boolean }) => {
+    mutationFn: async ({ nome, isNew, tarefasParaCarregar }: { nome: string; isNew: boolean; tarefasParaCarregar: { id: string; nome: string }[] }) => {
       if (isNew) {
         await supabase.from("etapas_padrao").insert({ nome } as any);
       }
-      const { error } = await supabase.from("obra_fases").insert({
+      const { data: novaFase, error } = await supabase.from("obra_fases").insert({
         obra_id: obraId,
         nome,
         status: "pendente",
         progresso: 0,
         ordem: (fases?.length ?? 0) + 1,
-      } as any);
+      } as any).select("id").single();
       if (error) throw error;
+
+      let tarefasCarregadas = 0;
+      let tarefasErro = false;
+      if (tarefasParaCarregar.length > 0) {
+        const itens = tarefasParaCarregar.map((t) => ({
+          fase_id: (novaFase as any).id,
+          nome: t.nome,
+          status: "pendente",
+        }));
+        const { error: itensError } = await supabase.from("fase_itens").insert(itens as any);
+        if (itensError) tarefasErro = true;
+        else tarefasCarregadas = tarefasParaCarregar.length;
+      }
+
+      return { tarefasCarregadas, tarefasErro };
     },
-    onSuccess: () => {
+    onSuccess: ({ tarefasCarregadas, tarefasErro }) => {
       queryClient.invalidateQueries({ queryKey: ["obra-fases", obraId] });
       queryClient.invalidateQueries({ queryKey: ["etapas-padrao"] });
-      toast.success("Etapa criada!");
+      if (tarefasErro) {
+        toast.error("Etapa criada, mas houve um erro ao carregar as tarefas padrão.");
+      } else if (tarefasCarregadas > 0) {
+        toast.success(`Etapa criada com ${tarefasCarregadas} tarefa(s) padrão!`);
+      } else {
+        toast.success("Etapa criada!");
+      }
       setOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
@@ -416,8 +475,8 @@ function EtapasContent({ obraId }: { obraId: string }) {
     reorderFases.mutate(newOrder);
   };
 
-  const handleSubmit = (nome: string, isNew: boolean) => {
-    createFase.mutate({ nome, isNew });
+  const handleSubmit = (nome: string, isNew: boolean, tarefasParaCarregar: { id: string; nome: string }[]) => {
+    createFase.mutate({ nome, isNew, tarefasParaCarregar });
   };
 
   return (
@@ -496,6 +555,7 @@ function EtapasContent({ obraId }: { obraId: string }) {
             <EtapaForm
               initialNome={editFase.nome}
               submitLabel="Salvar alterações"
+              allowTarefasPadrao={false}
               onSubmit={(nome) => updateFase.mutate({ id: editFase.id, nome })}
               isPending={updateFase.isPending}
             />
