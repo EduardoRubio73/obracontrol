@@ -6,6 +6,14 @@
 
 ---
 
+## [16/07/2026 - 18:08:21] Tarefa #2 Concluída: MCP Supabase (CLI local) — token atualizado (✅ Completo, escopo ajustado)
+- **Tipo:** [INFRAESTRUTURA]
+- **Descrição:** Personal Access Token em `.claude/settings.json` (`SUPABASE_ACCESS_TOKEN`) trocado pelo novo (`sbp_c40c1...c61`), fornecido pelo usuário — token anterior (`sbp_09d3...978e0`) não tinha acesso ao projeto `xsqnkptdbabnvjcrvaob` (só enxergava `zrfilhosdaluz`/`filhosdaluz_captacao_site`).
+- **Descoberta importante:** As ferramentas `mcp__claude_ai_Supabase__*` desta sessão usam um **conector OAuth do claude.ai** (Configurações → Conectores), independente do token salvo em `.claude/settings.json` — mesmo após a troca, `list_projects` continuou retornando só os 2 projetos antigos. O token em `settings.json` serve para uso local via Claude Code CLI/terminal, não para as tools MCP desta sessão.
+- **Decisão do usuário:** manter o token só para uso local (CLI); não reautorizar o conector claude.ai agora. Nesta sessão, acesso direto ao banco via MCP `mcp__claude_ai_Supabase__*` continua limitado aos outros 2 projetos — usar SQL Editor manual do Supabase quando precisar tocar o banco do ObraControl.
+- **Pendência:** se quiser usar as tools MCP desta sessão contra `xsqnkptdbabnvjcrvaob`, é necessário reautorizar o conector Supabase em claude.ai apontando pra organização certa.
+- **Arquivos:** `.claude/settings.json`
+
 ## [16/07/2026 - 17:58:55] Tarefa #1 Concluída: Entender Documentação Obra-Control (✅ Completo)
 - **Tipo:** [DOCUMENTAÇÃO]
 - **Descrição:** Leitura completa dos docs essenciais: 01-system-overview, 02-project-structure, 19-ai-development-rules, 03-routing, 08-database, 10-auth. Mapeado: stack (React+Vite+Supabase+Edge Functions), RLS por `user_id=auth.uid()`, regras críticas (nunca editar types.ts, sempre GRANT+RLS, FK→profiles.id), triggers principais, portal público de fornecedor. Pronto para próximas tarefas.
