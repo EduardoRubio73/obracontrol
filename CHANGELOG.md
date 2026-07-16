@@ -6,6 +6,16 @@
 
 ---
 
+## [16/07/2026 - 18:45:47] Tarefa #5 Concluída: Combobox pesquisável para Tipo de Obra (✅ Completo)
+- **Tipo:** [FEATURE] [UX]
+- **Descrição:** `NovaObra.tsx` (wizard de criação de obra, passo 1) usava um grid fixo de 4 botões hardcoded (`casa`/`reforma`/`apartamento`/`comercial`, com emoji/ícone), totalmente desconectado da tabela `tipos_obra` que já existe no banco (15 tipos cadastrados: Acabamento, Ampliação, Comercial, Construção, Demolição, Industrial, Infraestrutura, Instalações, Manutenção, Paisagismo, Predial, Reforma, Regularização, Residencial, Urbanização) e já tem CRUD completo em Configurações → Tipos de Obra. Substituído o grid de botões pelo componente reutilizável `SmartCombobox` (`src/components/ui/smart-combobox.tsx`, já usado em `Produtos.tsx`) — busca em tempo real, seleção, e criação inline de novo tipo direto no wizard (mesmo padrão de `categorias_produtos`/`tipos_fornecedor`). `obras.tipo_obra` é texto livre (não FK), então nenhuma migration foi necessária — troquei os values de string livre também (antes strings em inglês tipo "casa", agora os nomes reais da tabela como "Residencial").
+  1. Nova query `tipos_obra` (`useQuery`) + mutation `createTipoObra` (insert + toast + invalidate) em `NovaObra.tsx`.
+  2. Estado `tipoObra` não tem mais default `"casa"` — inicia vazio; `canAdvance()` do passo 1 agora exige `tipoObra` preenchido além do nome (antes o default mascarava a ausência de escolha).
+  3. Imports não usados removidos (`Home`, `Wrench`, `Building`, `Building2` do lucide-react, só usados no grid antigo).
+- **Verificação:** `tsc --noEmit` limpo. `npm run build` ok. `npx vitest run` — 5/5 testes passando. `eslint` continua com os mesmos 7 erros pré-existentes de `any` neste arquivo (não relacionados à mudança — confirmado via `git stash`/diff antes/depois); nenhum erro novo introduzido.
+- **Teste manual pendente do usuário:** abrir `/nova-obra`, conferir que o combobox busca/filtra os 15 tipos existentes, que "Criar" funciona para tipo novo, e que o botão "Avançar" do passo 1 fica desabilitado até selecionar um tipo.
+- **Arquivos:** `src/pages/NovaObra.tsx`
+
 ## [16/07/2026 - 18:35:15] Tarefa #4 Verificada: Botão excluir fornecedor já existia (✅ Já implementado — sem trabalho necessário)
 - **Tipo:** [VERIFICAÇÃO]
 - **Descrição:** Item do backlog "adicionar botão excluir fornecedor com modal de confirmação" já estava implementado em `src/pages/Fornecedores.tsx` antes desta sessão (introduzido em algum commit anterior, possivelmente `33a42aa` "feat: fornecedores por obra..."). Confirmado: botão "Excluir fornecedor" no form de edição → `handleDeleteClick` checa vínculos em `financeiro`/`compras` (bloqueia com toast se vinculado) → `AlertDialog` de confirmação ("Essa ação não pode ser desfeita") → mutation `remove` executa o delete. `tsc --noEmit` sem erros.

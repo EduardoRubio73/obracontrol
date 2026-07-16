@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SmartCombobox } from "@/components/ui/smart-combobox";
 import {
   ArrowLeft,
   ArrowRight,
@@ -26,10 +27,6 @@ import {
   AlertTriangle,
   Sparkles,
   Send,
-  Home,
-  Wrench,
-  Building2,
-  Building,
   Star,
   X,
   Plus,
@@ -46,14 +43,6 @@ interface EscopoIA {
   profissional_recomendado: string;
   alertas_seguranca: string[];
 }
-
-/* ── Constants ── */
-const tiposObra = [
-  { value: "casa", label: "Casa", emoji: "🏠", icon: Home },
-  { value: "reforma", label: "Reforma", emoji: "🔧", icon: Wrench },
-  { value: "apartamento", label: "Apartamento", emoji: "🏢", icon: Building },
-  { value: "comercial", label: "Comercial", emoji: "🏗️", icon: Building2 },
-];
 
 const classificacoes = [
   {
@@ -89,7 +78,7 @@ const NovaObra = () => {
 
   // Form state
   const [nome, setNome] = useState("");
-  const [tipoObra, setTipoObra] = useState("casa");
+  const [tipoObra, setTipoObra] = useState("");
   const [classificacao, setClassificacao] = useState("simples");
   const [descricao, setDescricao] = useState("");
   const [escopo, setEscopo] = useState<EscopoIA | null>(null);
@@ -109,6 +98,32 @@ const NovaObra = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Tipos de obra (Supabase, editável em Configurações)
+  const { data: tiposObra } = useQuery({
+    queryKey: ["tipos_obra"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tipos_obra").select("id, nome").order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const tiposObraOptions = (tiposObra ?? []).map((t) => ({ value: t.nome, label: t.nome }));
+
+  const createTipoObra = useMutation({
+    mutationFn: async (nome: string) => {
+      const { data, error } = await supabase.from("tipos_obra").insert({ nome }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (novo: { nome: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["tipos_obra"] });
+      setTipoObra(novo.nome);
+      toast.success("Tipo de obra criado!");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   // Load suggestions when entering step 5
@@ -239,7 +254,7 @@ const NovaObra = () => {
   };
 
   const canAdvance = () => {
-    if (step === 1) return nome.trim().length >= 3;
+    if (step === 1) return nome.trim().length >= 3 && tipoObra.trim().length > 0;
     if (step === 3) return descricao.trim().length >= 10;
     if (step === 4) return escopo !== null;
     if (step === 5) return selectedFornecedores.length >= 1;
@@ -337,26 +352,15 @@ const NovaObra = () => {
 
           <div style={stagger(2)}>
             <label className="text-sm font-semibold text-foreground mb-3 block">Tipo da obra</label>
-            <div className="grid grid-cols-2 gap-3">
-              {tiposObra.map((t, i) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTipoObra(t.value)}
-                  style={stagger(i + 3)}
-                  className={`
-                    flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all duration-200
-                    active:scale-[0.97]
-                    ${tipoObra === t.value
-                      ? "border-primary bg-primary/10 shadow-md"
-                      : "border-border bg-card hover:border-primary/40"
-                    }
-                  `}
-                >
-                  <span className="text-3xl">{t.emoji}</span>
-                  <span className="font-semibold text-foreground">{t.label}</span>
-                </button>
-              ))}
-            </div>
+            <SmartCombobox
+              options={tiposObraOptions}
+              value={tipoObra}
+              onChange={setTipoObra}
+              onCreateNew={(label) => createTipoObra.mutate(label)}
+              placeholder="Buscar ou selecionar tipo de obra..."
+              emptyText="Nenhum tipo de obra cadastrado."
+              className="h-12 text-base"
+            />
           </div>
         </div>
       )}
