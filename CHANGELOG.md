@@ -6,6 +6,22 @@
 
 ---
 
+## [16/07/2026 - 19:06:21] Tarefa #7 Verificada: Reorganização de interface por obra já estava feita (✅ Já implementado — sem trabalho necessário)
+- **Tipo:** [VERIFICAÇÃO]
+- **Descrição:** Item do backlog "reorganizar interface de múltiplas telas por obra" já foi coberto pela entrada de hoje (16:40) "Navegação reorganizada: tudo por obra, via URL" — URL como fonte de verdade (`/obras/:id/...`), sidebar única sem abas duplicadas, dashboard por obra, `LegacyObraRedirect` para links antigos. Confirmado com o usuário que não há pendência adicional de escopo aqui; encerra o backlog de 7 tarefas desta sessão.
+- **Arquivos:** N/A (nenhuma mudança — apenas verificação)
+
+## 🏁 Backlog de 7 tarefas desta sessão — Concluído
+Resumo: #1 documentação lida · #2 MCP/CLI Supabase local destravado (token trocado) ·
+#3 perfil faltante corrigido em produção (bug real encontrado e corrigido, não só
+verificado) · #4 botão excluir fornecedor já existia · #5 combobox de tipos de obra
+implementado (grid fixo de 4 → 15 tipos reais do banco, pesquisável, com criação
+inline) · #6 assistente IA confirma/pergunta obra na 1ª mensagem do chat · #7
+reorganização de interface já estava feita. Todas as mudanças de código passaram por
+`tsc --noEmit`, `eslint` (sem erros novos) e `npm run build` antes de commitar.
+Pendências de teste manual do usuário: login perfil/avatar (#3), fluxo de troca de
+obra no wizard Nova Obra (#5) e no chat (#6).
+
 ## [16/07/2026 - 19:05:22] Tarefa #6 Concluída: Assistente IA confirma/pergunta a obra ao abrir (✅ Completo)
 - **Tipo:** [FEATURE] [UX]
 - **Descrição:** Hoje o link "Assistente IA" na sidebar só aparece depois que uma obra já está selecionada na URL (`hasObraSelected`), então a ambiguidade real só existia na rota legada `/chat` (sem obra na URL), que já escolhia silenciosamente a última obra usada ou a primeira da lista — sem nunca perguntar. Confirmado com o usuário: o escopo certo é a **primeira mensagem do chat** confirmar a obra ativa e oferecer troca rápida, sem precisar sair da tela.
