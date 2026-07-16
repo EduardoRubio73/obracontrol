@@ -29,6 +29,10 @@ interface PendingFile {
 const SUGGESTIONS = [
   { label: "Adicionar gasto", message: "Quero adicionar um gasto" },
   { label: "Ver andamento", message: "Quero ver o andamento da obra" },
+  { label: "Nova etapa", message: "Quero criar uma nova etapa" },
+  { label: "Registrar compra", message: "Quero registrar uma compra" },
+  { label: "Ver financeiro", message: "Quero ver o financeiro dessa obra" },
+  { label: "Fornecedores", message: "Quero ver os fornecedores" },
   { label: "Ajuda", message: "O que você pode fazer?" },
 ];
 
