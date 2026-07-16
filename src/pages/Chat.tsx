@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Loader2, Bot, Paperclip, X, FileText, Image as ImageIcon, Mic, Volume2, MicOff } from "lucide-react";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
+import { RequireObra } from "@/components/RequireObra";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceLoop, VoiceLoopStatus } from "@/hooks/useVoiceLoop";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,18 +35,12 @@ const SUGGESTIONS = [
 
 const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.pdf,.doc,.docx";
 
-export default function Chat() {
+function ChatContent({ obraId }: { obraId: string }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { obraAtiva, obraAtivaId } = useObraAtiva();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: `Olá! 👋 Sou seu assistente de obra.\n\n${obraAtiva ? `Obra ativa: **${obraAtiva.nome}**\n\n` : ""}Como posso te ajudar?`,
-      timestamp: new Date(),
-    },
-  ]);
+  const { obras } = useObraAtiva();
+  const obraAtiva = obras.find((o) => o.id === obraId) ?? null;
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -58,6 +53,20 @@ export default function Chat() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Reinicia a conversa ao trocar de obra — cada obra tem contexto isolado
+  useEffect(() => {
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: `Olá! 👋 Sou seu assistente de obra.\n\n${obraAtiva ? `Obra ativa: **${obraAtiva.nome}**\n\n` : ""}Como posso te ajudar?`,
+        timestamp: new Date(),
+      },
+    ]);
+    setPendingFiles([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obraId]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -92,19 +101,17 @@ export default function Chat() {
       const tipo = pf.file.type.startsWith("image/") ? "imagem" : "documento";
       uploaded.push({ nome: pf.file.name, url: urlData.publicUrl, tipo });
 
-      if (obraAtivaId && obraAtivaId !== "all") {
-        const { error: insertError } = await supabase.from("documentos").insert({
-          obra_id: obraAtivaId,
-          nome: pf.file.name,
-          url: urlData.publicUrl,
-          tipo: ext,
-          tamanho_bytes: pf.file.size,
-          user_id: user.id,
-        });
-        if (insertError) {
-          console.error("Erro ao vincular anexo à obra:", insertError);
-          toast.error(`Anexo "${pf.file.name}" enviado, mas não foi vinculado à obra`);
-        }
+      const { error: insertError } = await supabase.from("documentos").insert({
+        obra_id: obraId,
+        nome: pf.file.name,
+        url: urlData.publicUrl,
+        tipo: ext,
+        tamanho_bytes: pf.file.size,
+        user_id: user.id,
+      });
+      if (insertError) {
+        console.error("Erro ao vincular anexo à obra:", insertError);
+        toast.error(`Anexo "${pf.file.name}" enviado, mas não foi vinculado à obra`);
       }
     }
 
@@ -140,7 +147,7 @@ export default function Chat() {
       const { data, error } = await supabase.functions.invoke("chat-assistente", {
         body: {
           mensagem: text.trim(),
-          obra_id: obraAtivaId,
+          obra_id: obraId,
           historico,
           anexos: anexos.map((a) => ({ nome: a.nome, url: a.url })),
         },
@@ -181,7 +188,7 @@ export default function Chat() {
     } finally {
       setIsTyping(false);
     }
-  }, [obraAtivaId, user]);
+  }, [obraId, user]);
 
   // Voice loop integration
   const voiceLoop = useVoiceLoop({
@@ -448,5 +455,14 @@ export default function Chat() {
         </Button>
       </form>
     </div>
+  );
+}
+
+export default function Chat() {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <RequireObra obraId={id} pageName="Assistente IA">
+      {id && <ChatContent obraId={id} />}
+    </RequireObra>
   );
 }
