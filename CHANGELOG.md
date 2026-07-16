@@ -6,6 +6,11 @@
 
 ---
 
+## [16/07/2026 - 18:35:15] Tarefa #4 Verificada: Botão excluir fornecedor já existia (✅ Já implementado — sem trabalho necessário)
+- **Tipo:** [VERIFICAÇÃO]
+- **Descrição:** Item do backlog "adicionar botão excluir fornecedor com modal de confirmação" já estava implementado em `src/pages/Fornecedores.tsx` antes desta sessão (introduzido em algum commit anterior, possivelmente `33a42aa` "feat: fornecedores por obra..."). Confirmado: botão "Excluir fornecedor" no form de edição → `handleDeleteClick` checa vínculos em `financeiro`/`compras` (bloqueia com toast se vinculado) → `AlertDialog` de confirmação ("Essa ação não pode ser desfeita") → mutation `remove` executa o delete. `tsc --noEmit` sem erros.
+- **Arquivos:** N/A (nenhuma mudança — apenas verificação)
+
 ## [16/07/2026 - 18:34:25] Tarefa #3 Concluída: Perfil/avatar — profile faltante corrigido em produção (✅ Completo)
 - **Tipo:** [BUG] [BANCO-DE-DADOS]
 - **Descrição:** Migration `20260716200000_fix_missing_profiles.sql` já estava marcada como aplicada no histórico remoto (`supabase migration list`/`db push --dry-run` diziam "up to date"), mas o backfill não tinha coberto o usuário `cexrubio@gmail.com` (`total_profiles=1` para `total_usuarios=2`). Causa: o INSERT de backfill sem o wrapper `DISABLE/ENABLE TRIGGER USER` falha com `23502 null value in column "user_id" of relation "auditoria"` — `trg_audit_profiles` tenta gravar auditoria com `auth.uid()` NULL (contexto sem JWT). Rodado manualmente via `supabase db query --linked` com o wrapper correto (mesmo padrão da migration): `ALTER TABLE profiles DISABLE TRIGGER USER` → INSERT do backfill → `ENABLE TRIGGER USER`. Resultado: `total_profiles=2` = `total_usuarios=2`. Trigger `on_auth_user_created` (AFTER INSERT ON auth.users → `handle_new_user()`) confirmado ativo (`tgenabled=O`) para signups futuros.
