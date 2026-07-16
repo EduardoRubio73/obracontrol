@@ -24,7 +24,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown, Upload, Settings2, FileSpreadsheet } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CrudItem = { id: string; nome: string; descricao?: string | null };
 
