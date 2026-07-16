@@ -27,7 +27,6 @@ interface PendingFile {
 }
 
 const SUGGESTIONS = [
-  { label: "Criar obra", message: "Quero criar uma nova obra" },
   { label: "Adicionar gasto", message: "Quero adicionar um gasto" },
   { label: "Ver andamento", message: "Quero ver o andamento da obra" },
   { label: "Ajuda", message: "O que você pode fazer?" },
