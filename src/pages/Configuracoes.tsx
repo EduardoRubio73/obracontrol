@@ -251,11 +251,15 @@ function CrudBody({ table, label }: { table: string; label: string }) {
 function ProdutosBody() {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState(false);
+  const [manageDialog, setManageDialog] = useState(false);
   const [edit, setEdit] = useState<any>(null);
   const [nome, setNome] = useState("");
   const [unidade, setUnidade] = useState("");
   const [catId, setCatId] = useState("");
   const [search, setSearch] = useState("");
+  const [filterCat, setFilterCat] = useState<string>("all");
+  const [filterUnit, setFilterUnit] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"nome" | "categoria" | "unidade">("categoria");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: categorias } = useQuery({
