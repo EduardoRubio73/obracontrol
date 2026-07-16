@@ -6,6 +6,11 @@
 
 ---
 
+## [16/07/2026 - 17:58:55] Tarefa #1 Concluída: Entender Documentação Obra-Control (✅ Completo)
+- **Tipo:** [DOCUMENTAÇÃO]
+- **Descrição:** Leitura completa dos docs essenciais: 01-system-overview, 02-project-structure, 19-ai-development-rules, 03-routing, 08-database, 10-auth. Mapeado: stack (React+Vite+Supabase+Edge Functions), RLS por `user_id=auth.uid()`, regras críticas (nunca editar types.ts, sempre GRANT+RLS, FK→profiles.id), triggers principais, portal público de fornecedor. Pronto para próximas tarefas.
+- **Arquivos:** N/A (documentação)
+
 ## [16/07/2026 - 17:54:43] Sessão de Desenvolvimento: Backlog de 7 Tarefas Identificadas (⏳ Planejado)
 - **Tipo:** [PLANEJAMENTO]
 - **Descrição:** Sessão iniciada em Claude Code local. 7 tarefas identificadas para desenvolvimento próximo. Tempo total estimado: ~12 horas. Cada conclusão será registrada com `/edu-log-alteracao`.
