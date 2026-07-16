@@ -398,42 +398,139 @@ function ProdutosBody() {
 
   return (
     <div className="space-y-3 pt-3">
-      <div className="flex gap-2">
-        <Input placeholder="Buscar produto..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Button onClick={openNew} className="shrink-0">
-          <Plus className="h-4 w-4 mr-1" /> Novo
-        </Button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input
+          placeholder="Buscar produto..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1"
+        />
+        <div className="flex gap-2 shrink-0">
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-1" /> Novo
+          </Button>
+          <Button variant="outline" onClick={() => setManageDialog(true)}>
+            <Settings2 className="h-4 w-4 mr-1" /> Gerenciar
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <Label className="text-xs text-muted-foreground">Categoria</Label>
+          <Select value={filterCat} onValueChange={setFilterCat}>
+            <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              <SelectItem value="__none__">Sem categoria</SelectItem>
+              {(categorias ?? []).map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Unidade</Label>
+          <Select value={filterUnit} onValueChange={setFilterUnit}>
+            <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as unidades</SelectItem>
+              {(unidades ?? []).map((u: any) => (
+                <SelectItem key={u.id} value={u.nome}>{u.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Ordenar por</Label>
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="categoria">📂 Categoria (agrupado)</SelectItem>
+              <SelectItem value="nome">🔤 Nome (A-Z)</SelectItem>
+              <SelectItem value="unidade">📏 Unidade</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
         {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
         {!isLoading && !filtered.length && (
           <p className="text-muted-foreground text-sm text-center py-4">
-            {search ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
+            {search || filterCat !== "all" || filterUnit !== "all" ? "Nenhum produto encontrado com os filtros" : "Nenhum produto cadastrado"}
           </p>
         )}
-        {filtered.map((p: any) => (
-          <div key={p.id} className="flex items-center justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate">{p.nome}</p>
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <Badge variant="secondary" className="text-xs">{p.unidade || "un"}</Badge>
-                {p.categorias_produtos?.nome && (
-                  <Badge variant="outline" className="text-xs">{p.categorias_produtos.nome}</Badge>
-                )}
+
+        {grouped ? (
+          grouped.map(([catName, items]) => (
+            <div key={catName} className="rounded-xl border overflow-hidden">
+              <div className="bg-muted/60 px-3 py-2 flex items-center justify-between">
+                <span className="font-semibold text-sm">📂 {catName}</span>
+                <Badge variant="secondary" className="text-xs">{items.length}</Badge>
+              </div>
+              <div className="divide-y">
+                {items.map((p: any) => (
+                  <ProdutoRow key={p.id} p={p} onEdit={openEdit} onDelete={setDeleteConfirm} />
+                ))}
               </div>
             </div>
-            <div className="flex gap-1 shrink-0">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
-                <Pencil className="h-4 w-4 text-muted-foreground" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteConfirm({ id: p.id, nome: p.nome })}>
-                <Trash2 className="h-4 w-4 text-destructive" />
+          ))
+        ) : (
+          <div className="rounded-xl border divide-y">
+            {filtered.map((p: any) => (
+              <ProdutoRow key={p.id} p={p} onEdit={openEdit} onDelete={setDeleteConfirm} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Gerenciar / Importar modal (placeholder — sem função ainda) */}
+      <Dialog open={manageDialog} onOpenChange={setManageDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" /> Gerenciar Produtos
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Importe listas de produtos de terceiros (fornecedores, catálogos, planilhas) para o seu cadastro.
+            </p>
+            <div className="rounded-xl border-2 border-dashed p-6 flex flex-col items-center gap-3 text-center">
+              <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
+              <div>
+                <p className="font-semibold">Importar lista de produtos</p>
+                <p className="text-xs text-muted-foreground">Arraste um arquivo (.csv, .xlsx) ou clique para selecionar</p>
+              </div>
+              <Button variant="outline" disabled>
+                <Upload className="h-4 w-4 mr-1" /> Selecionar arquivo
               </Button>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" disabled className="justify-start">
+                📥 Baixar modelo (.csv)
+              </Button>
+              <Button variant="outline" disabled className="justify-start">
+                🔗 Importar por URL
+              </Button>
+              <Button variant="outline" disabled className="justify-start">
+                🏭 Catálogo de fornecedor
+              </Button>
+              <Button variant="outline" disabled className="justify-start">
+                🧹 Remover duplicados
+              </Button>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              ⚙️ Funcionalidade em desenvolvimento. Em breve você poderá importar produtos em massa.
+            </div>
+            <Button className="w-full" variant="secondary" onClick={() => setManageDialog(false)}>
+              Fechar
+            </Button>
           </div>
-        ))}
-      </div>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={dialog} onOpenChange={(v) => { if (!v) close(); }}>
         <DialogContent className="max-w-md">
