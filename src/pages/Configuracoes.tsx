@@ -248,6 +248,30 @@ function CrudBody({ table, label }: { table: string; label: string }) {
 }
 
 /* ----------------- Produtos section body ----------------- */
+function ProdutoRow({ p, onEdit, onDelete }: { p: any; onEdit: (p: any) => void; onDelete: (v: { id: string; nome: string }) => void }) {
+  return (
+    <div className="flex items-center justify-between py-2 px-3 hover:bg-muted/40 transition-colors">
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm truncate">{p.nome}</p>
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          <Badge variant="secondary" className="text-xs">{p.unidade || "un"}</Badge>
+          {p.categorias_produtos?.nome && (
+            <Badge variant="outline" className="text-xs">{p.categorias_produtos.nome}</Badge>
+          )}
+        </div>
+      </div>
+      <div className="flex gap-1 shrink-0">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(p)}>
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete({ id: p.id, nome: p.nome })}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ProdutosBody() {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState(false);
