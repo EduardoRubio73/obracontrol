@@ -250,6 +250,7 @@ function CrudBody({ table, label }: { table: string; label: string }) {
 
 /* ----------------- Tarefa Padrão body (com grupo/etapa) ----------------- */
 function TarefaPadraoBody() {
+  const { user } = useAuth();
   const { items, isLoading, add, update, del } = useCrudTab("tarefas_padrao");
   const queryClient = useQueryClient();
   const [novoNome, setNovoNome] = useState("");
@@ -261,7 +262,8 @@ function TarefaPadraoBody() {
   const [editingEtapaId, setEditingEtapaId] = useState("");
 
   const { data: etapasPadrao } = useQuery({
-    queryKey: ["etapas_padrao-select"],
+    queryKey: ["etapas_padrao", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase.from("etapas_padrao").select("id, nome").order("nome");
       if (error) throw error;
