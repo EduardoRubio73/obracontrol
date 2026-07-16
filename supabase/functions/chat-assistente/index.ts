@@ -379,6 +379,20 @@ Use SOMENTE estes dados para responder perguntas sobre a obra. Se um dado não e
   }
 }
 
+async function userOwnsObra(
+  obraId: string,
+  userId: string,
+  supabaseAdmin: ReturnType<typeof createClient>
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("obras")
+    .select("id")
+    .eq("id", obraId)
+    .eq("user_id", userId)
+    .single();
+  return !error && !!data;
+}
+
 async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
@@ -935,7 +949,8 @@ serve(async (req) => {
     if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
       const toolCalls = choice.message.tool_calls;
       let combinedResponse = "";
-      let allAcoes: { label: string; route: string }[] = [];
+      const allAcoes: { label: string; route: string }[] = [];
+      const obrasVerificadas = new Map<string, boolean>();
 
       for (const tc of toolCalls) {
         const fnName = tc.function.name;
@@ -949,6 +964,27 @@ serve(async (req) => {
         // Inject obra_id if tool needs it and user has one active
         if (TOOLS_NEEDING_OBRA_ID.includes(fnName) && !fnArgs.obra_id && obra_id) {
           fnArgs.obra_id = obra_id;
+        }
+
+        // Toda ferramenta que opera sobre uma obra precisa ter a posse
+        // confirmada aqui — args.obra_id pode ter sido informado pelo
+        // próprio LLM/conversa e não pode ser confiado sem checagem,
+        // já que executeTool roda com supabaseAdmin (bypassa RLS).
+        if (TOOLS_NEEDING_OBRA_ID.includes(fnName)) {
+          const obraId = fnArgs.obra_id as string | undefined;
+          if (!obraId) {
+            combinedResponse += (combinedResponse ? "\n\n" : "") + "Preciso saber de qual obra você está falando. Selecione uma obra e tente novamente.";
+            continue;
+          }
+          let pertence = obrasVerificadas.get(obraId);
+          if (pertence === undefined) {
+            pertence = await userOwnsObra(obraId, userId, supabaseAdmin);
+            obrasVerificadas.set(obraId, pertence);
+          }
+          if (!pertence) {
+            combinedResponse += (combinedResponse ? "\n\n" : "") + "Não encontrei essa obra na sua conta.";
+            continue;
+          }
         }
 
         const toolResult = await executeTool(fnName, fnArgs, userId, supabaseAdmin);

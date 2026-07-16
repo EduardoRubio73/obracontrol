@@ -55,7 +55,10 @@ Deno.serve(async (req) => {
     // ---- Fornecedor ----
     let fornecedor_id: string | null = null;
     if (fornecedor_decision.startsWith('link:')) {
-      fornecedor_id = fornecedor_decision.slice(5);
+      const linkedId = fornecedor_decision.slice(5);
+      const { data: fOwned } = await supabase.from('fornecedores').select('id').eq('id', linkedId).eq('user_id', uid).maybeSingle();
+      if (!fOwned) return json({ error: 'Fornecedor inválido' }, 400);
+      fornecedor_id = fOwned.id;
     } else if (fornecedor_decision === 'auto' && fornecedor_match?.match?.id) {
       fornecedor_id = fornecedor_match.match.id;
     } else if (meta.fornecedor_nome) {
@@ -125,7 +128,10 @@ Deno.serve(async (req) => {
       if (localCache.has(cacheKey)) {
         produto_id = localCache.get(cacheKey)!;
       } else if (decision?.startsWith('link:')) {
-        produto_id = decision.slice(5);
+        const linkedId = decision.slice(5);
+        const { data: pOwned } = await supabase.from('produtos').select('id').eq('id', linkedId).eq('user_id', uid).maybeSingle();
+        if (!pOwned) return json({ error: `Produto inválido para "${item.nome_original}"` }, 400);
+        produto_id = pOwned.id;
       } else if (decision === 'new' || !pm?.match) {
         await ensureUnidade(item.unidade);
         const cat_id = await getOrCreateCategoria(item.categoria_sugerida);

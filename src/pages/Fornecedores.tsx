@@ -159,12 +159,14 @@ export default function Fornecedores() {
   // Fornecedores vinculados à obra (via financeiro + compras)
   const { data: vinculadosIds } = useQuery({
     queryKey: ["fornecedores-vinculados", obraAtivaId],
-    enabled: !!obraAtivaId,
+    enabled: !!obraAtivaId && obraAtivaId !== "all",
     queryFn: async () => {
       const [fin, comp] = await Promise.all([
         supabase.from("financeiro").select("fornecedor_id").eq("obra_id", obraAtivaId!).not("fornecedor_id", "is", null),
         supabase.from("compras").select("fornecedor_id").eq("obra_id", obraAtivaId!).not("fornecedor_id", "is", null),
       ]);
+      if (fin.error) throw fin.error;
+      if (comp.error) throw comp.error;
       const ids = new Set<string>();
       fin.data?.forEach((r: any) => r.fornecedor_id && ids.add(r.fornecedor_id));
       comp.data?.forEach((r: any) => r.fornecedor_id && ids.add(r.fornecedor_id));

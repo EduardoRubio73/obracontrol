@@ -92,8 +92,8 @@ export default function Chat() {
       const tipo = pf.file.type.startsWith("image/") ? "imagem" : "documento";
       uploaded.push({ nome: pf.file.name, url: urlData.publicUrl, tipo });
 
-      if (obraAtivaId) {
-        await supabase.from("documentos").insert({
+      if (obraAtivaId && obraAtivaId !== "all") {
+        const { error: insertError } = await supabase.from("documentos").insert({
           obra_id: obraAtivaId,
           nome: pf.file.name,
           url: urlData.publicUrl,
@@ -101,6 +101,10 @@ export default function Chat() {
           tamanho_bytes: pf.file.size,
           user_id: user.id,
         });
+        if (insertError) {
+          console.error("Erro ao vincular anexo à obra:", insertError);
+          toast.error(`Anexo "${pf.file.name}" enviado, mas não foi vinculado à obra`);
+        }
       }
     }
 

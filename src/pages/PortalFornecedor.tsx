@@ -22,15 +22,15 @@ const PortalFornecedor = () => {
 
   // Fetch fornecedor name if param present
   useEffect(() => {
-    if (!fornecedorIdParam) return;
-    supabase.rpc("get_public_fornecedor_nome" as any, { p_id: fornecedorIdParam })
+    if (!fornecedorIdParam || !token) return;
+    supabase.rpc("get_public_fornecedor_nome" as any, { p_id: fornecedorIdParam, p_token: token })
       .then(({ data, error }) => {
         if (!error && data) {
           setEmpresa(data as string);
           setEmpresaLocked(true);
         }
       });
-  }, [fornecedorIdParam]);
+  }, [fornecedorIdParam, token]);
 
   // Fetch cotação by token
   const { data: cotacao, isLoading: loadingCotacao, error: cotacaoError } = useQuery({

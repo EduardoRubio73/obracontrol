@@ -41,33 +41,45 @@ sem mudanças de schema nesta migração.
 ### 14:10 - Auditoria completa do projeto (`/edu-sweep`) (✅ Completo)
 - **Tipo:** [REGRA]
 - **Descrição:** Varredura em 4 fases (bloat, bugs, segurança, higiene de código).
-  Achados críticos de segurança identificados e ainda **não corrigidos** — ver seção
-  "Pendências críticas" abaixo. Resumo completo do relatório disponível na conversa
-  do Claude Code desta data.
+  Achados críticos de segurança identificados e corrigidos na entrada seguinte.
 - **Arquivos:** N/A (somente leitura/análise)
 
----
-
-## 🔴 Pendências críticas em aberto (atualizar quando resolvidas)
-
-1. **IDOR no assistente de chat** — `supabase/functions/chat-assistente/index.ts`
-   (linhas 426-443, 499-524, 588-631, 678-712, 797-818): várias tool-calls usam
-   `service_role` filtrando só por `obra_id` (vindo da conversa/LLM) sem checar que a
-   obra pertence ao `user_id` autenticado. Outros handlers no mesmo arquivo já fazem
-   `.eq("user_id", userId)` corretamente — padronizar todos.
-2. **IDOR de escrita na importação** — `supabase/functions/commitar-importacao/index.ts:57-140`:
-   `fornecedor_id`/`produto_id` vindos como `link:<uuid>` no payload não são validados
-   contra o dono antes de usar.
-3. **Portal público vaza nome de fornecedor** — função `get_public_fornecedor_nome`
-   (migration `20260411164012_...sql`) aceita qualquer UUID sem exigir o
-   `token_publico` da cotação.
-4. **`submit_public_proposta` sem validação** — migration `20260411155827_...sql`:
-   aceita itens arbitrários do cliente anônimo sem validar contra `itens_cotacao`, e
-   sem trava de reenvio duplicado.
-
-## 🟡 Pendências importantes em aberto
-
-- `src/pages/Fornecedores.tsx:160-172` — query quebra silenciosamente quando
-  `obraAtivaId === "all"` (uuid inválido, erro engolido).
-- `src/pages/Chat.tsx:96-104` — upload de anexo falha silenciosamente no mesmo cenário.
-- `src/hooks/useVoiceCommand.ts:146-150` — bug de closure trava o hook em "listening".
+### 15:05 - Correção de todos os achados do sweep (✅ Completo)
+- **Tipo:** [SEGURANÇA] [BUG]
+- **Descrição:** Corrigidos os 4 achados críticos de segurança e os 3 achados
+  importantes/menores da auditoria das 14:10. `tsc --noEmit`, `npm run lint` (sem
+  erros novos) e `npm run build` rodados com sucesso após as mudanças.
+  1. **IDOR no assistente de chat** (`supabase/functions/chat-assistente/index.ts`):
+     adicionada `userOwnsObra()` e validação centralizada de posse da obra antes de
+     qualquer tool-call que opere sobre `obra_id`, em vez de confiar no valor vindo do
+     LLM/conversa.
+  2. **IDOR de escrita na importação** (`supabase/functions/commitar-importacao/index.ts`):
+     `fornecedor_id`/`produto_id` recebidos como `link:<uuid>` agora são validados
+     contra `user_id` antes de serem usados.
+  3. **Portal público vazava nome de fornecedor**: nova migration
+     `20260716132938_fix_portal_publico_seguranca.sql` — `get_public_fornecedor_nome`
+     agora exige `p_token` da cotação (join via `cotacao_fornecedores`); frontend
+     (`PortalFornecedor.tsx`) atualizado para enviar o token.
+  4. **`submit_public_proposta` sem validação**: mesma migration — itens da proposta
+     agora são validados contra `itens_cotacao` (por nome) e reenvio duplicado da
+     mesma empresa para a mesma cotação é bloqueado.
+  5. `src/pages/Fornecedores.tsx` — query `fornecedores-vinculados` não roda mais
+     quando `obraAtivaId === "all"`, e erros de `financeiro`/`compras` não são mais
+     engolidos.
+  6. `src/pages/Chat.tsx` — upload de anexo não tenta mais vincular a `obra_id: "all"`,
+     e erro de insert em `documentos` agora gera toast.
+  7. `src/hooks/useVoiceCommand.ts` — bug de closure corrigido com `statusRef`; o hook
+     não trava mais em `"listening"` quando o reconhecimento termina sem `onresult`.
+  8. `src/lib/regras-decisao.ts` — `CATEGORIAS_PROFISSIONAL`/`CATEGORIAS_LOJA` não são
+     mais exportadas (uso só interno).
+- **⚠️ Pendente de ação manual:** a migration `20260716132938_fix_portal_publico_seguranca.sql`
+  foi criada no repo mas **ainda não foi aplicada** ao banco Supabase remoto
+  (`xsqnkptdbabnvjcrvaob`) — não há conexão MCP/CLI ativa com esse projeto nesta
+  sessão. Aplicar via dashboard do Supabase (SQL editor) ou `supabase db push` assim
+  que possível. Até lá, `get_public_fornecedor_nome(uuid)` (assinatura antiga) ainda
+  está ativo no banco em produção.
+- **Arquivos:** `supabase/functions/chat-assistente/index.ts`,
+  `supabase/functions/commitar-importacao/index.ts`,
+  `supabase/migrations/20260716132938_fix_portal_publico_seguranca.sql`,
+  `src/pages/PortalFornecedor.tsx`, `src/pages/Fornecedores.tsx`, `src/pages/Chat.tsx`,
+  `src/hooks/useVoiceCommand.ts`, `src/lib/regras-decisao.ts`

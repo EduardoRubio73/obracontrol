@@ -104,6 +104,12 @@ export function useVoiceCommand() {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [transcript, setTranscript] = useState<string>("");
   const recognitionRef = useRef<any>(null);
+  const statusRef = useRef<VoiceStatus>("idle");
+
+  const updateStatus = useCallback((next: VoiceStatus) => {
+    statusRef.current = next;
+    setStatus(next);
+  }, []);
 
   const isSupported = typeof window !== "undefined" && 
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
@@ -125,39 +131,39 @@ export function useVoiceCommand() {
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => setStatus("listening");
+      recognition.onstart = () => updateStatus("listening");
 
       recognition.onresult = (event: any) => {
         const result = event.results[0][0].transcript;
         setTranscript(result);
-        setStatus("processing");
+        updateStatus("processing");
 
         const cmd = parseCommand(result);
         onCommand(cmd, result);
 
-        setTimeout(() => setStatus("idle"), 2000);
+        setTimeout(() => updateStatus("idle"), 2000);
       };
 
       recognition.onerror = () => {
-        setStatus("error");
-        setTimeout(() => setStatus("idle"), 3000);
+        updateStatus("error");
+        setTimeout(() => updateStatus("idle"), 3000);
       };
 
       recognition.onend = () => {
-        if (status === "listening") {
-          setStatus("idle");
+        if (statusRef.current === "listening") {
+          updateStatus("idle");
         }
       };
 
       recognition.start();
     },
-    [isSupported, status]
+    [isSupported, updateStatus]
   );
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
-    setStatus("idle");
-  }, []);
+    updateStatus("idle");
+  }, [updateStatus]);
 
   return {
     status,

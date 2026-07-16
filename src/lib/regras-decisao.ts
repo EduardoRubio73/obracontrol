@@ -1,6 +1,6 @@
 /* ── Regras de decisão: complexidade → profissional ── */
 
-export const CATEGORIAS_PROFISSIONAL = [
+const CATEGORIAS_PROFISSIONAL = [
   { value: "pedreiro", label: "Pedreiro" },
   { value: "eletricista", label: "Eletricista" },
   { value: "encanador", label: "Encanador" },
@@ -14,7 +14,7 @@ export const CATEGORIAS_PROFISSIONAL = [
   { value: "tecnico", label: "Técnico" },
 ] as const;
 
-export const CATEGORIAS_LOJA = [
+const CATEGORIAS_LOJA = [
   { value: "material_construcao", label: "Material de Construção" },
   { value: "hidraulica", label: "Hidráulica" },
   { value: "eletrica", label: "Elétrica" },
