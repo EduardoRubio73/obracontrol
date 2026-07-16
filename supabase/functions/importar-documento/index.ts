@@ -148,20 +148,47 @@ function stripHtml(s: string): string {
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim();
 }
 
+// Matches an "ordem de venda" style item row:
+//   ITEM CÓDIGO QTDE UN PRODUTO VAL_UNIT VAL_DESC VAL_LIQ [ENT [OF] [ENC]] PRECO_TOTAL
+// The zone between VAL_LIQ and PRECO_TOTAL (ENT/OF/ENC) is matched loosely with `.*?`
+// instead of a fixed single-letter column, because those trailing columns are often
+// blank or of variable width depending on the source ERP — a rigid single-token match
+// silently drops every row on documents where they aren't exactly one blank letter.
+const PDF_ITEM_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s+(.+?)\s+R\$\s*[\d.,]+\s+R\$\s*[\d.,]+\s+R\$\s*([\d.,]+)\s+.*?R\$\s*[\d.,]+\s*$/;
+// Detects the start of an item row (item, código, qtde, un) without requiring the
+// R$ columns on the same physical line — used to re-join rows that pdf.js splits
+// across two extracted lines when the product name pushes the row past a wrap point.
+const PDF_ROW_START_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s+/;
+
 function parsePdfText(text: string): { header_lines: string[]; rows: Row[] } {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const header_lines: string[] = [];
-  const rows: Row[] = [];
-  const itemRe = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{1,2})\s+(?:(.*?)\s+)?R\$\s*([\d.,]+)\s+R\$\s*([\d.,]+)\s+R\$\s*([\d.,]+)\s+[A-Z]\s+R\$\s*([\d.,]+)\s*$/;
+  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const STOP = ["Vendedor", "FORMA", "ENTREGA", "OBSERVA", "Total", "Usuário",
     "ITEM CÓDIGO", "ORDEM DE VENDA", "NÃO É", "SITUAÇÃO", "Loja:", "End.:",
     "Cliente", "Endereço", "Cidade", "CNPJ", "liberação"];
+
+  // Re-join a row-start line with no "R$" on it to the following line(s) until one
+  // containing "R$" appears, so a wrapped row is evaluated as a single logical line.
+  const lines: string[] = [];
+  let buf = "";
+  for (const line of rawLines) {
+    if (buf) {
+      buf += " " + line;
+      if (/R\$/.test(line)) { lines.push(buf); buf = ""; }
+      continue;
+    }
+    if (PDF_ROW_START_RE.test(line) && !/R\$/.test(line)) { buf = line; continue; }
+    lines.push(line);
+  }
+  if (buf) lines.push(buf);
+
+  const header_lines: string[] = [];
+  const rows: Row[] = [];
   let nameBuf: string[] = [];
   for (const line of lines) {
-    const m = line.match(itemRe);
+    const m = line.match(PDF_ITEM_RE);
     if (m) {
-      const [, , codigo, qtd, un, nomeExtra, , , valLiq] = m;
-      const parts = [...nameBuf, ...(nomeExtra ? [nomeExtra.trim()] : [])].filter(Boolean);
+      const [, , codigo, qtd, un, nome, valLiq] = m;
+      const parts = [...nameBuf, ...(nome ? [nome.trim()] : [])].filter(Boolean);
       rows.push({
         codigo, nome: parts.join(' ').trim() || '(produto)',
         un, qtd, valor: valLiq,
@@ -174,5 +201,13 @@ function parsePdfText(text: string): { header_lines: string[]; rows: Row[] } {
       nameBuf.push(line);
     }
   }
+
+  if (rows.length === 0) {
+    // No file-system/log access to the failing PDF was available while diagnosing this —
+    // log the raw extracted text so a real failure can be root-caused from Supabase logs
+    // instead of guessed at again.
+    console.error("parsePdfText: 0 rows extracted, raw text follows:\n" + text.slice(0, 4000));
+  }
+
   return { header_lines, rows };
 }
