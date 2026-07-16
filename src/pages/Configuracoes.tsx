@@ -100,7 +100,7 @@ function useCrudTab(table: string) {
 
   const add = useMutation({
     mutationFn: async ({ nome, descricao }: { nome: string; descricao?: string }) => {
-      const dup = (items ?? []).find((i) => i.nome.toLowerCase().trim() === nome.toLowerCase().trim());
+      const dup = (items ?? []).find((i) => (i.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim());
       if (dup) throw new Error(`Já existe um item com o nome "${nome}".`);
       const { error } = await supabase.from(table as any).insert({ nome, descricao: descricao || null, user_id: user!.id } as any);
       if (error) throw error;
@@ -118,7 +118,7 @@ function useCrudTab(table: string) {
 
   const update = useMutation({
     mutationFn: async ({ id, nome, descricao }: { id: string; nome: string; descricao?: string }) => {
-      const dup = (items ?? []).find((i) => i.id !== id && i.nome.toLowerCase().trim() === nome.toLowerCase().trim());
+      const dup = (items ?? []).find((i) => i.id !== id && (i.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim());
       if (dup) throw new Error(`Já existe outro item com o nome "${nome}".`);
       const { error } = await supabase.from(table as any).update({ nome, descricao: descricao || null } as any).eq("id", id);
       if (error) throw error;
@@ -158,7 +158,7 @@ function CrudBody({ table, label }: { table: string; label: string }) {
   const [editingNome, setEditingNome] = useState("");
   const [editingDescricao, setEditingDescricao] = useState("");
 
-  const dupName = !!items?.find((i) => i.nome.toLowerCase().trim() === novoNome.toLowerCase().trim());
+  const dupName = !!items?.find((i) => (i.nome ?? "").toLowerCase().trim() === novoNome.toLowerCase().trim());
 
   const handleAdd = () => {
     if (!novoNome.trim() || dupName) return;
@@ -288,7 +288,7 @@ function ProdutosBody() {
   });
 
   const filtered = useMemo(
-    () => (produtos ?? []).filter((p: any) => !search.trim() || p.nome.toLowerCase().includes(search.toLowerCase())),
+    () => (produtos ?? []).filter((p: any) => !search.trim() || (p.nome ?? "").toLowerCase().includes(search.toLowerCase())),
     [produtos, search]
   );
 
@@ -323,7 +323,7 @@ function ProdutosBody() {
   const save = useMutation({
     mutationFn: async () => {
       const dup = (produtos ?? []).find(
-        (p: any) => p.nome.toLowerCase().trim() === nome.toLowerCase().trim() && p.id !== edit?.id
+        (p: any) => (p.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim() && p.id !== edit?.id
       );
       if (dup) throw new Error(`Já existe um produto com o nome "${nome}".`);
       const payload = { nome: nome.trim(), unidade: unidade || "un", categoria_id: catId || null };
@@ -362,7 +362,7 @@ function ProdutosBody() {
   const close = () => { setDialog(false); setEdit(null); setNome(""); setUnidade(""); setCatId(""); };
 
   const dupInDialog = (produtos ?? []).some(
-    (p: any) => p.nome.toLowerCase().trim() === nome.toLowerCase().trim() && p.id !== edit?.id
+    (p: any) => (p.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim() && p.id !== edit?.id
   );
 
   const catOptions = useMemo(() => (categorias ?? []).map((c: any) => ({ value: c.id, label: c.nome })), [categorias]);
