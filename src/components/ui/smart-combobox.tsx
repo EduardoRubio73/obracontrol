@@ -46,7 +46,9 @@ export function SmartCombobox({
   const [search, setSearch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+  const selected =
+    options.find((o) => o.value === value) ??
+    (value ? { value, label: value } : undefined);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
