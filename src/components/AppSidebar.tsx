@@ -1,9 +1,12 @@
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import logoImg from "@/assets/logo-obracontrol.png";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
-import { ChevronDown } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { ChevronDown, UserCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Collapsible,
   CollapsibleContent,
@@ -35,19 +38,28 @@ const gestaoObraSections = [
 ];
 
 const configItems = [
-  { title: "Perfil", url: "/perfil", emoji: "👤" },
   { title: "Relatórios", url: "/relatorios", emoji: "📈" },
   { title: "Config. Sistema", url: "/configuracoes", emoji: "⚙️" },
 ];
 
 export function AppSidebar() {
-  const { state, toggleSidebar, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { id: obraIdFromUrl } = useParams<{ id: string }>();
   const { obras } = useObraAtiva();
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const hasObraSelected = !!obraIdFromUrl;
   const obraAtual = obras.find((o) => o.id === obraIdFromUrl) ?? null;
@@ -167,12 +179,21 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={toggleSidebar}
-              className="flex items-center gap-3 text-muted-foreground hover:bg-accent"
-            >
-              <span className="w-6 text-center text-base shrink-0">📐</span>
-              {!collapsed && <span>Recolher menu</span>}
+            <SidebarMenuButton asChild>
+              <NavLink
+                to="/perfil"
+                className="flex items-center gap-3 hover:bg-accent"
+                activeClassName="bg-primary/10 text-primary font-medium"
+                onClick={handleNav}
+              >
+                <Avatar className="h-6 w-6 shrink-0">
+                  <AvatarImage src={profile?.avatar_url ?? undefined} alt={profile?.nome} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                    {profile?.nome?.charAt(0)?.toUpperCase() || <UserCircle className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && <span className="truncate text-sm">{profile?.nome || user?.email}</span>}
+              </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

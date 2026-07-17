@@ -6,6 +6,61 @@
 
 ---
 
+## [17/07/2026 - 09:49:20] Reorganização da Sidebar: Perfil com Avatar no Footer (✅ Completo)
+- **Tipo:** [UI]
+- **Descrição:** Removido botão "Recolher menu" do footer. Movido "Perfil" para o footer exibindo avatar do usuário + nome/email. Fluxo: avatar carregado via `useQuery` do profile no Supabase (nome, avatar_url).
+- **Arquivos:** src/components/AppSidebar.tsx
+- **Resultado:** Menu lateral agora tem footer mais limpo com "Perfil [avatar + nome]" e "Sair", sem botão de recolher redundante.
+
+## [17/07/2026 - 09:38:19] PDF espelho + Email resend com anexo (✅ Completo)
+- **Tipo:** [FEATURE]
+- **Descrição:** Botão "Reenviar" agora gera PDF do espelho e envia por email com anexo (via Resend + fallback download+mailto)
+- **Arquivos:** src/pages/Cotacoes.tsx, supabase/functions/enviar-cotacao-espelho/
+- **Commits:** 47ab737, 5d10398
+
+## [17/07/2026 - 18:35:42] Implementação de geração de PDF de espelho + reenvio de cotações por email (✅ Completo)
+- **Tipo:** [FEATURE] [UX]
+- **Descrição:** Pedido do usuário: botão "Reenviar" na tabela de "Fornecedores Convidados" deve abrir app de email padrão com:
+  - Assunto pré-preenchido
+  - Body pré-preenchido
+  - **Anexo em PDF do espelho da cotação** (o que não era possível via `mailto:` simples)
+
+  **Solução implementada:**
+  1. **Instalação de `html2pdf.js`** para gerar PDFs no navegador
+  2. **Refatoração de geração do espelho:** extraído HTML de espelho para função `generateEspelhoHtml()` reutilizável
+  3. **Função `generateEspelhoPdf()`:** gera Blob PDF usando html2pdf, permitindo:
+     - Download local do PDF
+     - Envio via Edge Function
+  4. **Edge Function `enviar-cotacao-espelho`:** nova função que envia email com Resend:
+     - Recebe PDF em base64
+     - Envia com assunto/body formatados
+     - Fallback automático se Resend não estiver configurado (download + mailto)
+  5. **UI melhorada:**
+     - Botão "Reenviar" → "Reenviar com Espelho" (icon Download)
+     - Dialog mostra "📎 O espelho do orçamento será anexado"
+     - Loading state durante geração do PDF
+     - Sucesso visual ao reenviar
+
+  **Fluxo do usuário (final):**
+  - Clica "Reenviar" na tabela de fornecedores
+  - Dialog abre com email do fornecedor
+  - Clica "Reenviar com Espelho"
+  - Backend gera PDF + tenta enviar via Edge Function
+  - Se Resend configurado: email enviado automaticamente com PDF anexado
+  - Se não: PDF downloadado + mailto aberto (user anexa manualmente)
+
+  **Configuração necessária (opcional):**
+  - Para envio automático com PDF: adicionar `RESEND_API_KEY` nas env vars da Edge Function
+  - Sem isso, o fallback (download + mailto) funciona sempre
+
+  **Arquivos:**
+  - `src/pages/Cotacoes.tsx` (refatorado: nova import `html2pdf`, funções auxiliares, handleResend reescrito)
+  - `supabase/functions/enviar-cotacao-espelho/index.ts` (nova Edge Function)
+  - `supabase/functions/enviar-cotacao-espelho/deno.json` (config)
+  - `package.json` (adicionado `html2pdf.js`)
+
+  **Deploy:** Edge Function já deployada em produção via Supabase CLI.
+
 ## [16/07/2026 - 23:42:25] Correção real do parser de PDF — a causa raiz da entrada anterior estava errada (✅ Completo)
 - **Tipo:** [BUG] [CORREÇÃO-DE-CORREÇÃO]
 - **Descrição:** Usuário testou o fix da entrada de 23:15 (mesmo `PDF_ITEM_RE` "corrigido")
