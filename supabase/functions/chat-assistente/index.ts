@@ -20,10 +20,16 @@ const SYSTEM_PROMPT = `Você é o Agente de Gestão do ObraControl — um assist
 2. NUNCA retorne tags HTML. Use APENAS markdown para formatação.
 3. Para ações clicáveis, retorne no campo "acoes", NUNCA como HTML.
 4. NUNCA invente dados. Sempre use as ferramentas de consulta ANTES de responder sobre dados.
-5. Após executar uma ação CRUD, confirme com ✅ e detalhes (ex: "✅ Gasto de R$ 500 registrado na obra X").
-6. Se o usuário perguntar "quanto gastei?", "qual o saldo?", "como está o andamento?" — use a ferramenta de consulta correspondente.
-7. Se precisar de obra_id e não houver, peça para selecionar uma obra.
-8. Todas as operações usam o user_id autenticado — NUNCA permita acesso a dados de outros usuários.
+5. PROIBIDO dizer que uma ação foi feita (nunca use ✅ nem palavras como "registrado",
+   "criado", "atualizado", "excluído", "salvo", "adicionado", "lançado") sem ter
+   chamado a function tool correspondente NESTE MESMO turno. Se faltar algum dado
+   obrigatório (valor, descrição, nome), PERGUNTE antes — nunca responda como se a
+   ação já tivesse acontecido.
+6. Após a ferramenta retornar o resultado (e só depois disso), confirme com ✅ e
+   detalhes (ex: "✅ Gasto de R$ 500 registrado na obra X").
+7. Se o usuário perguntar "quanto gastei?", "qual o saldo?", "como está o andamento?" — use a ferramenta de consulta correspondente.
+8. Se precisar de obra_id e não houver, peça para selecionar uma obra.
+9. Todas as operações usam o user_id autenticado — NUNCA permita acesso a dados de outros usuários.
 
 ## Mapeamento de tabelas SQL:
 - **obras**: id, nome, status, valor_previsto, valor_disponivel, tipo_obra, classificacao, data_inicio, data_prevista_conclusao, user_id
@@ -1029,6 +1035,25 @@ serve(async (req) => {
     }
 
     const textContent = choice.message?.content || "Não consegui processar sua mensagem.";
+
+    // Rede de segurança: o modelo às vezes "narra" uma confirmação (✅ Gasto
+    // registrado...) sem de fato ter chamado a function tool neste turno —
+    // isso faz o usuário achar que algo foi salvo quando nada foi. Como aqui
+    // não houve tool_calls, bloqueamos qualquer texto que pareça confirmação
+    // de ação concluída em vez de repassar ao usuário.
+    const falseConfirmationPattern = /✅|\bregistr(ei|ado|ada|ou)\b|\bcri(ei|ado|ada|ou)\b|\batualiz(ei|ado|ada|ou)\b|\bexclu[ií](do|da|ído|ída)\b|\bremov(i|ido|ida)\b|\bsalv(ei|o|a|ou)\b|\badicion(ei|ado|ada|ou)\b|\blan[çc](ei|ado|ada|ou)\b/i;
+    if (falseConfirmationPattern.test(textContent)) {
+      console.warn("[GUARD] Resposta bloqueada — parece confirmação sem tool_calls:", textContent);
+      return new Response(
+        JSON.stringify({
+          resposta: "Não cheguei a executar essa ação. Pode repetir o pedido confirmando os dados (obra, valor, descrição)?",
+          acoes: [],
+          executado: false,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ resposta: textContent, acoes: [], executado: false }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

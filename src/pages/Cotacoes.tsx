@@ -788,7 +788,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold truncate">
-          Cotações {obra ? `— ${obra.nome}` : ""}
+          Cotações {obra ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
         <Button variant="outline" className="w-full sm:w-auto shrink-0" onClick={() => setImportOpen(true)}>

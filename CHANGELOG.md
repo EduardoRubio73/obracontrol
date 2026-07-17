@@ -33,8 +33,57 @@
 **Arquivos:**
 - supabase/functions/chat-assistente/index.ts (linha ~965)
 
-**Pendente:** deploy da função (`supabase functions deploy chat-assistente`)
-ainda não foi feito — correção está só no código local.
+**Deploy:** feito em 17/07/2026 (sessão seguinte) — ver entrada abaixo, que também
+adiciona uma trava extra porque o deploy sozinho não resolveu o sintoma relatado.
+
+---
+
+## [17/07/2026 - 17:50] Investigação: Financeiro zerado após IA "confirmar" despesa/compra (✅ Completo)
+- **Tipo:** [BUG] [SECURITY-HARDENING]
+- **Afeta:** `chat-assistente` (Edge Function)
+- **Descrição:** Usuário reportou que pedir uma despesa de R$100 e registrar uma
+  compra pela IA não refletiam no Financeiro (card zerado), mesmo a IA respondendo
+  com confirmação de sucesso.
+  - **Passo 1:** deploy da correção de `obra_id` da entrada anterior (15:42:34),
+    que só existia no código local até então.
+  - **Passo 2 — usuário testou de novo, continuou zerado.** Investigação via
+    consulta direta ao banco (`supabase db query --linked`, já que logs de Edge
+    Function não ficam disponíveis neste ambiente):
+    - **Compra:** achado o registro em `compras` (obra e usuário corretos — prova
+      que a correção de `obra_id` está de fato funcionando em produção). Não
+      apareceu no Financeiro porque ficou `status: "pendente"`; o código só
+      espelha a compra no financeiro quando `status = "comprado"`
+      (`index.ts` linhas ~476-486) — **comportamento correto, não é bug**. Uma
+      compra "a comprar" não é uma despesa realizada ainda.
+    - **Despesa:** nenhum registro em `financeiro` para nenhuma obra nas últimas
+      3h, apesar da confirmação da IA. Mecanismo de insert é idêntico ao da
+      compra (mesma checagem de posse, mesmo cliente admin), então a conclusão é
+      que a ferramenta `criar_gasto` não chegou a ser chamada pelo modelo
+      naquele turno — ele apenas narrou a confirmação em texto livre (falha
+      conhecida de tool-calling com `tool_choice: "auto"`, mais comum em modelos
+      "flash"). Reprodução ao vivo (sessão de diagnóstico) foi bloqueada pelo
+      classificador de auto mode do Claude Code; usuário optou por aplicar
+      reforço em vez de reproduzir com certeza absoluta.
+  - **Correção (defesa em profundidade, sem confirmar a causa raiz exata):**
+    1. Prompt do sistema agora proíbe explicitamente a IA de dizer que uma ação
+       foi concluída (✅, "registrado", "criado", "atualizado", "excluído",
+       "salvo", "adicionado", "lançado") sem ter chamado a tool correspondente
+       no mesmo turno.
+    2. Trava no backend: quando a resposta do modelo não tem `tool_calls` mas o
+       texto parece uma confirmação de ação concluída, a resposta é substituída
+       por um pedido de confirmação dos dados em vez de repassar a falsa
+       confirmação ao usuário.
+  - **Limitação conhecida:** a trava só cobre o turno em que NENHUMA tool foi
+    chamada. Um pedido composto (ex.: "registra a despesa e cria a etapa X") em
+    que o modelo executa só uma das duas ações não é coberto — o texto final
+    ainda pode alegar que ambas foram feitas. Também pode haver falso positivo
+    se o usuário perguntar sobre uma ação já concluída anteriormente na
+    conversa (ex.: "o que você registrou?"), já que a regex não distingui
+    recapitulação de confirmação nova.
+- **Arquivos:** `supabase/functions/chat-assistente/index.ts`
+- **Pendente:** usuário vai testar ao vivo para confirmar que (a) o guard-rail
+  aparece quando a IA tenta narrar uma ação sem executá-la, e (b) fluxos
+  legítimos não são bloqueados por engano.
 
 ---
 

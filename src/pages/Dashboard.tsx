@@ -231,7 +231,7 @@ const Dashboard = () => {
   }));
 
   const obraAtual = obras?.find((o) => o.id === filtroId);
-  const dashTitle = obraAtual ? `Dashboard — ${obraAtual.nome}` : "Dashboard — Todas as Obras";
+  const dashTitleObraNome = obraAtual ? obraAtual.nome : "Todas as Obras";
   const obraAtualStatus = obraAtual?.status ?? null;
   const justificativaAtual = (obraAtual as any)?.justificativa_status ?? null;
 
@@ -239,7 +239,9 @@ const Dashboard = () => {
     <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 pb-24 px-4">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{dashTitle}</h1>
+        <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">
+          Dashboard — <span className="text-blue-600 dark:text-blue-400">{dashTitleObraNome}</span>
+        </h1>
         {filtroId && (
           <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full sm:w-auto" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
             <FileSearch className="h-4 w-4" /> Gerar Dossiê
