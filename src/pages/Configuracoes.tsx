@@ -667,12 +667,12 @@ function FornecedoresBody() {
         {filtrados.map((f: any) => (
           <div key={f.id} className="flex items-start gap-2 p-2 border-b last:border-0 hover:bg-muted/50 rounded">
             {editId === f.id ? (
-              <div className="flex-1 space-y-1">
-                <Input value={editData?.nome || ""} onChange={(e) => setEditData({ ...editData, nome: e.target.value })} className="h-7 text-xs" placeholder="Nome" />
-                <Input value={editData?.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className="h-7 text-xs" placeholder="Email" />
-                <Input value={editData?.telefone || ""} onChange={(e) => setEditData({ ...editData, telefone: e.target.value })} className="h-7 text-xs" placeholder="Telefone" />
+              <div className="flex-1 space-y-2">
+                <Input value={editData?.nome || ""} onChange={(e) => setEditData({ ...editData, nome: e.target.value })} placeholder="Nome" />
+                <Input value={editData?.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} placeholder="Email" />
+                <Input value={editData?.telefone || ""} onChange={(e) => setEditData({ ...editData, telefone: e.target.value })} placeholder="Telefone" />
                 <Select value={editData?.tipo || ""} onValueChange={(v) => setEditData({ ...editData, tipo: v })}>
-                  <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tipo..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Tipo..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Sem tipo</SelectItem>
                     {tipos.map((t: any) => (
@@ -681,8 +681,8 @@ function FornecedoresBody() {
                   </SelectContent>
                 </Select>
                 <div className="flex gap-1">
-                  <Button size="sm" variant="default" onClick={() => update.mutate()} className="h-6 text-xs">Salvar</Button>
-                  <Button size="sm" variant="outline" onClick={cancelEdit} className="h-6 text-xs">Cancelar</Button>
+                  <Button size="sm" onClick={() => update.mutate()}>Salvar</Button>
+                  <Button size="sm" variant="outline" onClick={cancelEdit}>Cancelar</Button>
                 </div>
               </div>
             ) : (
