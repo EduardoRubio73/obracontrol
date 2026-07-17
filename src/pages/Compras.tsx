@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,22 +22,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle2, Search, ChevronsUpDown, XCircle } from "lucide-react";
-
-const statusColors: Record<string, string> = {
-  pendente: "bg-warning/10 text-warning",
-  comprado: "bg-success/10 text-success",
-  cancelado: "bg-destructive/10 text-destructive",
-};
-
-const statusLabel: Record<string, string> = {
-  pendente: "Pendente",
-  comprado: "Comprado",
-  cancelado: "Cancelado",
-};
-
-const fmt = (v: number | null) =>
-  (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+import { Plus, ShoppingCart, Search, ChevronsUpDown, XCircle } from "lucide-react";
+import { CompraViewToggle } from "@/components/compras/CompraViewToggle";
+import { CompraCard } from "@/components/compras/CompraCard";
+import { CompraListItem } from "@/components/compras/CompraListItem";
+import { CompraTable } from "@/components/compras/CompraTable";
+import { BulkActionBar } from "@/components/compras/BulkActionBar";
+import { toggleId, toggleAll, pruneSelection, partitionSettled } from "@/components/compras/selection";
+import type { Compra, ViewMode, CompraItemHandlers } from "@/components/compras/types";
 
 /* ── Searchable Dropdown ── */
 function SearchableSelect({
@@ -154,6 +147,9 @@ function ComprasContent({ obraId }: { obraId: string }) {
     valor_unitario: "",
     observacao: "",
   });
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
 
   const { data: obra } = useQuery({
     queryKey: ["obra", obraId],
@@ -307,7 +303,7 @@ function ComprasContent({ obraId }: { obraId: string }) {
     });
   };
 
-  const openEdit = (c: any) => {
+  const openEdit = (c: Compra) => {
     setEditId(c.id);
     setForm({
       fornecedor_id: c.fornecedor_id ?? "",
@@ -321,74 +317,121 @@ function ComprasContent({ obraId }: { obraId: string }) {
   };
 
   const empty = !isLoading && !compras?.length;
-  const pendentes = compras?.filter((c) => c.status === "pendente") ?? [];
-  const comprados = compras?.filter((c) => c.status !== "pendente") ?? [];
 
-  const renderCard = (c: any) => {
-    const fornNome = fornecedores.find((f) => f.id === c.fornecedor_id)?.nome;
-    const prodNome = produtos.find((p) => p.id === c.produto_id)?.nome;
+  const comprasEnriched: Compra[] = useMemo(() => {
+    return (compras ?? []).map((c) => ({
+      ...c,
+      fornecedor_nome: fornecedores.find((f) => f.id === c.fornecedor_id)?.nome,
+      produto_nome: produtos.find((p) => p.id === c.produto_id)?.nome,
+    }));
+  }, [compras, fornecedores, produtos]);
+
+  const pendentes = useMemo(
+    () => comprasEnriched.filter((c) => c.status === "pendente"),
+    [comprasEnriched],
+  );
+  const comprados = useMemo(
+    () => comprasEnriched.filter((c) => c.status !== "pendente"),
+    [comprasEnriched],
+  );
+
+  useEffect(() => {
+    setSelectedIds((prev) => pruneSelection(prev, pendentes.map((c) => c.id)));
+  }, [pendentes]);
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => toggleId(prev, id, checked));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds((prev) => toggleAll(prev, pendentes.map((c) => c.id), checked));
+  };
+
+  const allPendentesSelected =
+    pendentes.length > 0 && pendentes.every((c) => selectedIds.has(c.id));
+
+  const handleBulkMarcarComprado = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkPending(true);
+    const results = await Promise.allSettled(
+      ids.map(async (id) => {
+        const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: id } as any);
+        if (error) throw error;
+      }),
+    );
+    setBulkPending(false);
+
+    const { succeeded, failed } = partitionSettled(ids, results);
+
+    queryClient.invalidateQueries({ queryKey: ["compras", obraId] });
+    queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+
+    if (succeeded.length > 0) {
+      toast.success(
+        succeeded.length === 1
+          ? "Compra marcada como comprada!"
+          : `${succeeded.length} compras marcadas como compradas!`,
+      );
+    }
+    if (failed.length > 0) {
+      toast.error(
+        failed.length === 1
+          ? "1 compra não pôde ser marcada como comprada."
+          : `${failed.length} compras não puderam ser marcadas como compradas.`,
+      );
+    }
+
+    setSelectedIds(new Set(failed));
+  };
+
+  const itemHandlers: CompraItemHandlers = {
+    onMarcarComprado: (id) => marcarComprado.mutate(id),
+    onChangeStatus: (id, status) => changeStatus.mutate({ id, status }),
+    onEdit: openEdit,
+    onDelete: (id) => del.mutate(id),
+  };
+
+  const renderSection = (items: Compra[], selectable: boolean) => {
+    if (viewMode === "tabela") {
+      return (
+        <CompraTable
+          compras={items}
+          selectable={selectable}
+          selectedIds={selectedIds}
+          onToggleSelected={toggleSelected}
+          onToggleSelectAll={toggleSelectAll}
+          handlers={itemHandlers}
+        />
+      );
+    }
+    if (viewMode === "lista") {
+      return (
+        <div className="space-y-2">
+          {items.map((c) => (
+            <CompraListItem
+              key={c.id}
+              compra={c}
+              selected={selectedIds.has(c.id)}
+              onToggleSelected={toggleSelected}
+              handlers={itemHandlers}
+            />
+          ))}
+        </div>
+      );
+    }
     return (
-      <Card key={c.id} className="shadow-sm">
-        <CardContent className="p-5 space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-lg text-foreground truncate">
-                {prodNome || c.descricao || "Compra"}
-              </p>
-              {fornNome && (
-                <p className="text-sm text-muted-foreground">{fornNome}</p>
-              )}
-            </div>
-            {/* Status dropdown */}
-            <select
-              value={c.status}
-              onChange={(e) => changeStatus.mutate({ id: c.id, status: e.target.value })}
-              className={`text-xs font-semibold rounded-full px-3 py-1 border-0 appearance-none cursor-pointer ${statusColors[c.status] ?? "bg-muted"}`}
-            >
-              <option value="pendente">Pendente</option>
-              <option value="comprado">Comprado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {c.quantidade}x {c.valor_unitario ? fmt(c.valor_unitario) : "—"}
-            </span>
-            {c.valor_total ? (
-              <span className="font-bold text-foreground">{fmt(c.valor_total)}</span>
-            ) : null}
-          </div>
-
-          {c.observacao && (
-            <p className="text-sm text-muted-foreground">{c.observacao}</p>
-          )}
-
-          <div className="flex items-center gap-2 pt-1">
-            {c.status === "pendente" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => marcarComprado.mutate(c.id)}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1" /> Marcar comprado
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive"
-              onClick={() => del.mutate(c.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.map((c) => (
+          <CompraCard
+            key={c.id}
+            compra={c}
+            selected={selectedIds.has(c.id)}
+            onToggleSelected={toggleSelected}
+            handlers={itemHandlers}
+          />
+        ))}
+      </div>
     );
   };
 
@@ -411,15 +454,39 @@ function ComprasContent({ obraId }: { obraId: string }) {
         Nova Compra
       </Button>
 
+      {!empty && (
+        <div className="flex justify-end">
+          <CompraViewToggle value={viewMode} onChange={setViewMode} />
+        </div>
+      )}
+
       {pendentes.length > 0 && (
         <div className="space-y-3">
-          <p className="text-base font-semibold text-warning flex items-center gap-2">
-            🕐 Pendentes ({pendentes.length})
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pendentes.map(renderCard)}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-base font-semibold text-warning flex items-center gap-2">
+              🕐 Pendentes ({pendentes.length})
+            </p>
+            {viewMode !== "tabela" && (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                <Checkbox
+                  checked={allPendentesSelected}
+                  onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                />
+                Selecionar todos
+              </label>
+            )}
           </div>
+          {renderSection(pendentes, true)}
         </div>
+      )}
+
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          pending={bulkPending}
+          onConfirm={handleBulkMarcarComprado}
+          onCancel={() => setSelectedIds(new Set())}
+        />
       )}
 
       {comprados.length > 0 && (
@@ -427,9 +494,7 @@ function ComprasContent({ obraId }: { obraId: string }) {
           <p className="text-base font-semibold text-success flex items-center gap-2">
             ✅ Comprados ({comprados.length})
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {comprados.map(renderCard)}
-          </div>
+          {renderSection(comprados, false)}
         </div>
       )}
 
