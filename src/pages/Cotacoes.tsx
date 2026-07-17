@@ -16,10 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImportarProdutosDialog } from "@/components/produtos/ImportarProdutosDialog";
 import { toast } from "sonner";
+import html2pdf from "html2pdf.js";
 import {
   ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy,
   PackagePlus, Brain, Mail, Send, Eye, Clock, CheckCircle2, AlertTriangle,
-  Search, Pencil, Printer, RefreshCw, Upload,
+  Search, Pencil, Printer, RefreshCw, Upload, Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,132 @@ const getInviteStatus = (t: any): { label: string; color: string } => {
   return { label: "Pendente", color: "bg-yellow-100 text-yellow-700" };
 };
 
+// Helper: generate espelho HTML (shareable between print and PDF generation)
+async function generateEspelhoHtml(
+  cotacao: any,
+  nomeObra: string,
+  printItens: any[],
+  user: any,
+  profileData?: any
+): Promise<string> {
+  let logoBase64 = "";
+  try {
+    const resp = await fetch(logoImg);
+    const blob = await resp.blob();
+    logoBase64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch { /* fallback */ }
+
+  let sigBase64 = "";
+  if (profileData?.assinatura_url) {
+    try {
+      const resp = await fetch(profileData.assinatura_url);
+      const blob = await resp.blob();
+      sigBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch { /* fallback */ }
+  }
+
+  const profileName = profileData?.nome || user?.email || "";
+  const profileEmail = profileData?.email || user?.email || "";
+  const profilePhone = profileData?.telefone || "";
+  const numOrc = `#${cotacao.id.slice(0, 8)}`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Espelho do Orçamento ${numOrc}</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a1a; background: #fff; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
+        .header img { height: 60px; margin-bottom: 12px; }
+        .header h2 { font-size: 22px; color: #2563eb; margin: 0; font-weight: 700; letter-spacing: 0.5px; }
+        .header .num-orc { font-size: 14px; color: #666; margin-top: 4px; }
+        .info { margin-bottom: 20px; }
+        .info p { margin: 4px 0; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-size: 14px; }
+        th { background: #e0e7ff; font-weight: 600; color: #1e3a5f; }
+        tr:nth-child(even) td { background: #f3f4f6; }
+        tr:nth-child(odd) td { background: #fff; }
+        .price-col { width: 150px; border-bottom: 1px dotted #999; }
+        .footer { margin-top: 50px; border-top: 1px solid #e5e7eb; padding-top: 24px; }
+        .footer .signature-line { display: flex; justify-content: space-between; margin-top: 40px; }
+        .footer .signature-line .sig-block { width: 45%; text-align: center; }
+        .footer .signature-line .sig-block .sig-img { height: 60px; object-fit: contain; margin-bottom: -4px; }
+        .footer .signature-line .sig-block .sig-label { border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
+        @media print {
+          body { margin: 20px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          button, .no-print { display: none !important; }
+          * { box-shadow: none !important; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : ""}
+        <h2>Espelho do Orçamento</h2>
+        <p class="num-orc">Orçamento ${numOrc}</p>
+      </div>
+      <div class="info">
+        <p><strong>Cotação:</strong> ${cotacao.descricao}</p>
+        <p><strong>Obra:</strong> ${nomeObra}</p>
+        <p><strong>Data:</strong> ${new Date().toLocaleDateString("pt-BR")}</p>
+        ${cotacao.data_expiracao ? `<p><strong>Prazo:</strong> ${new Date(cotacao.data_expiracao).toLocaleDateString("pt-BR")}</p>` : ""}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item</th>
+            <th>Quantidade</th>
+            <th>Unidade</th>
+            <th>Valor Unitário</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${printItens.map((item: any, i: number) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${item.nome}</td>
+              <td>${item.quantidade}</td>
+              <td>${item.unidade || "un"}</td>
+              <td class="price-col"></td>
+              <td class="price-col"></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      <div style="margin-top: 20px; text-align: right;">
+        <p><strong>Total: ________________</strong></p>
+      </div>
+      <div class="footer">
+        ${profileName ? `<p style="font-size:13px;color:#444;"><strong>Responsável:</strong> ${profileName}${profilePhone ? ` | ${profilePhone}` : ""}${profileEmail ? ` | ${profileEmail}` : ""}</p>` : ""}
+        <div class="signature-line">
+          <div class="sig-block">
+            ${sigBase64 ? `<img src="${sigBase64}" class="sig-img" alt="Assinatura" />` : `<div style="height:60px"></div>`}
+            <div class="sig-label">Assinatura do Responsável</div>
+          </div>
+          <div class="sig-block">
+            <div style="height:60px"></div>
+            <div class="sig-label">Assinatura do Fornecedor</div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -65,6 +192,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const [resendDialog, setResendDialog] = useState<{ trackingId: string; fornecedorId: string; fornecedorNome: string; email: string } | null>(null);
   const [resendEmail, setResendEmail] = useState("");
   const [viewPropostaDialog, setViewPropostaDialog] = useState<{ fornecedorId: string; fornecedorNome: string } | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -506,34 +634,104 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
     }
   };
 
-  // Resend to a single fornecedor
+  // Resend to a single fornecedor with PDF espelho
   const handleResend = async () => {
     if (!resendDialog || !selectedId) return;
     const cotacao = selected;
     if (!cotacao) return;
 
-    // Update data_envio and email in cotacao_fornecedores
-    const { error } = await supabase
-      .from("cotacao_fornecedores")
-      .update({ data_envio: new Date().toISOString(), email: resendEmail || null })
-      .eq("id", resendDialog.trackingId);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ["cotacao-tracking", selectedId] });
-    toast.success("Convite reenviado!");
+    setResendLoading(true);
+    try {
+      // Generate PDF espelho
+      let profileData: any = {};
+      if (user) {
+        const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        if (data) profileData = data;
+      }
 
-    // Open mailto
-    const token = await ensureToken(cotacao.id, cotacao.token_publico);
-    if (token && resendEmail) {
       const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
-      const link = `${window.location.origin}/cotacao/${token}?fornecedor=${resendDialog.fornecedorId}`;
-      const subject = `Solicitação de Orçamento #${cotacao.id.slice(0, 8)} - ${nomeObra}`;
-      const body = `Prezado(a) ${resendDialog.fornecedorNome},\n\nReenviamos a cotação referente à obra:\n\n${nomeObra}\n\nEnvie sua proposta pelo link:\n\n${link}\n\nAtenciosamente,\nObraControl`;
-      window.open(`mailto:${encodeURIComponent(resendEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+      const pdfBlob = await generateEspelhoPdf(cotacao, nomeObra, profileData);
+
+      // Update data_envio and email in cotacao_fornecedores
+      const { error } = await supabase
+        .from("cotacao_fornecedores")
+        .update({ data_envio: new Date().toISOString(), email: resendEmail || null })
+        .eq("id", resendDialog.trackingId);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["cotacao-tracking", selectedId] });
+
+      // Try to send via Edge Function with PDF
+      if (pdfBlob) {
+        try {
+          const numOrc = `#${cotacao.id.slice(0, 8)}`;
+          const pdfBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+            reader.readAsDataURL(pdfBlob);
+          });
+
+          const token = await ensureToken(cotacao.id, cotacao.token_publico);
+          if (!token) throw new Error("Falha ao gerar token");
+
+          const link = `${window.location.origin}/cotacao/${token}?fornecedor=${resendDialog.fornecedorId}`;
+          const result = await supabase.functions.invoke("enviar-cotacao-espelho", {
+            body: {
+              email: resendEmail,
+              fornecedor_nome: resendDialog.fornecedorNome,
+              obra_nome: nomeObra,
+              cotacao_numero: numOrc,
+              cotacao_link: link,
+              espelho_pdf_base64: pdfBase64,
+            },
+          });
+
+          if (result.error) {
+            // Fallback: download PDF and open mailto
+            downloadPdfAndOpenMailto();
+          } else {
+            toast.success("Convite reenviado com espelho anexado!");
+          }
+        } catch (e) {
+          // Fallback: download PDF and open mailto
+          downloadPdfAndOpenMailto();
+        }
+      } else {
+        downloadPdfAndOpenMailto();
+      }
+
+      function downloadPdfAndOpenMailto() {
+        // Download PDF
+        if (pdfBlob) {
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement("a");
+          const numOrc = `#${cotacao.id.slice(0, 8)}`;
+          a.href = url;
+          a.download = `Espelho_Orcamento_${numOrc.replace("#", "")}_${new Date().toISOString().split("T")[0]}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+
+        // Open mailto with instructions
+        const token = ensureToken(cotacao.id, cotacao.token_publico);
+        if (token) {
+          token.then((t) => {
+            const link = `${window.location.origin}/cotacao/${t}?fornecedor=${resendDialog.fornecedorId}`;
+            const subject = `Solicitação de Orçamento #${cotacao.id.slice(0, 8)} - ${nomeObra}`;
+            const body = `Prezado(a) ${resendDialog.fornecedorNome},\n\nReenviamos a cotação referente à obra:\n\n${nomeObra}\n\nEnvie sua proposta pelo link:\n\n${link}\n\nSegue em anexo o espelho do orçamento.\n\nAtenciosamente,\nObraControl`;
+            window.open(`mailto:${encodeURIComponent(resendEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+          });
+        }
+        toast.success("PDF baixado! Anexe-o ao e-mail que foi aberto.");
+      }
+    } finally {
+      setResendLoading(false);
+      setResendDialog(null);
     }
-    setResendDialog(null);
   };
 
   const handlePrintEspelho = async () => {
@@ -543,7 +741,6 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       return;
     }
     const nomeObra = (cotacao.obras as any)?.nome ?? "Obra";
-    const numOrc = `#${cotacao.id.slice(0, 8)}`;
 
     let profileData: any = {};
     if (user) {
@@ -551,123 +748,39 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       if (data) profileData = data;
     }
 
-    let logoBase64 = "";
-    try {
-      const resp = await fetch(logoImg);
-      const blob = await resp.blob();
-      logoBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    } catch { /* fallback without logo */ }
-
-    let sigBase64 = "";
-    if (profileData.assinatura_url) {
-      try {
-        const resp = await fetch(profileData.assinatura_url);
-        const blob = await resp.blob();
-        sigBase64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      } catch { /* fallback without signature */ }
-    }
-
-    const profileName = profileData.nome || user?.email || "";
-    const profileEmail = profileData.email || user?.email || "";
-    const profilePhone = profileData.telefone || "";
-
+    const html = await generateEspelhoHtml(cotacao, nomeObra, printItens, user, profileData);
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`
-      <html>
-      <head>
-        <title>Espelho do Orçamento ${numOrc}</title>
-        <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1a1a1a; background: #fff; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
-          .header img { height: 60px; margin-bottom: 12px; }
-          .header h2 { font-size: 22px; color: #2563eb; margin: 0; font-weight: 700; letter-spacing: 0.5px; }
-          .header .num-orc { font-size: 14px; color: #666; margin-top: 4px; }
-          .info { margin-bottom: 20px; }
-          .info p { margin: 4px 0; font-size: 14px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-          th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-size: 14px; }
-          th { background: #e0e7ff; font-weight: 600; color: #1e3a5f; }
-          tr:nth-child(even) td { background: #f3f4f6; }
-          tr:nth-child(odd) td { background: #fff; }
-          .price-col { width: 150px; border-bottom: 1px dotted #999; }
-          .footer { margin-top: 50px; border-top: 1px solid #e5e7eb; padding-top: 24px; }
-          .footer .signature-line { display: flex; justify-content: space-between; margin-top: 40px; }
-          .footer .signature-line .sig-block { width: 45%; text-align: center; }
-          .footer .signature-line .sig-block .sig-img { height: 60px; object-fit: contain; margin-bottom: -4px; }
-          .footer .signature-line .sig-block .sig-label { border-top: 1px solid #333; padding-top: 8px; font-size: 12px; color: #666; }
-          @media print {
-            body { margin: 20px; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            button, .no-print { display: none !important; }
-            * { box-shadow: none !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : ""}
-          <h2>Espelho do Orçamento</h2>
-          <p class="num-orc">Orçamento ${numOrc}</p>
-        </div>
-        <div class="info">
-          <p><strong>Cotação:</strong> ${cotacao.descricao}</p>
-          <p><strong>Obra:</strong> ${nomeObra}</p>
-          <p><strong>Data:</strong> ${new Date().toLocaleDateString("pt-BR")}</p>
-          ${cotacao.data_expiracao ? `<p><strong>Prazo:</strong> ${new Date(cotacao.data_expiracao).toLocaleDateString("pt-BR")}</p>` : ""}
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Item</th>
-              <th>Quantidade</th>
-              <th>Unidade</th>
-              <th>Valor Unitário</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${printItens.map((item: any, i: number) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${item.nome}</td>
-                <td>${item.quantidade}</td>
-                <td>${item.unidade || "un"}</td>
-                <td class="price-col"></td>
-                <td class="price-col"></td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-        <div style="margin-top: 20px; text-align: right;">
-          <p><strong>Total: ________________</strong></p>
-        </div>
-        <div class="footer">
-          ${profileName ? `<p style="font-size:13px;color:#444;"><strong>Responsável:</strong> ${profileName}${profilePhone ? ` | ${profilePhone}` : ""}${profileEmail ? ` | ${profileEmail}` : ""}</p>` : ""}
-          <div class="signature-line">
-            <div class="sig-block">
-              ${sigBase64 ? `<img src="${sigBase64}" class="sig-img" alt="Assinatura" />` : `<div style="height:60px"></div>`}
-              <div class="sig-label">Assinatura do Responsável</div>
-            </div>
-            <div class="sig-block">
-              <div style="height:60px"></div>
-              <div class="sig-label">Assinatura do Fornecedor</div>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `);
+    w.document.write(html);
     w.document.close();
     w.print();
+  };
+
+  const generateEspelhoPdf = async (cotacao: any, nomeObra: string, profileData?: any): Promise<Blob | null> => {
+    try {
+      const html = await generateEspelhoHtml(cotacao, nomeObra, printItens, user, profileData);
+      const element = document.createElement("div");
+      element.innerHTML = html;
+
+      const numOrc = `#${cotacao.id.slice(0, 8)}`;
+      const filename = `Espelho_Orcamento_${numOrc.replace("#", "")}_${new Date().toISOString().split("T")[0]}.pdf`;
+
+      return new Promise((resolve) => {
+        html2pdf().set({
+          margin: 10,
+          filename,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, logging: false },
+          jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+        }).from(html).outputPdf((pdf: Blob) => {
+          resolve(pdf);
+        });
+      });
+    } catch (e) {
+      console.error("PDF generation error:", e);
+      toast.error("Erro ao gerar PDF");
+      return null;
+    }
   };
 
   return (
@@ -1116,7 +1229,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       </Dialog>
 
       {/* Resend Dialog */}
-      <Dialog open={!!resendDialog} onOpenChange={(v) => !v && setResendDialog(null)}>
+      <Dialog open={!!resendDialog} onOpenChange={(v) => !v && !resendLoading && setResendDialog(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Reenviar Convite</DialogTitle>
@@ -1125,6 +1238,8 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Reenviar convite para <strong>{resendDialog.fornecedorNome}</strong>
+                <br />
+                <span className="text-xs text-green-600 mt-1 block">📎 O espelho do orçamento será anexado</span>
               </p>
               <div className="space-y-2">
                 <Label>E-mail do Fornecedor</Label>
@@ -1133,10 +1248,19 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                   onChange={(e) => setResendEmail(e.target.value)}
                   placeholder="email@fornecedor.com"
                   type="email"
+                  disabled={resendLoading}
                 />
               </div>
-              <Button className="w-full" onClick={handleResend}>
-                <Send className="mr-2 h-4 w-4" /> Reenviar
+              <Button className="w-full" onClick={handleResend} disabled={resendLoading || !resendEmail}>
+                {resendLoading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span> Gerando PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" /> Reenviar com Espelho
+                  </>
+                )}
               </Button>
             </div>
           )}
