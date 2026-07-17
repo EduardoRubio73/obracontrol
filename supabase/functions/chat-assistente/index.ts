@@ -961,8 +961,8 @@ serve(async (req) => {
           fnArgs = {};
         }
 
-        // Inject obra_id if tool needs it and user has one active
-        if (TOOLS_NEEDING_OBRA_ID.includes(fnName) && !fnArgs.obra_id && obra_id) {
+        // Sempre usar o obra_id da sessão (nunca confiar no valor que o modelo gerar)
+        if (TOOLS_NEEDING_OBRA_ID.includes(fnName) && obra_id) {
           fnArgs.obra_id = obra_id;
         }
 

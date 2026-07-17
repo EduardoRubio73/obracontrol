@@ -6,6 +6,38 @@
 
 ---
 
+## [17/07/2026 - 15:42:34] Correção: Assistente de Obra perdia contexto da obra em mensagens de follow-up (✅ Completo)
+- **Tipo:** [BUG]
+- **Afeta:** `chat-assistente` (Edge Function)
+- **Descrição:** Ao confirmar uma sugestão do assistente (ex.: responder "sim"
+  para criar a primeira etapa de uma obra), a IA respondia "Não encontrei
+  essa obra na sua conta.", mesmo estando na mesma conversa sobre a mesma
+  obra.
+  - **Causa raiz:** todas as ferramentas que o modelo pode chamar
+    (`criar_etapa`, `criar_gasto`, `status_obra`, etc.) declaram `obra_id`
+    como parâmetro de texto livre que o próprio LLM preenche a cada tool
+    call. O backend só sobrescrevia esse valor pelo `obra_id` real da sessão
+    quando o modelo o deixava vazio (`!fnArgs.obra_id`). Se o modelo
+    alucinasse/errasse o UUID em um turno subsequente (comum em chamadas de
+    função multi-turno), esse UUID incorreto passava para `userOwnsObra()`,
+    que rejeitava por não pertencer ao usuário — gerando a mensagem de erro.
+    O frontend (`Chat.tsx`) já enviava o `obra_id` correto em toda requisição;
+    o problema era só no backend confiar no valor gerado pelo modelo.
+  - **Correção:** a injeção de `obra_id` deixou de ser condicional
+    (`!fnArgs.obra_id`) e passou a ser incondicional — o `obra_id` da sessão
+    sempre sobrescreve o que o modelo devolver, para todas as ferramentas em
+    `TOOLS_NEEDING_OBRA_ID`. A sessão do chat é sempre escopada a uma única
+    obra (trocar de obra recarrega a tela com outro `obraId` de rota), então
+    não existe cenário legítimo em que o valor do modelo deva prevalecer.
+
+**Arquivos:**
+- supabase/functions/chat-assistente/index.ts (linha ~965)
+
+**Pendente:** deploy da função (`supabase functions deploy chat-assistente`)
+ainda não foi feito — correção está só no código local.
+
+---
+
 ## [17/07/2026 - 14:14:44] Anti-duplicidade + normalização de texto em 7 tabelas de cadastro (✅ Completo)
 - **Tipo:** [DB] [DATA-QUALITY]
 - **Descrição:** Pedido do usuário: verificar/remover duplicatas em `unidades_medida`,
