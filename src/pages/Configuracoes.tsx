@@ -565,6 +565,15 @@ function FornecedoresBody() {
     },
   });
 
+  const { data: tipos = [] } = useQuery({
+    queryKey: ["tipos_fornecedor"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tipos_fornecedor").select("id, nome").order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const filtrados = fornecedores.filter((f: any) => !busca.trim() || f.nome.toLowerCase().includes(busca.toLowerCase()));
 
   const add = useMutation({
@@ -662,6 +671,15 @@ function FornecedoresBody() {
                 <Input value={editData?.nome || ""} onChange={(e) => setEditData({ ...editData, nome: e.target.value })} className="h-7 text-xs" placeholder="Nome" />
                 <Input value={editData?.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className="h-7 text-xs" placeholder="Email" />
                 <Input value={editData?.telefone || ""} onChange={(e) => setEditData({ ...editData, telefone: e.target.value })} className="h-7 text-xs" placeholder="Telefone" />
+                <Select value={editData?.tipo || ""} onValueChange={(v) => setEditData({ ...editData, tipo: v })}>
+                  <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tipo..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sem tipo</SelectItem>
+                    {tipos.map((t: any) => (
+                      <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="flex gap-1">
                   <Button size="sm" variant="default" onClick={() => update.mutate()} className="h-6 text-xs">Salvar</Button>
                   <Button size="sm" variant="outline" onClick={cancelEdit} className="h-6 text-xs">Cancelar</Button>
@@ -1021,6 +1039,103 @@ function ProdutosBody() {
   );
 }
 
+/* Tipos de Fornecedor com busca e ordenação */
+function TiposFornecedorBody() {
+  const { items, isLoading, add, update, del } = useCrudTab("tipos_fornecedor");
+  const [novoNome, setNovoNome] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingNome, setEditingNome] = useState("");
+  const [busca, setBusca] = useState("");
+
+  const dupName = !!items?.find((i) => (i.nome ?? "").toLowerCase().trim() === novoNome.toLowerCase().trim());
+
+  const handleAdd = () => {
+    if (!novoNome.trim() || dupName) return;
+    add.mutate({ nome: novoNome.trim() }, {
+      onSuccess: () => { setNovoNome(""); },
+    });
+  };
+
+  const startEdit = (item: CrudItem) => {
+    setEditingId(item.id);
+    setEditingNome(item.nome);
+  };
+  const cancelEdit = () => { setEditingId(null); setEditingNome(""); };
+  const saveEdit = () => {
+    if (!editingNome.trim() || !editingId) return;
+    update.mutate({ id: editingId, nome: editingNome.trim() }, { onSuccess: cancelEdit });
+  };
+
+  const filtrados = (items ?? [])
+    .filter(i => !busca.trim() || (i.nome ?? "").toLowerCase().includes(busca.toLowerCase()))
+    .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""));
+
+  return (
+    <div className="space-y-3 pt-3">
+      <div className="space-y-2">
+        <Input placeholder="Novo tipo..." value={novoNome} onChange={(e) => setNovoNome(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        {dupName && novoNome.trim() && <p className="text-xs text-warning">⚠️ Já existe "{novoNome}"</p>}
+        <Button onClick={handleAdd} disabled={!novoNome.trim() || dupName || add.isPending} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-1" /> Adicionar
+        </Button>
+      </div>
+
+      <Input placeholder="🔍 Localizar..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+
+      <div className="space-y-1">
+        {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
+        {!isLoading && !items?.length && <p className="text-muted-foreground text-sm text-center py-4">Nenhum tipo cadastrado</p>}
+        {filtrados.map((item) => (
+          <div key={item.id} className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
+            {editingId === item.id ? (
+              <div className="flex flex-col gap-2 flex-1 mr-2">
+                <Input value={editingNome} onChange={(e) => setEditingNome(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                  className="h-9" autoFocus placeholder="Nome" />
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={saveEdit} disabled={!editingNome.trim()} className="text-primary shrink-0">
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={cancelEdit} className="shrink-0">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span className="font-semibold text-sm text-foreground py-2">{item.nome}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => startEdit(item)} className="h-8 w-8">
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => del.mutate(item.id)} disabled={del.isPending} className="h-8 w-8">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TiposFornecedorCollapsible() {
+  const { data: items } = useQuery({
+    queryKey: ["tipos_fornecedor"],
+    queryFn: async () => {
+      const { data } = await supabase.from("tipos_fornecedor").select("id");
+      return data ?? [];
+    },
+  });
+  return (
+    <CollapsibleCard title="Tipos de Fornecedor" icon="👷" tooltip="Classifique fornecedores (ex: pedreiro, eletricista, loja de material)." count={items?.length}>
+      <TiposFornecedorBody />
+    </CollapsibleCard>
+  );
+}
+
 /* ----------------- Wrappers to show count in header ----------------- */
 function CrudCollapsible({
   table, label, title, icon, tooltip,
@@ -1098,13 +1213,7 @@ const Configuracoes = () => {
 
         <TabsContent value="fornecedores" className="space-y-3 mt-4">
           <FornecedoresCollapsible />
-          <CrudCollapsible
-            table="tipos_fornecedor"
-            label="tipo de fornecedor"
-            title="Tipos de Fornecedor"
-            icon="👷"
-            tooltip="Classifique fornecedores (ex: pedreiro, eletricista, loja de material)."
-          />
+          <TiposFornecedorCollapsible />
         </TabsContent>
 
         <TabsContent value="etapas" className="space-y-3 mt-4">
