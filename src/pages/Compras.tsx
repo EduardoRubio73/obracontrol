@@ -263,7 +263,7 @@ function ComprasContent({ obraId }: { obraId: string }) {
 
   const marcarComprado = useMutation({
     mutationFn: async (compraId: string) => {
-      const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: compraId } as any);
+      const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: compraId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -356,7 +356,7 @@ function ComprasContent({ obraId }: { obraId: string }) {
     setBulkPending(true);
     const results = await Promise.allSettled(
       ids.map(async (id) => {
-        const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: id } as any);
+        const { error } = await supabase.rpc("marcar_comprado", { p_compra_id: id });
         if (error) throw error;
       }),
     );

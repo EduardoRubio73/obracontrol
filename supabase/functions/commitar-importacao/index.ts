@@ -5,6 +5,8 @@ import { z } from 'npm:zod@3.23.8';
 const BodySchema = z.object({
   preview: z.object({
     source_file: z.string(),
+    arquivo_hash: z.string(),
+    confianca_classificacao: z.number().optional(),
     meta: z.object({
       fornecedor_nome: z.string().nullable(),
       fornecedor_cnpj: z.string().nullable(),
@@ -171,6 +173,16 @@ Deno.serve(async (req) => {
         created.compras++;
       }
     }
+
+    // Best-effort dedup log — the import itself already succeeded above, so a unique-key
+    // collision here (23505, e.g. a race between two identical concurrent requests) just
+    // means another request logged it first; don't fail the response over that.
+    const { error: logErr } = await supabase.from('importacoes_log').insert({
+      obra_id, arquivo_nome: preview.source_file, arquivo_hash: preview.arquivo_hash,
+      tipo_documento: tipo, confianca: preview.confianca_classificacao ?? null,
+      itens_count: items.length,
+    });
+    if (logErr && logErr.code !== '23505') console.error('importacoes_log insert failed:', logErr);
 
     return json({ ok: true, tipo, cotacao_id, fornecedor_id, created });
   } catch (e) {

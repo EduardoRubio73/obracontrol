@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 
 type PreviewMatch = { match: { id: string; nome: string } | null; score: number; decision: "auto" | "review" | "new" };
 type PreviewItem = {
@@ -17,23 +19,28 @@ type PreviewItem = {
   produto_match: PreviewMatch; categoria_sugerida: string;
 };
 type Preview = {
-  source_file: string; storage_path: string;
+  source_file: string; storage_path: string; arquivo_hash: string;
   meta: { fornecedor_nome: string | null; fornecedor_cnpj: string | null; numero_documento: string | null };
   tipo_documento: string; confianca_classificacao: number;
   fornecedor_match: PreviewMatch | null;
   items: PreviewItem[];
+  duplicado: { importado_em: string; obra_nome: string | null } | null;
 };
 
 const ACCEPT = ".csv,.xlsx,.xls,.docx,.pdf,.md,.txt";
 
-export function ImportarProdutosDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function ImportarProdutosDialog({
+  open, onOpenChange, obraId: obraIdProp, obraNome,
+}: { open: boolean; onOpenChange: (v: boolean) => void; obraId?: string; obraNome?: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [decisions, setDecisions] = useState<Record<string, string>>({});
   const [fornecedorDecision, setFornecedorDecision] = useState<string>("auto");
-  const [obraId, setObraId] = useState<string>("");
+  const [obraId, setObraId] = useState<string>(obraIdProp ?? "");
+  const [editingFornecedor, setEditingFornecedor] = useState(false);
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
   const [committing, setCommitting] = useState(false);
 
   const { data: obras = [] } = useQuery({
@@ -42,11 +49,12 @@ export function ImportarProdutosDialog({ open, onOpenChange }: { open: boolean; 
       const { data } = await supabase.from("obras").select("id, nome").eq("user_id", user!.id).order("nome");
       return data || [];
     },
-    enabled: !!user && open,
+    enabled: !!user && open && !obraIdProp,
   });
 
   const reset = () => {
-    setPreview(null); setDecisions({}); setFornecedorDecision("auto"); setObraId("");
+    setPreview(null); setDecisions({}); setFornecedorDecision("auto"); setObraId(obraIdProp ?? "");
+    setEditingFornecedor(false); setConfirmDuplicate(false);
   };
 
   const handleClose = (v: boolean) => {
@@ -76,6 +84,11 @@ export function ImportarProdutosDialog({ open, onOpenChange }: { open: boolean; 
       if (!p.items?.length) {
         toast.warning("Nenhum item detectado no arquivo. Verifique o formato.");
       }
+      if (p.duplicado) {
+        toast.warning("Este arquivo já foi importado antes — revise antes de confirmar.");
+      }
+      setConfirmDuplicate(false);
+      setEditingFornecedor(false);
       setPreview(p);
       // Init decisions: auto = accept match, review/new = force manual choice
       const init: Record<string, string> = {};
@@ -155,46 +168,96 @@ export function ImportarProdutosDialog({ open, onOpenChange }: { open: boolean; 
         {preview && (
           <div className="flex flex-col gap-4 overflow-hidden flex-1">
             {/* Cabeçalho */}
-            <div className="rounded-lg border p-3 space-y-2 shrink-0">
+            <div className="rounded-lg border p-3 space-y-3 shrink-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{preview.tipo_documento}</Badge>
                 <span className="text-xs text-muted-foreground">
                   confiança {Math.round(preview.confianca_classificacao * 100)}%
                 </span>
-                <span className="text-xs text-muted-foreground ml-auto">📄 {preview.source_file}</span>
+                <span className="text-xs text-muted-foreground ml-auto truncate max-w-[50%]">📄 {preview.source_file}</span>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-2 text-sm">
-                <div>
-                  <label className="text-xs text-muted-foreground">Fornecedor</label>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{preview.meta.fornecedor_nome || "—"}</span>
-                    {preview.meta.fornecedor_cnpj && <Badge variant="outline" className="text-xs">{preview.meta.fornecedor_cnpj}</Badge>}
-                  </div>
-                  <Select value={fornecedorDecision} onValueChange={setFornecedorDecision}>
-                    <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {preview.fornecedor_match?.match && (
-                        <SelectItem value="auto">
-                          ✓ Vincular a "{preview.fornecedor_match.match.nome}" ({Math.round(preview.fornecedor_match.score * 100)}%)
-                        </SelectItem>
+              <div className="grid md:grid-cols-2 gap-3 text-sm">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Fornecedor</label>
+                  <div className="rounded-md border bg-muted/30 px-3 py-2 space-y-1.5">
+                    <div>
+                      <div className="font-medium leading-tight truncate">{preview.meta.fornecedor_nome || "—"}</div>
+                      {preview.meta.fornecedor_cnpj && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{preview.meta.fornecedor_cnpj}</div>
                       )}
-                      <SelectItem value="new">➕ Criar novo fornecedor</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    </div>
+                    {!editingFornecedor ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={fornecedorDecision === "auto" ? "secondary" : "outline"} className="text-xs font-normal">
+                          {fornecedorDecision === "auto" && preview.fornecedor_match?.match
+                            ? `✓ Vinculado (${Math.round(preview.fornecedor_match.score * 100)}%)`
+                            : "➕ Será criado como novo"}
+                        </Badge>
+                        {preview.fornecedor_match?.match && (
+                          <button
+                            type="button"
+                            className="text-xs text-primary hover:underline"
+                            onClick={() => setEditingFornecedor(true)}
+                          >
+                            Alterar
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <Select
+                        value={fornecedorDecision}
+                        onValueChange={(v) => { setFornecedorDecision(v); setEditingFornecedor(false); }}
+                      >
+                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {preview.fornecedor_match?.match && (
+                            <SelectItem value="auto">
+                              ✓ Vincular a "{preview.fornecedor_match.match.nome}" ({Math.round(preview.fornecedor_match.score * 100)}%)
+                            </SelectItem>
+                          )}
+                          <SelectItem value="new">➕ Criar novo fornecedor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs text-muted-foreground">Obra <span className="text-destructive">*</span></label>
-                  <Select value={obraId} onValueChange={setObraId}>
-                    <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
-                    <SelectContent>
-                      {obras.map((o: any) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Obra <span className="text-destructive">*</span></label>
+                  {obraIdProp ? (
+                    <div className="rounded-md border bg-muted/30 px-3 py-2 flex items-center min-h-[2.75rem]">
+                      <span className="font-medium">{obraNome ?? "—"}</span>
+                    </div>
+                  ) : (
+                    <Select value={obraId} onValueChange={setObraId}>
+                      <SelectTrigger className="h-8"><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+                      <SelectContent>
+                        {obras.map((o: any) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </div>
+
+            {preview.duplicado && (
+              <Alert variant="destructive" className="shrink-0">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Este arquivo já foi importado antes</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>
+                    Importado em {new Date(preview.duplicado.importado_em).toLocaleString("pt-BR")}
+                    {preview.duplicado.obra_nome && <> na obra <strong>{preview.duplicado.obra_nome}</strong></>}.
+                    Confirmar de novo pode duplicar produtos, itens ou cotações.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                    <Checkbox checked={confirmDuplicate} onCheckedChange={(v) => setConfirmDuplicate(!!v)} />
+                    Sim, quero importar mesmo assim (pode gerar duplicidade)
+                  </label>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Itens */}
             <ScrollArea className="flex-1 border rounded-lg">
@@ -242,7 +305,7 @@ export function ImportarProdutosDialog({ open, onOpenChange }: { open: boolean; 
 
             <div className="flex justify-between gap-2 shrink-0">
               <Button variant="outline" onClick={reset} disabled={committing}>← Reenviar arquivo</Button>
-              <Button onClick={commit} disabled={committing || !obraId}>
+              <Button onClick={commit} disabled={committing || !obraId || (!!preview.duplicado && !confirmDuplicate)}>
                 {committing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Confirmar importação ({preview.items.length} itens)
               </Button>

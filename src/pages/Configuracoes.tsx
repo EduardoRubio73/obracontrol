@@ -24,8 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown, Upload, Settings2, FileSpreadsheet } from "lucide-react";
-import { ImportarProdutosDialog } from "@/components/produtos/ImportarProdutosDialog";
+import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CrudItem = { id: string; nome: string; descricao?: string | null; etapa_padrao_id?: string | null };
@@ -576,7 +575,6 @@ function ProdutoRow({ p, onEdit, onDelete }: { p: any; onEdit: (p: any) => void;
 function ProdutosBody() {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState(false);
-  const [manageDialog, setManageDialog] = useState(false);
   const [edit, setEdit] = useState<any>(null);
   const [nome, setNome] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -734,9 +732,6 @@ function ProdutosBody() {
           <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-1" /> Novo
           </Button>
-          <Button variant="outline" onClick={() => setManageDialog(true)}>
-            <Settings2 className="h-4 w-4 mr-1" /> Gerenciar
-          </Button>
         </div>
       </div>
 
@@ -809,11 +804,6 @@ function ProdutosBody() {
           </div>
         )}
       </div>
-
-      {/* Importar documento (pedido/cotação/OV/lista de preços) */}
-      <ImportarProdutosDialog open={manageDialog} onOpenChange={setManageDialog} />
-
-
 
       <Dialog open={dialog} onOpenChange={(v) => { if (!v) close(); }}>
         <DialogContent className="max-w-md">

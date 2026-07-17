@@ -31,6 +31,12 @@ Deno.serve(async (req) => {
     const { data: fileData, error: dlErr } = await supabase.storage.from('documentos').download(storage_path);
     if (dlErr || !fileData) return json({ error: 'Download failed', details: dlErr?.message }, 400);
 
+    // Hash the raw bytes to detect re-imports of the exact same file later (dedup check
+    // below + persisted in commitar-importacao). Blob reads are not one-shot in Deno, so
+    // calling .arrayBuffer()/.text() again further down for parsing is safe.
+    const hashBuf = await crypto.subtle.digest('SHA-256', await fileData.arrayBuffer());
+    const arquivo_hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
     const ext = (filename || storage_path).toLowerCase().split('.').pop() || '';
     let parsed: { header_lines: string[]; rows: Row[] };
 
@@ -60,10 +66,13 @@ Deno.serve(async (req) => {
     const meta = extractHeaderMetadata(parsed.header_lines);
     const { tipo, confianca } = classifyDocument(meta, parsed.rows);
 
-    // Fetch user's fornecedores + produtos for matching
-    const [{ data: fornecedores }, { data: produtos }] = await Promise.all([
+    // Fetch user's fornecedores + produtos for matching, and check whether this exact
+    // file (by content hash) was already imported before, regardless of which obra.
+    const [{ data: fornecedores }, { data: produtos }, { data: existingLog }] = await Promise.all([
       supabase.from('fornecedores').select('id, nome, cnpj').eq('user_id', userData.user.id),
       supabase.from('produtos').select('id, nome, unidade').eq('user_id', userData.user.id),
+      supabase.from('importacoes_log').select('created_at, obras(nome)')
+        .eq('user_id', userData.user.id).eq('arquivo_hash', arquivo_hash).maybeSingle(),
     ]);
 
     const fornecedor_match = meta.fornecedor_nome || meta.fornecedor_cnpj
@@ -91,11 +100,15 @@ Deno.serve(async (req) => {
     return json({
       source_file: filename || storage_path,
       storage_path,
+      arquivo_hash,
       meta,
       tipo_documento: tipo,
       confianca_classificacao: confianca,
       fornecedor_match,
       items,
+      duplicado: existingLog
+        ? { importado_em: existingLog.created_at, obra_nome: existingLog.obras?.nome ?? null }
+        : null,
     });
   } catch (e) {
     console.error('importar-documento error:', e);
@@ -150,63 +163,36 @@ function stripHtml(s: string): string {
 
 // Matches an "ordem de venda" style item row:
 //   ITEM CÓDIGO QTDE UN PRODUTO VAL_UNIT VAL_DESC VAL_LIQ [ENT [OF] [ENC]] PRECO_TOTAL
-// The zone between VAL_LIQ and PRECO_TOTAL (ENT/OF/ENC) is matched loosely with `.*?`
-// instead of a fixed single-letter column, because those trailing columns are often
-// blank or of variable width depending on the source ERP — a rigid single-token match
-// silently drops every row on documents where they aren't exactly one blank letter.
-const PDF_ITEM_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s+(.+?)\s+R\$\s*[\d.,]+\s+R\$\s*[\d.,]+\s+R\$\s*([\d.,]+)\s+.*?R\$\s*[\d.,]+\s*$/;
-// Detects a row-start line that wraps: item, código, qtde, un with NOTHING else on the
-// line (the product name starts fresh on the next physical line, sometimes spanning
-// several). Anchored to end-of-line — a trailing `\s+` here would never match, since the
-// line is already trimmed and has nothing left after the unit code.
-const PDF_ROW_START_RE = /^(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s*$/;
+// No line anchors, matched with /g directly against the raw text instead of a
+// per-line state machine: confirmed against real PDFs from this ERP that
+// unpdf's extractText({ mergePages: true }) can return the ENTIRE page as one
+// single line with zero "\n" characters at all — a line-based approach never
+// has more than one "line" to work with in that case, so every row-matching
+// attempt failed and the whole document silently produced 0 items. Scanning
+// the continuous text with exec()/lastIndex instead works whether or not real
+// line breaks are present, and naturally handles rows wrapped across lines too
+// (`\s+` matches "\n" the same as a space). The zone between VAL_LIQ and
+// PRECO_TOTAL (ENT/OF/ENC) is matched loosely with `.*?` instead of a fixed
+// single-letter column, because those trailing columns are often blank or of
+// variable width depending on the source ERP. PRODUTO itself is optional
+// (guarded by a negative lookahead so it can't swallow the literal "R$" that
+// follows) for layouts where nothing sits between UN and the first "R$".
+const PDF_ITEM_RE = /(\d+)\s+(\S+)\s+([\d.,]+)\s+([A-Z][A-Z0-9]{0,3})\s+(?:(?!R\$)(.+?)\s+)?R\$\s*[\d.,]+\s+R\$\s*[\d.,]+\s+R\$\s*([\d.,]+)\s+.*?R\$\s*[\d.,]+/g;
 
 function parsePdfText(text: string): { header_lines: string[]; rows: Row[] } {
-  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const STOP = ["Vendedor", "FORMA", "ENTREGA", "OBSERVA", "Total", "Usuário",
-    "ITEM CÓDIGO", "ORDEM DE VENDA", "NÃO É", "SITUAÇÃO", "Loja:", "End.:",
-    "Cliente", "Endereço", "Cidade", "CNPJ", "liberação"];
+  const header_lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-  // Re-join a row-start line with no "R$" on it to the following line(s) until one
-  // containing "R$" appears, so a wrapped row is evaluated as a single logical line.
-  const lines: string[] = [];
-  let buf = "";
-  for (const line of rawLines) {
-    if (buf) {
-      buf += " " + line;
-      if (/R\$/.test(line)) { lines.push(buf); buf = ""; }
-      continue;
-    }
-    if (PDF_ROW_START_RE.test(line)) { buf = line; continue; }
-    lines.push(line);
-  }
-  if (buf) lines.push(buf);
-
-  const header_lines: string[] = [];
   const rows: Row[] = [];
-  let nameBuf: string[] = [];
-  for (const line of lines) {
-    const m = line.match(PDF_ITEM_RE);
-    if (m) {
-      const [, , codigo, qtd, un, nome, valLiq] = m;
-      const parts = [...nameBuf, ...(nome ? [nome.trim()] : [])].filter(Boolean);
-      rows.push({
-        codigo, nome: parts.join(' ').trim() || '(produto)',
-        un, qtd, valor: valLiq,
-      });
-      nameBuf = [];
-    } else if (STOP.some(s => line.startsWith(s))) {
-      header_lines.push(line);
-      nameBuf = [];
-    } else {
-      nameBuf.push(line);
-    }
+  PDF_ITEM_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = PDF_ITEM_RE.exec(text)) !== null) {
+    const [, , codigo, qtd, un, nome, valLiq] = m;
+    rows.push({ codigo, nome: (nome || '').trim() || '(produto)', un, qtd, valor: valLiq });
   }
 
   if (rows.length === 0) {
-    // No file-system/log access to the failing PDF was available while diagnosing this —
-    // log the raw extracted text so a real failure can be root-caused from Supabase logs
-    // instead of guessed at again.
+    // Log the raw extracted text so a real failure can be root-caused from
+    // Supabase logs instead of guessed at.
     console.error("parsePdfText: 0 rows extracted, raw text follows:\n" + text.slice(0, 4000));
   }
 

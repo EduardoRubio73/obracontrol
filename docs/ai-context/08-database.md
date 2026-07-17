@@ -32,6 +32,7 @@ Projeto Supabase: `xsqnkptdbabnvjcrvaob`. **Sempre consultar `src/integrations/s
 | `auditoria` | Log de auditoria (tabela, ação, dados) | 1 |
 | `profiles` | Perfil do usuário (id = auth.uid()) | 5 |
 | `voz_comandos_log` | Log de comandos de voz | — |
+| `importacoes_log` | Log de importações (hash SHA-256 do arquivo) — bloqueia reimportar o mesmo arquivo por usuário | 1 |
 | `tenants` | Legado multi-tenant | — |
 | `fornecedores_cotacao` | Legado/duplicado — provavelmente **código morto** | — |
 | `Atualização_Automatica_n8n` | Integração externa (nome com acento — evitar) | — |
@@ -46,7 +47,16 @@ Projeto Supabase: `xsqnkptdbabnvjcrvaob`. **Sempre consultar `src/integrations/s
 - `fn_alerta_atraso` — cria `alertas_sistema` quando fase atrasa.
 - `trigger_ranking` / `trigger_avaliacao` — atualiza métricas e status do fornecedor após proposta.
 - `impedir_fornecedor_bloqueado` — bloqueia inserção em `cotacao_fornecedores` para fornecedor com status `bloqueado`.
-- `log_auditoria` / `audit_trigger` — grava em `auditoria`.
+- `log_auditoria` / `audit_trigger` — grava em `auditoria`. Anexado via `trg_audit_*`
+  em praticamente **todas** as tabelas do schema (confirmado 16/07/2026 via
+  `information_schema.triggers`), não só `profiles`. Ele exige `auth.uid()` não-nulo
+  para preencher `auditoria.user_id` (NOT NULL) — qualquer migration que faça
+  INSERT/UPDATE/DELETE direto numa tabela auditada (sem JWT, `auth.uid()` NULL)
+  quebra com `null value in column "user_id"`. Workaround já usado 2x:
+  `ALTER TABLE <t> DISABLE TRIGGER USER; <escrita>; ALTER TABLE <t> ENABLE TRIGGER
+  USER;` ao redor da escrita de sistema (ver `20260716200000_fix_missing_profiles.sql`
+  e `20260716222404_dedupe_categorias_produtos.sql`). Considerar corrigir na raiz
+  (`COALESCE(auth.uid(), ...)` ou pular log quando NULL) em vez de repetir o wrapper.
 - `set_tenant_id` / `set_tenant_from_obra` — legado tenant.
 
 ## RLS

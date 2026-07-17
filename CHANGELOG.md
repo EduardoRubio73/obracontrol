@@ -6,6 +6,130 @@
 
 ---
 
+## [16/07/2026 - 23:42:25] Correção real do parser de PDF — a causa raiz da entrada anterior estava errada (✅ Completo)
+- **Tipo:** [BUG] [CORREÇÃO-DE-CORREÇÃO]
+- **Descrição:** Usuário testou o fix da entrada de 23:15 (mesmo `PDF_ITEM_RE` "corrigido")
+  e o mesmo arquivo continuou voltando com 0 itens. A causa raiz documentada 40 minutos
+  atrás ("nome do produto vem em linha(s) antes da linha numérica") **estava errada** —
+  era a 3ª tentativa de adivinhar sem ver o texto real, e errou de novo, exatamente como
+  as duas tentativas anteriores (`f5092a7`, `31ef23a`).
+  - Desta vez o usuário passou os 2 PDFs reais (`docs/Orcamento maria izabel.pdf` e
+    `docs/Orcamento maria izabel 2.pdf`). Em vez de adivinhar de novo, rodei `unpdf`
+    (a mesma lib usada pela Edge Function) localmente contra os arquivos reais
+    (`npm install unpdf@0.12.1` + `extractText(pdf, {mergePages:true})`) — **causa raiz
+    real**: essa chamada devolve a página inteira como **uma única linha, sem nenhum
+    `\n`**. `parsePdfText` fazia `text.split(/\r?\n/)` e processava linha por linha com
+    uma máquina de estados (`PDF_ROW_START_RE` + `nameBuf` + lista `STOP`) — sem `\n`
+    nenhum, existe exatamente 1 "linha" (o documento inteiro), que nunca bate com
+    `PDF_ITEM_RE` e vira buffer de nome, zerando `rows.length` sempre. As duas correções
+    anteriores nunca tinham chance de funcionar — o problema nunca foi no formato da
+    regex em si, era a premissa de que existiam múltiplas linhas para iterar.
+  - **Correção:** reescrito `parsePdfText` para escanear o texto bruto inteiro com um
+    regex global (`/g` + `exec`/`lastIndex`, sem `^`/`$`) em vez de dividir por linha —
+    funciona igual com ou sem quebras de linha reais, e cobre wrap de nome entre linhas
+    de graça (`\s+` casa `\n` também). Toda a máquina de estados antiga
+    (`PDF_ROW_START_RE`, `nameBuf`, lista `STOP`) foi removida — não é mais necessária.
+  - **Validado com os 2 arquivos reais antes de reployar**: 3/3 itens no primeiro
+    (FERRO CA50 etc.), 54/54 itens no segundo (incluindo unidade `M3` com dígito, que uma
+    versão de teste simplificada demais também zerou por engano antes de eu perceber).
+  - Registrado como lição em memória (`feedback_edge_function_debugging_no_logs`):
+    consultas a `function_logs`/`edge_logs` via Management API voltaram vazias em todas
+    as tentativas (mesmo minutos após uma chamada real) — reproduzir a lib localmente
+    contra o arquivo real do usuário é o caminho que funciona neste projeto, não os logs.
+- **UX também melhorada no mesmo commit** (pedido do usuário ao testar): o bloco
+  "Fornecedor" no modal de revisão mostrava um `<Select>` grande com "+ Criar novo
+  fornecedor" mesmo sendo a decisão automática correta (sem fornecedor cadastrado ainda
+  para casar) — visualmente parecia uma ação pendente do usuário. Agora mostra um badge
+  de status resumido ("✓ Vinculado (95%)" ou "➕ Será criado como novo") com um link
+  discreto "Alterar" que só aparece quando existe de fato uma alternativa para trocar; o
+  `<Select>` só aparece se o usuário clicar. Fornecedor e Obra passaram a usar o mesmo
+  padrão visual (caixa `bg-muted/30` com borda) para ficarem simétricos lado a lado.
+- **Arquivos:** `supabase/functions/importar-documento/index.ts` (parser reescrito),
+  `src/components/produtos/ImportarProdutosDialog.tsx` (UX do fornecedor), CHANGELOG.md.
+- **Deploy:** `importar-documento` re-deployada via `supabase functions deploy`.
+- **Teste pendente do usuário:** reimportar o mesmo PDF em Cotações → Importar Lista e
+  confirmar que os itens aparecem agora (3 no arquivo "2", 54 no outro).
+
+## [16/07/2026 - 23:15:49] Importação de lista movida para Cotações da Obra + fix do parser de PDF + log de duplicidade + dedupe de categorias_produtos (⚠️ Fix do parser estava incorreto — ver entrada de 23:42:25 acima)
+- **Tipo:** [FEATURE] [BUG] [BANCO-DE-DADOS] [UX]
+- **Descrição:** Pedido do usuário partiu de "Categorias de Produto tem muitos itens
+  repetidos" e evoluiu para três frentes relacionadas:
+
+  1. **Dedupe de `categorias_produtos`:** 9 pares de categorias duplicadas (mesmo
+     `user_id` + nome, ex.: "Agregados", "Hidráulica" etc.) — todas vindas de dois
+     seeds rodados 1 minuto um do outro; o seed mais antigo tinha 0 produtos
+     vinculados, o mais novo tinha todos. Migration
+     `20260716222404_dedupe_categorias_produtos.sql` remapeia `produtos.categoria_id`
+     órfão (rede de segurança, não havia nenhum caso real) e apaga o duplicado mais
+     antigo, depois cria índice único
+     `categorias_produtos_user_nome_unq (user_id, lower(trim(nome)))` para bloquear
+     duplicidade futura no banco. 60 → 51 categorias.
+  2. **Bug real encontrado durante a migration:** `DELETE FROM categorias_produtos`
+     via `supabase db push` falhava com `null value in column "user_id" of relation
+     "auditoria"` — o `audit_trigger()` documentado como pendência na entrada de
+     16/07 ("perfil não salvava") está anexado a **praticamente todas as tabelas do
+     schema** (`trg_audit_categorias_produtos`, `trg_audit_produtos`, `trg_audit_obras`
+     etc. — confirmado via `information_schema.triggers`), não só `profiles`. Qualquer
+     migration que escreva nessas tabelas via conexão direta (sem JWT, `auth.uid()`
+     NULL) quebra do mesmo jeito. Corrigido com o mesmo padrão já usado em
+     `20260716200000_fix_missing_profiles.sql`: `ALTER TABLE ... DISABLE/ENABLE
+     TRIGGER USER` ao redor do DELETE de sistema. A transação da migration garante
+     que nada fica destravado se algo falhar no meio. **Risco residual:** qualquer
+     migration futura que faça INSERT/UPDATE/DELETE direto nessas tabelas vai
+     precisar do mesmo wrapper — vale considerar corrigir `audit_trigger()` na raiz
+     (`COALESCE(auth.uid(), ...)` ou pular log quando NULL) em vez de repetir o
+     workaround em cada migration.
+  3. **Botão "Gerenciar" movido de Config. Sistema para Cotações da Obra:** o botão em
+     Materiais → Produtos abria `ImportarProdutosDialog` (upload de pedido/cotação/OV
+     de fornecedor) totalmente desacoplado de obra — o usuário escolhia a obra
+     manualmente dentro do modal, depois de já ter subido o arquivo. Removido de
+     `Configuracoes.tsx`; o modal ganhou props opcionais `obraId`/`obraNome` (obra
+     travada, sem seletor) e agora abre via novo botão "Importar Lista" em
+     `Cotacoes.tsx`, já dentro do contexto da obra corrente (rota `/obras/:id/cotacoes`).
+  4. **Bug do parser de PDF corrigido:** um PDF de "ordem de venda" (fornecedor TIAO
+     ROCHA) classificava certo (95% confiança, fornecedor identificado) mas zerava os
+     itens. Causa: `PDF_ITEM_RE` em `parsePdfText` exigia ≥1 caractere de nome de
+     produto entre a unidade e o primeiro "R$" — em layouts onde o nome vem em
+     linha(s) **antes** da linha numérica do item (3ª variação de ERP, diferente das
+     duas já cobertas em `f5092a7`/`31ef23a` no mesmo dia), a linha não batia com o
+     regex e virava buffer de nome em vez de item, zerando `rows.length`. Corrigido
+     tornando o grupo do nome opcional com lookahead negativo
+     (`(?:(?!R\$)(.+?)\s+)?R\$`) para não "roubar" o R$ seguinte quando não há nome
+     inline — validado com 3 casos representativos (nome inline, sem nome/buffer
+     antes, nome multi-palavra) via script Node avulso. Não há harness de teste
+     automatizado para as Edge Functions neste projeto — não criado um novo.
+  5. **Log de duplicidade de importação:** não existia nenhum mecanismo de dedup no
+     banco de produção (só um protótipo Python paralelo em `core/`/`web/`, nunca
+     portado). Nova tabela `importacoes_log` (migration
+     `20260716230132_create_importacoes_log.sql`, RLS + índice único
+     `(user_id, arquivo_hash)`). `importar-documento` calcula SHA-256 do arquivo
+     (Web Crypto nativo do Deno) e retorna `duplicado: {importado_em, obra_nome}` se
+     já existir; `commitar-importacao` grava a linha no final (best-effort, ignora
+     colisão 23505). No frontend, arquivo já importado mostra `Alert` destrutivo com
+     data/obra anterior e exige marcar "importar mesmo assim" antes de habilitar
+     "Confirmar importação" — bloqueio por padrão, com escape hatch explícito
+     (decisão confirmada com o usuário). Dedup é por usuário, independente da obra.
+
+- **Arquivos:**
+  - `supabase/migrations/20260716222404_dedupe_categorias_produtos.sql` (novo)
+  - `supabase/migrations/20260716230132_create_importacoes_log.sql` (novo)
+  - `supabase/functions/importar-documento/index.ts` (fix regex PDF + hash + dedup check)
+  - `supabase/functions/commitar-importacao/index.ts` (schema `arquivo_hash`/
+    `confianca_classificacao` + insert em `importacoes_log`)
+  - `src/components/produtos/ImportarProdutosDialog.tsx` (props `obraId`/`obraNome`,
+    banner + checkbox de duplicidade)
+  - `src/pages/Configuracoes.tsx` (remoção do botão "Gerenciar" e do modal)
+  - `src/pages/Cotacoes.tsx` (novo botão "Importar Lista")
+  - CHANGELOG.md (este)
+
+- **Deploy:** migrations aplicadas via `supabase db push --include-all` (produção,
+  `xsqnkptdbabnvjcrvaob`); Edge Functions `importar-documento` e
+  `commitar-importacao` re-deployadas via `supabase functions deploy`.
+- **Teste pendente do usuário:** abrir uma Obra → Cotações, clicar "Importar Lista",
+  confirmar obra já travada, subir o PDF que antes zerava itens e confirmar itens
+  extraídos; subir o mesmo arquivo de novo e confirmar que o aviso de duplicidade
+  aparece e trava o botão até marcar o checkbox.
+
 ## [16/07/2026 - 19:06:21] Tarefa #7 Verificada: Reorganização de interface por obra já estava feita (✅ Já implementado — sem trabalho necessário)
 - **Tipo:** [VERIFICAÇÃO]
 - **Descrição:** Item do backlog "reorganizar interface de múltiplas telas por obra" já foi coberto pela entrada de hoje (16:40) "Navegação reorganizada: tudo por obra, via URL" — URL como fonte de verdade (`/obras/:id/...`), sidebar única sem abas duplicadas, dashboard por obra, `LegacyObraRedirect` para links antigos. Confirmado com o usuário que não há pendência adicional de escopo aqui; encerra o backlog de 7 tarefas desta sessão.

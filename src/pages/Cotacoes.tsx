@@ -14,11 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImportarProdutosDialog } from "@/components/produtos/ImportarProdutosDialog";
 import { toast } from "sonner";
 import {
   ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy,
   PackagePlus, Brain, Mail, Send, Eye, Clock, CheckCircle2, AlertTriangle,
-  Search, Pencil, Printer, RefreshCw,
+  Search, Pencil, Printer, RefreshCw, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("open"));
   const [newCotacao, setNewCotacao] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [manageDialog, setManageDialog] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemQtd, setNewItemQtd] = useState("1");
@@ -675,6 +677,10 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
         <h1 className="text-xl sm:text-2xl font-bold truncate">
           Cotações {obra ? `— ${obra.nome}` : ""}
         </h1>
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+        <Button variant="outline" className="w-full sm:w-auto shrink-0" onClick={() => setImportOpen(true)}>
+          <Upload className="mr-2 h-4 w-4" />Importar Lista
+        </Button>
         <Dialog open={newCotacao} onOpenChange={setNewCotacao}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto shrink-0"><Plus className="mr-2 h-4 w-4" />Nova Cotação</Button>
@@ -709,7 +715,10 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      <ImportarProdutosDialog open={importOpen} onOpenChange={setImportOpen} obraId={obraId} obraNome={obra?.nome} />
 
       {/* Cotações List */}
       <div className="space-y-3">
