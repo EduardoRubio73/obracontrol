@@ -547,42 +547,97 @@ function TarefasPadraoCollapsible() {
   );
 }
 
-/* ----------------- Fornecedores section body ----------------- */
+/* Fornecedor item component */
+function FornecedorRow({
+  f,
+  onEdit,
+  onDelete,
+  onWhatsApp,
+  onEmail,
+  onCall,
+}: {
+  f: any;
+  onEdit: (f: any) => void;
+  onDelete: (f: any) => void;
+  onWhatsApp: (tel: string) => void;
+  onEmail: (email: string) => void;
+  onCall: (tel: string) => void;
+}) {
+  const getBadgeVariant = (status: string) => {
+    if (status === "ativo") return "default";
+    if (status === "alerta") return "secondary";
+    if (status === "bloqueado") return "destructive";
+    return "outline";
+  };
+
+  return (
+    <div className="py-2 px-3 border-b last:border-0 hover:bg-muted/40 transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">{f.nome}</p>
+          <div className="flex gap-1 mt-1 flex-wrap">
+            {f.email && <span className="text-xs text-muted-foreground">📧 {f.email}</span>}
+            {f.telefone && <span className="text-xs text-muted-foreground">☎️ {f.telefone}</span>}
+          </div>
+          <div className="flex gap-1 mt-1 flex-wrap">
+            {f.cnpj && <Badge variant="outline" className="text-xs">🔢 {f.cnpj}</Badge>}
+            {f.endereco && <Badge variant="outline" className="text-xs">📍 {f.endereco}</Badge>}
+            {f.categoria && <Badge variant="outline" className="text-xs">🏷️ {f.categoria}</Badge>}
+            {f.tipo && <Badge variant="outline" className="text-xs">👷 {f.tipo}</Badge>}
+            {f.status && <Badge variant={getBadgeVariant(f.status)} className="text-xs">{f.status}</Badge>}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 shrink-0">
+          <div className="flex gap-0.5">
+            {f.telefone && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onWhatsApp(f.telefone)} title="WhatsApp">
+                💬
+              </Button>
+            )}
+            {f.email && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEmail(f.email)} title="Email">
+                📧
+              </Button>
+            )}
+            {f.telefone && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onCall(f.telefone)} title="Ligar">
+                📞
+              </Button>
+            )}
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(f)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => onDelete(f)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Fornecedores section body */
 function FornecedoresBody() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [busca, setBusca] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState("all");
-  const [filtroStatus, setFiltroStatus] = useState("all");
-  const [filtroCategoria, setFiltroCategoria] = useState("all");
   const [dialog, setDialog] = useState(false);
   const [edit, setEdit] = useState<any>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nome: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any>(null);
+  const [formData, setFormData] = useState({ nome: "", email: "", telefone: "", cnpj: "", endereco: "", categoria: "", tipo: "", status: "ativo" });
 
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [cnpj, setCnpj] = useState("");
-  const [endereco, setEndereco] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [status, setStatus] = useState("ativo");
-
-  const { data: fornecedores, isLoading } = useQuery({
+  const { data: fornecedores = [], isLoading } = useQuery({
     queryKey: ["fornecedores", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fornecedores")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("nome");
+      const { data, error } = await supabase.from("fornecedores").select("*").eq("user_id", user!.id).order("nome");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: tipos } = useQuery({
+  const { data: tipos = [] } = useQuery({
     queryKey: ["tipos_fornecedor"],
     queryFn: async () => {
       const { data, error } = await supabase.from("tipos_fornecedor").select("id, nome").order("nome");
@@ -591,61 +646,28 @@ function FornecedoresBody() {
     },
   });
 
-  const { data: categorias } = useQuery({
-    queryKey: ["fornecedores-categorias", user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fornecedores")
-        .select("categoria")
-        .eq("user_id", user!.id)
-        .not("categoria", "is", null);
-      if (error) throw error;
-      const cats = [...new Set((data ?? []).map((f: any) => f.categoria))].sort();
-      return cats;
-    },
-  });
-
-  const filtrados = useMemo(() => {
-    return (fornecedores ?? []).filter((f: any) => {
-      if (busca.trim() && !(f.nome ?? "").toLowerCase().includes(busca.toLowerCase())) return false;
-      if (filtroTipo !== "all" && f.tipo !== filtroTipo) return false;
-      if (filtroStatus !== "all" && f.status !== filtroStatus) return false;
-      if (filtroCategoria !== "all" && f.categoria !== filtroCategoria) return false;
-      return true;
-    });
-  }, [fornecedores, busca, filtroTipo, filtroStatus, filtroCategoria]);
+  const filtrados = (fornecedores as any[]).filter((f) =>
+    !busca.trim() || (f.nome ?? "").toLowerCase().includes(busca.toLowerCase())
+  );
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!nome.trim()) throw new Error("Nome é obrigatório");
-      const dup = (fornecedores ?? []).find(
-        (f: any) => (f.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim() && f.id !== edit?.id
+      if (!formData.nome.trim()) throw new Error("Nome é obrigatório");
+      const dup = fornecedores.find(
+        (f: any) => f.nome.toLowerCase() === formData.nome.toLowerCase() && f.id !== edit?.id
       );
-      if (dup) throw new Error(`Já existe fornecedor com o nome "${nome}"`);
-
-      const payload = {
-        nome: nome.trim(),
-        email: email.trim() || null,
-        telefone: telefone.trim() || null,
-        cnpj: cnpj.trim() || null,
-        endereco: endereco.trim() || null,
-        categoria: categoria || null,
-        tipo: tipo || null,
-        status: status || "ativo",
-      };
+      if (dup) throw new Error(`Fornecedor "${formData.nome}" já existe`);
 
       if (edit) {
-        const { error } = await supabase.from("fornecedores").update(payload).eq("id", edit.id);
+        const { error } = await supabase.from("fornecedores").update(formData).eq("id", edit.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("fornecedores").insert({ ...payload, user_id: user!.id });
+        const { error } = await supabase.from("fornecedores").insert({ ...formData, user_id: user!.id });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["fornecedores-categorias", user?.id] });
       toast.success(edit ? "Fornecedor atualizado!" : "Fornecedor criado!");
       closeDialog();
     },
@@ -659,59 +681,33 @@ function FornecedoresBody() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["fornecedores-categorias", user?.id] });
-      toast.success("Fornecedor removido!");
+      toast.success("Fornecedor excluído!");
+      setDeleteConfirm(null);
     },
-    onError: (e: any) => {
-      if (e.code === "23503") {
-        toast.error("Não é possível excluir: este fornecedor está vinculado a cotações ou compras.");
-      } else toast.error(e.message);
-    },
+    onError: (e: any) => toast.error(e.message || "Erro ao excluir"),
   });
 
   const openNew = () => {
     setEdit(null);
-    setNome("");
-    setEmail("");
-    setTelefone("");
-    setCnpj("");
-    setEndereco("");
-    setCategoria("");
-    setTipo("");
-    setStatus("ativo");
+    setFormData({ nome: "", email: "", telefone: "", cnpj: "", endereco: "", categoria: "", tipo: "", status: "ativo" });
     setDialog(true);
   };
 
   const openEdit = (f: any) => {
     setEdit(f);
-    setNome(f.nome);
-    setEmail(f.email || "");
-    setTelefone(f.telefone || "");
-    setCnpj(f.cnpj || "");
-    setEndereco(f.endereco || "");
-    setCategoria(f.categoria || "");
-    setTipo(f.tipo || "");
-    setStatus(f.status || "ativo");
+    setFormData({ nome: f.nome, email: f.email || "", telefone: f.telefone || "", cnpj: f.cnpj || "", endereco: f.endereco || "", categoria: f.categoria || "", tipo: f.tipo || "", status: f.status || "ativo" });
     setDialog(true);
   };
 
   const closeDialog = () => {
     setDialog(false);
     setEdit(null);
-    setNome("");
-    setEmail("");
-    setTelefone("");
-    setCnpj("");
-    setEndereco("");
-    setCategoria("");
-    setTipo("");
-    setStatus("ativo");
+    setFormData({ nome: "", email: "", telefone: "", cnpj: "", endereco: "", categoria: "", tipo: "", status: "ativo" });
   };
 
-  const abrirWhatsApp = (telefone: string) => {
-    if (!telefone.trim()) return;
-    const tel = telefone.replace(/\D/g, "");
-    window.open(`https://wa.me/55${tel}`, "_blank");
+  const abrirWhatsApp = (tel: string) => {
+    if (!tel.trim()) return;
+    window.open(`https://wa.me/55${tel.replace(/\D/g, "")}`, "_blank");
   };
 
   const abrirEmail = (email: string) => {
@@ -719,226 +715,79 @@ function FornecedoresBody() {
     window.location.href = `mailto:${email}`;
   };
 
-  const abrirLigacao = (telefone: string) => {
-    if (!telefone.trim()) return;
-    window.location.href = `tel:${telefone}`;
+  const abrirLigacao = (tel: string) => {
+    if (!tel.trim()) return;
+    window.location.href = `tel:${tel}`;
   };
-
-  const getBadgeVariant = (status: string) => {
-    if (status === "ativo") return "default";
-    if (status === "alerta") return "secondary";
-    if (status === "bloqueado") return "destructive";
-    return "outline";
-  };
-
-  const dupInDialog = (fornecedores ?? []).some(
-    (f: any) => (f.nome ?? "").toLowerCase().trim() === nome.toLowerCase().trim() && f.id !== edit?.id
-  );
 
   return (
     <div className="space-y-3 pt-3">
-      <div className="flex flex-col sm:flex-row gap-2 items-end">
-        <Input
-          placeholder="Buscar por nome..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          className="flex-1"
-        />
+      <div className="flex gap-2">
+        <Input placeholder="Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1" />
         <Button onClick={openNew} className="shrink-0">
           <Plus className="h-4 w-4 mr-1" /> Novo
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <div>
-          <Label className="text-xs text-muted-foreground">Tipo</Label>
-          <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os tipos</SelectItem>
-              {(tipos ?? []).map((t: any) => (
-                <SelectItem key={t.id} value={t.nome}>
-                  {t.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Status</Label>
-          <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              <SelectItem value="ativo">✅ Ativo</SelectItem>
-              <SelectItem value="alerta">⚠️ Alerta</SelectItem>
-              <SelectItem value="bloqueado">❌ Bloqueado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Categoria</Label>
-          <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as categorias</SelectItem>
-              {(categorias ?? []).map((c: string) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-1 border rounded-lg divide-y max-h-96 overflow-y-auto">
-        {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
-        {!isLoading && !filtrados.length && (
-          <p className="text-muted-foreground text-sm text-center py-4">
-            {fornecedores?.length ? "Nenhum fornecedor encontrado com os filtros" : "Nenhum fornecedor cadastrado"}
-          </p>
+      <div className="border rounded-lg divide-y">
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
+        ) : filtrados.length ? (
+          filtrados.map((f: any) => (
+            <FornecedorRow
+              key={f.id}
+              f={f}
+              onEdit={openEdit}
+              onDelete={(fd) => setDeleteConfirm(fd)}
+              onWhatsApp={abrirWhatsApp}
+              onEmail={abrirEmail}
+              onCall={abrirLigacao}
+            />
+          ))
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-4">Nenhum fornecedor cadastrado</p>
         )}
-        {filtrados.map((f: any) => (
-          <div key={f.id} className="py-3 px-3 hover:bg-muted/50 transition-colors space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground">{f.nome}</p>
-                <div className="flex gap-2 mt-1 flex-wrap">
-                  {f.email && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      📧 {f.email}
-                    </span>
-                  )}
-                  {f.telefone && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      ☎️ {f.telefone}
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-1.5 flex-wrap">
-                  {f.cnpj && <Badge variant="outline" className="text-xs">🔢 {f.cnpj}</Badge>}
-                  {f.endereco && <Badge variant="outline" className="text-xs">📍 {f.endereco}</Badge>}
-                  {f.categoria && <Badge variant="outline" className="text-xs">🏷️ {f.categoria}</Badge>}
-                  {f.tipo && <Badge variant="outline" className="text-xs">👷 {f.tipo}</Badge>}
-                  {f.status && <Badge variant={getBadgeVariant(f.status)} className="text-xs">🎯 {f.status}</Badge>}
-                  {f.score !== null && f.score !== undefined && (
-                    <Badge variant="secondary" className="text-xs">⭐ {f.score.toFixed(1)}</Badge>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1 shrink-0 flex-col">
-                <div className="flex gap-1">
-                  {f.telefone && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => abrirWhatsApp(f.telefone)}
-                      title="Abrir WhatsApp"
-                    >
-                      💬
-                    </Button>
-                  )}
-                  {f.email && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => abrirEmail(f.email)}
-                      title="Enviar email"
-                    >
-                      📧
-                    </Button>
-                  )}
-                  {f.telefone && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => abrirLigacao(f.telefone)}
-                      title="Ligar"
-                    >
-                      📞
-                    </Button>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openEdit(f)}
-                  >
-                    <Pencil className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setDeleteConfirm({ id: f.id, nome: f.nome })}
-                    disabled={del.isPending}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
-      <Dialog open={dialog} onOpenChange={(v) => { setDialog(v); if (!v) closeDialog(); }}>
-        <DialogContent className="max-w-md max-h-96 overflow-y-auto">
+      <Dialog open={dialog} onOpenChange={setDialog}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{edit ? "Editar Fornecedor" : "Novo Fornecedor"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-sm">Nome*</Label>
-              <Input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Nome do fornecedor"
-                autoFocus
-              />
-              {dupInDialog && nome.trim() && <p className="text-xs text-warning">⚠️ Já existe fornecedor com esse nome</p>}
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div>
+              <Label className="text-sm">Nome *</Label>
+              <Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">Email</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" />
+              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">Telefone</Label>
-              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
+              <Input value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} />
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">CNPJ</Label>
-              <Input value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+              <Input value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })} />
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">Endereço</Label>
-              <Input value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua X, 123" />
+              <Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} />
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">Categoria</Label>
-              <Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex: Pedraria" />
+              <Input value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} />
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">Tipo</Label>
-              <Select value={tipo} onValueChange={setTipo}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecione um tipo" />
+              <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Nenhum</SelectItem>
-                  {(tipos ?? []).map((t: any) => (
+                  {tipos.map((t: any) => (
                     <SelectItem key={t.id} value={t.nome}>
                       {t.nome}
                     </SelectItem>
@@ -946,10 +795,10 @@ function FornecedoresBody() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div>
               <Label className="text-sm">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-9">
+              <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -959,31 +808,22 @@ function FornecedoresBody() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              className="w-full"
-              onClick={() => save.mutate()}
-              disabled={!nome.trim() || dupInDialog || save.isPending}
-            >
+            <Button onClick={() => save.mutate()} disabled={!formData.nome.trim() || save.isPending} className="w-full">
               {save.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => { if (!v) setDeleteConfirm(null); }}>
+      <AlertDialog open={!!deleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleteConfirm?.nome}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Excluir <strong>{deleteConfirm?.nome}</strong>? Não pode ser desfeito.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { if (deleteConfirm) del.mutate(deleteConfirm.id); setDeleteConfirm(null); }}
-            >
+            <AlertDialogCancel onClick={() => setDeleteConfirm(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteConfirm && del.mutate(deleteConfirm.id)} className="bg-destructive hover:bg-destructive/90">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
