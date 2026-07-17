@@ -631,17 +631,30 @@ function FornecedoresBody() {
   };
 
   const abrirWhatsApp = (tel: string) => {
-    if (!tel?.trim()) return;
-    window.open(`https://wa.me/55${tel.replace(/\D/g, "")}`, "_blank");
+    console.log("WhatsApp:", tel);
+    if (!tel?.trim()) {
+      toast.error("Telefone não disponível");
+      return;
+    }
+    const telLimpo = tel.replace(/\D/g, "");
+    window.open(`https://wa.me/55${telLimpo}`, "_blank");
   };
 
   const abrirEmail = (email: string) => {
-    if (!email?.trim()) return;
+    console.log("Email:", email);
+    if (!email?.trim()) {
+      toast.error("Email não disponível");
+      return;
+    }
     window.location.href = `mailto:${email}`;
   };
 
   const abrirLigacao = (tel: string) => {
-    if (!tel?.trim()) return;
+    console.log("Ligar:", tel);
+    if (!tel?.trim()) {
+      toast.error("Telefone não disponível");
+      return;
+    }
     window.location.href = `tel:${tel}`;
   };
 
