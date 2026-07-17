@@ -6,6 +6,42 @@
 
 ---
 
+## [17/07/2026 - 14:14:44] Anti-duplicidade + normalização de texto em 7 tabelas de cadastro (✅ Completo)
+- **Tipo:** [DB] [DATA-QUALITY]
+- **Descrição:** Pedido do usuário: verificar/remover duplicatas em `unidades_medida`,
+  `categorias_produtos`, `produtos`, `fornecedores`, `etapas_padrao`, `tarefas_padrao` e
+  `tipos_obra`, e impedir que voltem a ocorrer; além disso, padronizar a capitalização
+  de todos os textos dessas tabelas: `.nome` em Title Case (`initcap`), `.descricao` em
+  Sentence case (primeira letra maiúscula, resto preservado — não força minúsculo pra
+  não estragar siglas tipo "PVC").
+  - **Verificação prévia:** nenhuma duplicata existia de fato nas 7 tabelas no momento
+    da migration — a etapa de dedupe é rede de segurança, não correção de um problema
+    real encontrado.
+  - **`categorias_produtos`** já tinha o índice único (`user_id, lower(trim(nome))`)
+    desde `20260716222404_dedupe_categorias_produtos.sql`; esta rodada replica o mesmo
+    padrão (dedupe + remapeio de FK + índice único) para as outras 6 tabelas.
+  - **4 migrations novas** (`2026071715[0-3]00_*.sql`):
+    1. `dedupe_remaining_tables` — dedupe defensivo (mantém linha com `created_at` mais
+       recente, remapeia FKs órfãs antes de excluir) + cria índice único
+       `(user_id, lower(trim(nome)))` (produtos e tarefas_padrao também entram
+       `categoria_id`/`etapa_padrao_id` na chave, pois duplicidade aí é por combinação).
+    2. `create_text_normalization_functions` — `fn_title_case()` (usa `initcap` nativo)
+       e `fn_sentence_case()`.
+    3. `create_normalization_triggers` — 2 funções de trigger compartilhadas
+       (`trg_normalize_nome_descricao` / `trg_normalize_nome_only`, conforme a tabela
+       tem ou não coluna `descricao`) aplicadas via `BEFORE INSERT OR UPDATE` nas 7
+       tabelas — reformata automaticamente qualquer escrita futura.
+    4. `normalize_existing_data` — aplica a formatação retroativamente nos dados já
+       existentes (só faz `UPDATE` nas linhas que realmente mudam).
+  - **Testado em produção** (dentro de `BEGIN;...ROLLBACK;`, sem deixar dado de teste):
+    INSERT com nome em minúsculo virou Title Case automaticamente; INSERT duplicado
+    (mesmo nome, case diferente) foi barrado pelo índice único com erro `23505`.
+- **Arquivos:** `supabase/migrations/20260717150000_dedupe_remaining_tables.sql`,
+  `20260717150100_create_text_normalization_functions.sql`,
+  `20260717150200_create_normalization_triggers.sql`,
+  `20260717150300_normalize_existing_data.sql`
+- **Aplicado via:** `supabase db push --linked` (projeto `xsqnkptdbabnvjcrvaob`).
+
 ## [17/07/2026 - 09:49:20] Reorganização da Sidebar: Perfil com Avatar no Footer (✅ Completo)
 - **Tipo:** [UI]
 - **Descrição:** Removido botão "Recolher menu" do footer. Movido "Perfil" para o footer exibindo avatar do usuário + nome/email. Fluxo: avatar carregado via `useQuery` do profile no Supabase (nome, avatar_url).
