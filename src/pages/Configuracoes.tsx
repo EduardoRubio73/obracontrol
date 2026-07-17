@@ -1253,8 +1253,8 @@ const Configuracoes = () => {
         </TabsContent>
 
         <TabsContent value="fornecedores" className="space-y-3 mt-4">
-          <FornecedoresCollapsible />
           <TiposFornecedorCollapsible />
+          <FornecedoresCollapsible />
         </TabsContent>
 
         <TabsContent value="etapas" className="space-y-3 mt-4">
