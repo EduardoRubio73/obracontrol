@@ -671,15 +671,10 @@ function FornecedoresBody() {
                 <Input value={editData?.nome || ""} onChange={(e) => setEditData({ ...editData, nome: e.target.value })} placeholder="Nome" />
                 <Input value={editData?.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} placeholder="Email" />
                 <Input value={editData?.telefone || ""} onChange={(e) => setEditData({ ...editData, telefone: e.target.value })} placeholder="Telefone" />
-                <Select value={editData?.tipo || ""} onValueChange={(v) => setEditData({ ...editData, tipo: v })}>
-                  <SelectTrigger><SelectValue placeholder="Tipo..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sem tipo</SelectItem>
-                    {tipos.map((t: any) => (
-                      <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input value={editData?.tipo || ""} onChange={(e) => setEditData({ ...editData, tipo: e.target.value })} placeholder="Tipo (ex: Pedreiro)" list="tipos-list" />
+                <datalist id="tipos-list">
+                  {tipos.map((t: any) => <option key={t.id} value={t.nome} />)}
+                </datalist>
                 <div className="flex gap-1">
                   <Button size="sm" onClick={() => update.mutate()}>Salvar</Button>
                   <Button size="sm" variant="outline" onClick={cancelEdit}>Cancelar</Button>
