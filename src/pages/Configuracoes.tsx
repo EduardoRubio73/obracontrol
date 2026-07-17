@@ -894,7 +894,7 @@ function FornecedoresBody() {
         ))}
       </div>
 
-      <Dialog open={dialog} onOpenChange={(v) => { if (!v) closeDialog(); }}>
+      <Dialog open={dialog} onOpenChange={(v) => { setDialog(v); if (!v) closeDialog(); }}>
         <DialogContent className="max-w-md max-h-96 overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{edit ? "Editar Fornecedor" : "Novo Fornecedor"}</DialogTitle>
@@ -1276,7 +1276,7 @@ function ProdutosBody() {
         )}
       </div>
 
-      <Dialog open={dialog} onOpenChange={(v) => { if (!v) close(); }}>
+      <Dialog open={dialog} onOpenChange={(v) => { setDialog(v); if (!v) close(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{edit ? "Editar Produto" : "Novo Produto"}</DialogTitle>
