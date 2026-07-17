@@ -547,85 +547,13 @@ function TarefasPadraoCollapsible() {
   );
 }
 
-/* Fornecedor item component */
-function FornecedorRow({
-  f,
-  onEdit,
-  onDelete,
-  onWhatsApp,
-  onEmail,
-  onCall,
-}: {
-  f: any;
-  onEdit: (f: any) => void;
-  onDelete: (f: any) => void;
-  onWhatsApp: (tel: string) => void;
-  onEmail: (email: string) => void;
-  onCall: (tel: string) => void;
-}) {
-  const getBadgeVariant = (status: string) => {
-    if (status === "ativo") return "default";
-    if (status === "alerta") return "secondary";
-    if (status === "bloqueado") return "destructive";
-    return "outline";
-  };
-
-  return (
-    <div className="py-2 px-3 border-b last:border-0 hover:bg-muted/40 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm">{f.nome}</p>
-          <div className="flex gap-1 mt-1 flex-wrap">
-            {f.email && <span className="text-xs text-muted-foreground">📧 {f.email}</span>}
-            {f.telefone && <span className="text-xs text-muted-foreground">☎️ {f.telefone}</span>}
-          </div>
-          <div className="flex gap-1 mt-1 flex-wrap">
-            {f.cnpj && <Badge variant="outline" className="text-xs">🔢 {f.cnpj}</Badge>}
-            {f.endereco && <Badge variant="outline" className="text-xs">📍 {f.endereco}</Badge>}
-            {f.categoria && <Badge variant="outline" className="text-xs">🏷️ {f.categoria}</Badge>}
-            {f.tipo && <Badge variant="outline" className="text-xs">👷 {f.tipo}</Badge>}
-            {f.status && <Badge variant={getBadgeVariant(f.status)} className="text-xs">{f.status}</Badge>}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1 shrink-0">
-          <div className="flex gap-0.5">
-            {f.telefone && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onWhatsApp(f.telefone)} title="WhatsApp">
-                💬
-              </Button>
-            )}
-            {f.email && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEmail(f.email)} title="Email">
-                📧
-              </Button>
-            )}
-            {f.telefone && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onCall(f.telefone)} title="Ligar">
-                📞
-              </Button>
-            )}
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(f)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => onDelete(f)}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Fornecedores section body */
+/* Fornecedores - Inline editing version */
 function FornecedoresBody() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [busca, setBusca] = useState("");
-  const [dialog, setDialog] = useState(false);
-  const [edit, setEdit] = useState<any>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<any>(null);
-  const [formData, setFormData] = useState({ nome: "", email: "", telefone: "", cnpj: "", endereco: "", categoria: "", tipo: "", status: "ativo" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<any>(null);
 
   const { data: fornecedores = [], isLoading } = useQuery({
     queryKey: ["fornecedores", user?.id],
@@ -637,39 +565,36 @@ function FornecedoresBody() {
     },
   });
 
-  const { data: tipos = [] } = useQuery({
-    queryKey: ["tipos_fornecedor"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("tipos_fornecedor").select("id, nome").order("nome");
+  const filtrados = fornecedores.filter((f: any) => !busca.trim() || f.nome.toLowerCase().includes(busca.toLowerCase()));
+
+  const add = useMutation({
+    mutationFn: async (nome: string) => {
+      if (!nome.trim()) throw new Error("Nome obrigatório");
+      const dup = fornecedores.find((f: any) => f.nome.toLowerCase() === nome.toLowerCase());
+      if (dup) throw new Error(`Fornecedor "${nome}" já existe`);
+      const { error } = await supabase.from("fornecedores").insert({ nome, user_id: user!.id });
       if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const filtrados = (fornecedores as any[]).filter((f) =>
-    !busca.trim() || (f.nome ?? "").toLowerCase().includes(busca.toLowerCase())
-  );
-
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!formData.nome.trim()) throw new Error("Nome é obrigatório");
-      const dup = fornecedores.find(
-        (f: any) => f.nome.toLowerCase() === formData.nome.toLowerCase() && f.id !== edit?.id
-      );
-      if (dup) throw new Error(`Fornecedor "${formData.nome}" já existe`);
-
-      if (edit) {
-        const { error } = await supabase.from("fornecedores").update(formData).eq("id", edit.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("fornecedores").insert({ ...formData, user_id: user!.id });
-        if (error) throw error;
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores", user?.id] });
-      toast.success(edit ? "Fornecedor atualizado!" : "Fornecedor criado!");
-      closeDialog();
+      toast.success("Fornecedor criado!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const update = useMutation({
+    mutationFn: async () => {
+      if (!editData?.nome.trim() || !editId) throw new Error("Nome obrigatório");
+      const dup = fornecedores.find((f: any) => f.nome.toLowerCase() === editData.nome.toLowerCase() && f.id !== editId);
+      if (dup) throw new Error(`Fornecedor "${editData.nome}" já existe`);
+      const { error } = await supabase.from("fornecedores").update(editData).eq("id", editId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fornecedores", user?.id] });
+      toast.success("Fornecedor atualizado!");
+      setEditId(null);
+      setEditData(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -682,177 +607,102 @@ function FornecedoresBody() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores", user?.id] });
       toast.success("Fornecedor excluído!");
-      setDeleteConfirm(null);
     },
-    onError: (e: any) => toast.error(e.message || "Erro ao excluir"),
+    onError: (e: any) => toast.error(e.message),
   });
 
-  const openNew = () => {
-    setEdit(null);
-    setFormData({ nome: "", email: "", telefone: "", cnpj: "", endereco: "", categoria: "", tipo: "", status: "ativo" });
-    setDialog(true);
+  const startEdit = (f: any) => {
+    setEditId(f.id);
+    setEditData({ ...f });
   };
 
-  const openEdit = (f: any) => {
-    setEdit(f);
-    setFormData({ nome: f.nome, email: f.email || "", telefone: f.telefone || "", cnpj: f.cnpj || "", endereco: f.endereco || "", categoria: f.categoria || "", tipo: f.tipo || "", status: f.status || "ativo" });
-    setDialog(true);
-  };
-
-  const closeDialog = () => {
-    setDialog(false);
-    setEdit(null);
-    setFormData({ nome: "", email: "", telefone: "", cnpj: "", endereco: "", categoria: "", tipo: "", status: "ativo" });
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditData(null);
   };
 
   const abrirWhatsApp = (tel: string) => {
-    if (!tel.trim()) return;
+    if (!tel?.trim()) return;
     window.open(`https://wa.me/55${tel.replace(/\D/g, "")}`, "_blank");
   };
 
   const abrirEmail = (email: string) => {
-    if (!email.trim()) return;
+    if (!email?.trim()) return;
     window.location.href = `mailto:${email}`;
   };
 
   const abrirLigacao = (tel: string) => {
-    if (!tel.trim()) return;
+    if (!tel?.trim()) return;
     window.location.href = `tel:${tel}`;
   };
 
   return (
     <div className="space-y-3 pt-3">
-      <div className="flex gap-2">
-        <Input placeholder="Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1" />
-        <Button onClick={openNew} className="shrink-0">
-          <Plus className="h-4 w-4 mr-1" /> Novo
+      <div className="space-y-2">
+        <Input placeholder="Novo fornecedor..." className="text-sm h-9" />
+        <Button onClick={() => {
+          const el = document.querySelector('input[placeholder="Novo fornecedor..."]') as HTMLInputElement;
+          if (el?.value) add.mutate(el.value);
+        }} disabled={add.isPending} className="w-full sm:w-auto text-sm h-9">
+          <Plus className="h-4 w-4 mr-1" /> Adicionar
         </Button>
       </div>
 
-      <div className="border rounded-lg divide-y">
-        {isLoading ? (
-          <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
-        ) : filtrados.length ? (
-          filtrados.map((f: any) => (
-            <FornecedorRow
-              key={f.id}
-              f={f}
-              onEdit={openEdit}
-              onDelete={(fd) => setDeleteConfirm(fd)}
-              onWhatsApp={abrirWhatsApp}
-              onEmail={abrirEmail}
-              onCall={abrirLigacao}
-            />
-          ))
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-4">Nenhum fornecedor cadastrado</p>
-        )}
+      <div>
+        <Input placeholder="Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="text-sm h-9" />
       </div>
 
-      <Dialog open={dialog} onOpenChange={setDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{edit ? "Editar Fornecedor" : "Novo Fornecedor"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            <div>
-              <Label className="text-sm">Nome *</Label>
-              <Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-sm">Email</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-sm">Telefone</Label>
-              <Input value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-sm">CNPJ</Label>
-              <Input value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-sm">Endereço</Label>
-              <Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-sm">Categoria</Label>
-              <Input value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-sm">Tipo</Label>
-              <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
-                  {tipos.map((t: any) => (
-                    <SelectItem key={t.id} value={t.nome}>
-                      {t.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-sm">Status</Label>
-              <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ativo">✅ Ativo</SelectItem>
-                  <SelectItem value="alerta">⚠️ Alerta</SelectItem>
-                  <SelectItem value="bloqueado">❌ Bloqueado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={() => save.mutate()} disabled={!formData.nome.trim() || save.isPending} className="w-full">
-              {save.isPending ? "Salvando..." : "Salvar"}
-            </Button>
+      <div className="space-y-1">
+        {isLoading && <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>}
+        {!isLoading && !fornecedores.length && <p className="text-xs text-muted-foreground text-center py-4">Nenhum fornecedor</p>}
+        {filtrados.map((f: any) => (
+          <div key={f.id} className="flex items-start gap-2 p-2 border-b last:border-0 hover:bg-muted/50 rounded">
+            {editId === f.id ? (
+              <div className="flex-1 space-y-1">
+                <Input value={editData?.nome || ""} onChange={(e) => setEditData({ ...editData, nome: e.target.value })} className="h-7 text-xs" placeholder="Nome" />
+                <Input value={editData?.email || ""} onChange={(e) => setEditData({ ...editData, email: e.target.value })} className="h-7 text-xs" placeholder="Email" />
+                <Input value={editData?.telefone || ""} onChange={(e) => setEditData({ ...editData, telefone: e.target.value })} className="h-7 text-xs" placeholder="Telefone" />
+                <div className="flex gap-1">
+                  <Button size="sm" variant="default" onClick={() => update.mutate()} className="h-6 text-xs">Salvar</Button>
+                  <Button size="sm" variant="outline" onClick={cancelEdit} className="h-6 text-xs">Cancelar</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{f.nome}</p>
+                  {f.email && <p className="text-xs text-muted-foreground">📧 {f.email}</p>}
+                  {f.telefone && <p className="text-xs text-muted-foreground">☎️ {f.telefone}</p>}
+                  {f.cnpj && <p className="text-xs text-muted-foreground">🔢 {f.cnpj}</p>}
+                </div>
+                <div className="flex gap-0.5 shrink-0">
+                  {f.telefone && <Button size="icon" variant="ghost" className="h-6 w-6 text-xs" onClick={() => abrirWhatsApp(f.telefone)}>💬</Button>}
+                  {f.email && <Button size="icon" variant="ghost" className="h-6 w-6 text-xs" onClick={() => abrirEmail(f.email)}>📧</Button>}
+                  {f.telefone && <Button size="icon" variant="ghost" className="h-6 w-6 text-xs" onClick={() => abrirLigacao(f.telefone)}>📞</Button>}
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => startEdit(f)}><Pencil className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => del.mutate(f.id)} disabled={del.isPending}><Trash2 className="h-3 w-3" /></Button>
+                </div>
+              </>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>Excluir <strong>{deleteConfirm?.nome}</strong>? Não pode ser desfeito.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteConfirm(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteConfirm && del.mutate(deleteConfirm.id)} className="bg-destructive hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        ))}
+      </div>
     </div>
   );
 }
 
 function FornecedoresCollapsible() {
   const { user } = useAuth();
-  const { data: items } = useQuery({
-    queryKey: ["fornecedores", user?.id],
+  const { data: count } = useQuery({
+    queryKey: ["fornecedores-count", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("fornecedores")
-        .select("id")
-        .eq("user_id", user!.id);
-      return data ?? [];
+      const { count } = await supabase.from("fornecedores").select("*", { count: "exact", head: true }).eq("user_id", user!.id);
+      return count ?? 0;
     },
   });
   return (
-    <CollapsibleCard
-      title="Fornecedores"
-      icon="👥"
-      tooltip="Cadastro completo de fornecedores com filtros, busca e ações de contato."
-      count={items?.length}
-    >
+    <CollapsibleCard title="Fornecedores" icon="👥" tooltip="Cadastro de fornecedores com ações de contato." count={count}>
       <FornecedoresBody />
     </CollapsibleCard>
   );
