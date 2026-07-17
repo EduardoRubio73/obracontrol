@@ -158,8 +158,10 @@ function CrudBody({ table, label }: { table: string; label: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNome, setEditingNome] = useState("");
   const [editingDescricao, setEditingDescricao] = useState("");
+  const [busca, setBusca] = useState("");
 
   const dupName = !!items?.find((i) => (i.nome ?? "").toLowerCase().trim() === novoNome.toLowerCase().trim());
+  const filtrados = (items ?? []).filter(i => !busca.trim() || (i.nome ?? "").toLowerCase().includes(busca.toLowerCase()));
 
   const handleAdd = () => {
     if (!novoNome.trim() || dupName) return;
@@ -200,12 +202,14 @@ function CrudBody({ table, label }: { table: string; label: string }) {
         </Button>
       </div>
 
+      <Input placeholder="🔍 Localizar..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+
       <div className="space-y-1">
         {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
         {!isLoading && !items?.length && (
           <p className="text-muted-foreground text-sm text-center py-4">Nenhum(a) {label} cadastrado(a).</p>
         )}
-        {items?.map((item) => (
+        {filtrados?.map((item) => (
           <div key={item.id} className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
             {editingId === item.id ? (
               <div className="flex flex-col gap-2 flex-1 mr-2">
@@ -259,6 +263,7 @@ function TarefaPadraoBody() {
   const [editingNome, setEditingNome] = useState("");
   const [editingDescricao, setEditingDescricao] = useState("");
   const [editingEtapaId, setEditingEtapaId] = useState("");
+  const [busca, setBusca] = useState("");
 
   const { data: etapasPadrao } = useQuery({
     queryKey: ["etapas_padrao", user?.id],
@@ -332,12 +337,14 @@ function TarefaPadraoBody() {
         </Button>
       </div>
 
+      <Input placeholder="🔍 Localizar..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+
       <div className="space-y-1">
         {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
         {!isLoading && !items?.length && (
           <p className="text-muted-foreground text-sm text-center py-4">Nenhuma tarefa padrão cadastrada.</p>
         )}
-        {items?.map((item) => (
+        {(items ?? []).filter(i => !busca.trim() || (i.nome ?? "").toLowerCase().includes(busca.toLowerCase())).map((item) => (
           <div key={item.id} className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
             {editingId === item.id ? (
               <div className="flex flex-col gap-2 flex-1 mr-2">
@@ -403,6 +410,7 @@ function EtapaPadraoBody() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNome, setEditingNome] = useState("");
   const [editingDescricao, setEditingDescricao] = useState("");
+  const [busca, setBusca] = useState("");
 
   const { data: contagemPorEtapa } = useQuery({
     queryKey: ["tarefas-padrao-contagem-por-etapa"],
@@ -453,12 +461,14 @@ function EtapaPadraoBody() {
         </Button>
       </div>
 
+      <Input placeholder="🔍 Localizar..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+
       <div className="space-y-1">
         {isLoading && <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>}
         {!isLoading && !items?.length && (
           <p className="text-muted-foreground text-sm text-center py-4">Nenhuma etapa padrão cadastrada.</p>
         )}
-        {items?.map((item) => (
+        {(items ?? []).filter(i => !busca.trim() || (i.nome ?? "").toLowerCase().includes(busca.toLowerCase())).map((item) => (
           <div key={item.id} className="flex items-start justify-between py-2 px-2 border-b last:border-0 hover:bg-muted/50 rounded-lg transition-colors">
             {editingId === item.id ? (
               <div className="flex flex-col gap-2 flex-1 mr-2">
