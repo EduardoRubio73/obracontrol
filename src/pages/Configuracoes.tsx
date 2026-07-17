@@ -688,13 +688,46 @@ function FornecedoresBody() {
                   {f.telefone && <p className="text-xs text-muted-foreground">☎️ {f.telefone}</p>}
                   {f.cnpj && <p className="text-xs text-muted-foreground">🔢 {f.cnpj}</p>}
                 </div>
-                <div className="flex gap-0.5 shrink-0">
-                  {f.telefone && <Button size="icon" variant="ghost" className="h-6 w-6 text-xs" onClick={() => abrirWhatsApp(f.telefone)}>💬</Button>}
-                  {f.email && <Button size="icon" variant="ghost" className="h-6 w-6 text-xs" onClick={() => abrirEmail(f.email)}>📧</Button>}
-                  {f.telefone && <Button size="icon" variant="ghost" className="h-6 w-6 text-xs" onClick={() => abrirLigacao(f.telefone)}>📞</Button>}
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => startEdit(f)}><Pencil className="h-3 w-3" /></Button>
-                  <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => del.mutate(f.id)} disabled={del.isPending}><Trash2 className="h-3 w-3" /></Button>
-                </div>
+                <TooltipProvider>
+                  <div className="flex gap-0.5 shrink-0">
+                    {f.telefone && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => abrirWhatsApp(f.telefone)}>💬</Button>
+                        </TooltipTrigger>
+                        <TooltipContent>WhatsApp</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {f.email && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => abrirEmail(f.email)}>📧</Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Email</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {f.telefone && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => abrirLigacao(f.telefone)}>📞</Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Ligar</TooltipContent>
+                      </Tooltip>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEdit(f)}><Pencil className="h-4 w-4" /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Editar</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => del.mutate(f.id)} disabled={del.isPending}><Trash2 className="h-4 w-4" /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Excluir</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </>
             )}
           </div>
