@@ -37,6 +37,21 @@ Projeto Supabase: `xsqnkptdbabnvjcrvaob`. **Sempre consultar `src/integrations/s
 | `fornecedores_cotacao` | Legado/duplicado — provavelmente **código morto** | — |
 | `Atualização_Automatica_n8n` | Integração externa (nome com acento — evitar) | — |
 
+## Views (relatórios)
+SQL views prontas para agregações — preferir a elas em vez de re-somar client-side.
+Confirmadas em `types.ts` (bloco `Views`), não presentes nas tabelas acima:
+
+| View | Colunas | Escopo por obra |
+|------|---------|------------------|
+| `vw_resumo_financeiro` | `id, nome, valor_previsto, total_gasto, saldo` | `id` **é** o id da obra — filtrar `.eq("id", obraId)` |
+| `vw_progresso_obra` | `obra_id, progresso_geral` | `.eq("obra_id", obraId)` |
+| `vw_fases_previsao` | `id, obra_id, nome, status, progresso, progresso_esperado, atrasado, dias_decorridos, dias_planejados` | `.eq("obra_id", obraId)` |
+| `vw_fase_eficiencia` | `id, nome, previsto, real, eficiencia_percentual` | **sem `obra_id`** — `id` é o id da fase; filtrar via `.in("id", faseIds)` obtidos de `obra_fases.eq("obra_id", obraId)`. Nunca usar `tenant_id` |
+| `vw_alertas_inteligentes` | `obra_id, obra, fase_id, fase, progresso, status_ia` | `.eq("obra_id", obraId)` |
+| `vw_proximos_prazos` | `id, obra, tipo, data, dias_restantes` | **sem `obra_id` nenhum** — não dá pra escopar com segurança por obra sem match por nome |
+| `vw_propostas_comparativo` | `cotacao_id, fornecedor, ranking, valor` | escopo por cotação, não por obra |
+| `vw_sugestao_compra` | `id, item, fase, obra_id, valor_previsto, valor_real, diferenca, acao` | `.eq("obra_id", obraId)` — **nunca consumida por nenhuma tela** até 18/07/2026, validar semântica antes de usar |
+
 ## Storage buckets
 - **`obras`** (público) — fotos e imagens principais.
 - **`documentos`** (público) — anexos, documentos de importação, comprovantes.

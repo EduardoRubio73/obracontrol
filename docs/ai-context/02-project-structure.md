@@ -39,7 +39,9 @@
 │   │       └── types.ts       # Database types (auto-gerado — NÃO EDITAR)
 │   ├── lib/
 │   │   ├── utils.ts           # cn() helper
-│   │   └── regras-decisao.ts  # Regras de negócio para apoio à decisão
+│   │   ├── regras-decisao.ts  # Regras de negócio para apoio à decisão
+│   │   ├── csv.ts             # toCsv/downloadCsv — export CSV compartilhado
+│   │   └── pdf.ts             # generatePdfFromHtml/downloadPdfBlob/toBase64 (html2pdf.js)
 │   └── test/                  # Setup e testes vitest
 │
 ├── supabase/

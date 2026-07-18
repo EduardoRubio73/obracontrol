@@ -20,6 +20,8 @@
 ## Libs
 - `src/lib/utils.ts` — `cn()`.
 - `src/lib/regras-decisao.ts` — regras usadas em `apoio-decisao`.
+- `src/lib/csv.ts` — `toCsv`/`downloadCsv`, usado por `Relatorios.tsx`.
+- `src/lib/pdf.ts` — `generatePdfFromHtml`/`downloadPdfBlob`/`toBase64` (wrapper de `html2pdf.js`), usado por `Relatorios.tsx`.
 
 ## Layout / navegação
 - `src/components/AppLayout.tsx`, `AppSidebar.tsx`, `MobileBottomNav.tsx`, `NavLink.tsx`.

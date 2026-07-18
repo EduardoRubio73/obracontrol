@@ -33,7 +33,8 @@ Roteador: `react-router-dom` v6 em `src/App.tsx`.
 | `/obras/:id/materiais` | `Materiais` | Protected | `id` | — |
 | `/obras/:id/documentos` | `Documentos` | Protected | `id` | — |
 | `/obras/:id/alteracoes` | `ObraAlteracoes` | Protected | `id` | Histórico de alterações |
-| `/relatorios` | `Relatorios` | Protected | — | Relatórios |
+| `/obras/:id/relatorios` | `Relatorios` | Protected | `id` | Relatórios da obra: abas Gerencial/Materiais/Financeiro/Dossiê (CSV/PDF) |
+| `/relatorios` | `LegacyObraRedirect section="relatorios"` | Protected | — | Bookmark antigo — redireciona para `/obras/<última obra ativa>/relatorios` |
 | `/configuracoes` | `Configuracoes` | Protected | — | Categorias, unidades, produtos, tipos, importação |
 | `/auditoria` | `Auditoria` | Protected | — | Log `auditoria` |
 | `/chat` | `Chat` | Protected | — | Assistente IA |

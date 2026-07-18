@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ const statusLabel = (s: string | null) =>
 
 export function ObraSwitcherCarousel({ obras }: { obras: Obra[] }) {
   const navigate = useNavigate();
+  const [filtro, setFiltro] = useState<"ativas" | "arquivadas">("ativas");
 
   const obraIdsNoImage = obras.filter((o) => !o.main_image).map((o) => o.id);
   const { data: fallbackImages } = useQuery({
@@ -39,10 +41,14 @@ export function ObraSwitcherCarousel({ obras }: { obras: Obra[] }) {
   const getImage = (obra: Obra): string | null =>
     obra.main_image || fallbackImages?.[obra.id] || null;
 
+  const filtered = obras.filter((o) =>
+    filtro === "ativas" ? o.status !== "cancelado" : o.status === "cancelado"
+  );
+
   if (!obras.length) return null;
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-3">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-medium text-muted-foreground">
           Suas obras
@@ -51,8 +57,32 @@ export function ObraSwitcherCarousel({ obras }: { obras: Obra[] }) {
           <Plus className="h-3.5 w-3.5" /> Nova
         </Button>
       </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => setFiltro("ativas")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            filtro === "ativas"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-card text-foreground border-border hover:bg-muted"
+          }`}
+        >
+          Obras Ativas
+        </button>
+        <button
+          onClick={() => setFiltro("arquivadas")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            filtro === "arquivadas"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-card text-foreground border-border hover:bg-muted"
+          }`}
+        >
+          Obras Arquivadas
+        </button>
+      </div>
+
       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1 -mx-1 px-1">
-        {obras.map((obra) => {
+        {filtered.map((obra) => {
           const img = getImage(obra);
           return (
             <button
@@ -77,6 +107,12 @@ export function ObraSwitcherCarousel({ obras }: { obras: Obra[] }) {
           );
         })}
       </div>
+
+      {filtered.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground py-6">
+          {filtro === "ativas" ? "Nenhuma obra ativa" : "Nenhuma obra arquivada"}
+        </p>
+      )}
     </div>
   );
 }

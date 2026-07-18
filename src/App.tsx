@@ -112,6 +112,7 @@ const App = () => (
               <Route path="/obras/:id/galeria" element={<Galeria />} />
               <Route path="/obras/:id/documentos" element={<Documentos />} />
               <Route path="/obras/:id/status" element={<Status />} />
+              <Route path="/obras/:id/relatorios" element={<Relatorios />} />
               <Route path="/obras/:id/chat" element={<Chat />} />
               <Route path="/obras/:id/dossie" element={<Dossie />} />
               <Route path="/obras/:id/materiais" element={<Materiais />} />
@@ -130,7 +131,7 @@ const App = () => (
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/nova-obra" element={<NovaObra />} />
-              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/relatorios" element={<LegacyObraRedirect section="relatorios" />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/conf" element={<Navigate to="/configuracoes" replace />} />
               <Route path="/auditoria" element={<Auditoria />} />

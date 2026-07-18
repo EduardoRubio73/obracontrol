@@ -41,6 +41,43 @@
 
 ---
 
+## [18/07/2026 - 19:21:19] Relatórios migrado para por-obra, com 4 categorias (Gerencial/Materiais/Financeiro/Dossiê) (✅ Completo)
+- **Tipo:** [FEATURE] [REFATORAÇÃO]
+- **Descrição:** `/relatorios` era a única página relevante do app ainda no padrão
+  antigo (global, com `<Select>` de obra dentro da página) — todas as outras já
+  tinham migrado para `/obras/:id/...` com a URL como fonte da verdade. Replicado
+  o mesmo padrão já usado no Assistente de IA (`Chat.tsx`/`ChatContent` +
+  `RequireObra`): `Relatorios.tsx` virou `RelatoriosContent({ obraId })` + export
+  default com `RequireObra`. Também ampliado de 3 ações estáticas (Financeiro
+  CSV/PDF, Dossiê CSV) para 4 abas por obra:
+  - **Gerencial**: progresso/eficiência por fase, via `vw_fases_previsao` +
+    `vw_fase_eficiencia` (essa última sem `obra_id` — escopada via `.in("id", faseIds)`).
+  - **Materiais**: itens planejados (`fase_itens`) e compras registradas
+    (`compras` + join `produtos`/`fornecedores`) — duas seções independentes, já
+    que o schema não tem FK entre as duas tabelas.
+  - **Financeiro**: resumo via `vw_resumo_financeiro` (em vez de re-somar
+    client-side) + transações; PDF trocou o `window.print()` antigo pelo blob
+    real de `html2pdf.js` (mesmo padrão já usado em `Cotacoes.tsx`).
+  - **Dossiê**: mantido simples (mesma query `obra_dossie` de antes) + link para
+    `/obras/:id/dossie` (timeline completa de 5 fontes) em vez de duplicar aquele merge.
+  - Extraído `src/lib/csv.ts` e `src/lib/pdf.ts` (helpers de export CSV/PDF antes
+    duplicados entre `Relatorios.tsx` e `Cotacoes.tsx`) — `Cotacoes.tsx` não foi
+    tocado, fica como limpeza opcional futura.
+  - Sidebar: "Relatórios" saiu do grupo global "⚙️ Gestão" e entrou em
+    "🏗️ Gestão da Obra", ao lado de "Assistente IA".
+  - Nenhuma tabela/migration nova — só views e tabelas já existentes (as 7 views
+    de relatório, antes não documentadas, foram registradas em `08-database.md`).
+- **Arquivos:** `src/pages/Relatorios.tsx` (reescrito), `src/lib/csv.ts` (novo),
+  `src/lib/pdf.ts` (novo), `src/App.tsx` (rota `/obras/:id/relatorios` +
+  `/relatorios` virou `LegacyObraRedirect`), `src/components/AppSidebar.tsx`,
+  `docs/ai-context/03-routing.md`, `04-components.md`, `08-database.md`,
+  `14-workflows.md`, `02-project-structure.md`, `17-file-map.md`.
+- **Pendente:** verificação visual no navegador (autenticada) ainda não feita
+  nesta sessão — sem credenciais de teste disponíveis. Rodar `impeccable` para
+  polimento de UI é sugestão de follow-up, não feito ainda.
+
+---
+
 ## [18/07/2026 - 17:52:08] Hoje.tsx por obra + Dossiê detalha criação guiada + redesign do Dashboard (⏳ Não commitado)
 - **Tipo:** [FEATURE] [UX] [REFATORAÇÃO]
 - **Descrição:** Mudanças presentes só no working tree local (17 arquivos, não

@@ -33,6 +33,26 @@ const statusColors: Record<string, string> = {
   cancelada: "bg-destructive/10 text-destructive",
 };
 
+// Andamento real da cotação: `cotacoes.status` só transita rascunho→enviada no banco,
+// então o progresso (respostas de fornecedores, parada, etc.) é derivado aqui.
+const getAndamento = (
+  cotacao: { status: string | null; data_expiracao: string | null },
+  counts?: { total: number; respondeu: number }
+): { label: string; color: string } => {
+  if (cotacao.status === "cancelada") return { label: "Cancelada", color: statusColors.cancelada };
+  if (cotacao.status === "finalizada") return { label: "Finalizada", color: statusColors.finalizada };
+  if (cotacao.status === "rascunho") return { label: "Rascunho", color: statusColors.rascunho };
+
+  const total = counts?.total ?? 0;
+  const respondeu = counts?.respondeu ?? 0;
+  const expirada = !!cotacao.data_expiracao && new Date(cotacao.data_expiracao) < new Date();
+
+  if (total > 0 && respondeu === total) return { label: "Todas responderam", color: statusColors.finalizada };
+  if (respondeu > 0) return { label: `Recebendo propostas (${respondeu}/${total})`, color: statusColors.recebendo_propostas };
+  if (expirada) return { label: "Parada", color: "bg-orange-100 text-orange-700" };
+  return { label: "Aguardando respostas", color: statusColors.enviada };
+};
+
 // Helper to compute badge status from tracking row
 const getInviteStatus = (t: any): { label: string; color: string } => {
   if (t.data_resposta) return { label: "Respondido", color: "bg-green-100 text-green-700" };
@@ -245,6 +265,25 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       const counts: Record<string, number> = {};
       data.forEach((d: any) => {
         counts[d.cotacao_id] = (counts[d.cotacao_id] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+
+  const { data: allTrackingCounts } = useQuery({
+    queryKey: ["cotacao-tracking-count", cotacaoIds],
+    enabled: cotacaoIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cotacao_fornecedores")
+        .select("cotacao_id, status")
+        .in("cotacao_id", cotacaoIds);
+      if (error) throw error;
+      const counts: Record<string, { total: number; respondeu: number }> = {};
+      data.forEach((d: any) => {
+        const c = (counts[d.cotacao_id] ??= { total: 0, respondeu: 0 });
+        c.total += 1;
+        if (d.status === "respondeu") c.respondeu += 1;
       });
       return counts;
     },
@@ -759,23 +798,17 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const generateEspelhoPdf = async (cotacao: any, nomeObra: string, profileData?: any): Promise<Blob | null> => {
     try {
       const html = await generateEspelhoHtml(cotacao, nomeObra, printItens, user, profileData);
-      const element = document.createElement("div");
-      element.innerHTML = html;
-
       const numOrc = `#${cotacao.id.slice(0, 8)}`;
       const filename = `Espelho_Orcamento_${numOrc.replace("#", "")}_${new Date().toISOString().split("T")[0]}.pdf`;
 
-      return new Promise((resolve) => {
-        html2pdf().set({
-          margin: 10,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, logging: false },
-          jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-        }).from(html).outputPdf((pdf: Blob) => {
-          resolve(pdf);
-        });
-      });
+      const pdfBlob: Blob = await html2pdf().set({
+        margin: 10,
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, logging: false },
+        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+      }).from(html).outputPdf("blob");
+      return pdfBlob;
     } catch (e) {
       console.error("PDF generation error:", e);
       toast.error("Erro ao gerar PDF");
@@ -838,6 +871,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
         {cotacoes?.map((cotacao) => {
           const itemCount = allItensCount?.[cotacao.id] ?? 0;
           const numOrc = `#${cotacao.id.slice(0, 8)}`;
+          const andamento = getAndamento(cotacao, allTrackingCounts?.[cotacao.id]);
           return (
             <Card key={cotacao.id} className="hover:border-primary/30 transition-colors">
               <CardContent className="p-3 sm:p-4 space-y-2">
@@ -862,8 +896,8 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                       )}
                     </div>
                   </div>
-                  <Badge variant="secondary" className={cn("shrink-0 text-xs", statusColors[cotacao.status ?? ""] ?? "")}>
-                    {cotacao.status?.replace("_", " ")}
+                  <Badge variant="secondary" className={cn("shrink-0 text-xs whitespace-nowrap", andamento.color)}>
+                    {andamento.label}
                   </Badge>
                 </div>
                 {/* Row 2: action buttons */}

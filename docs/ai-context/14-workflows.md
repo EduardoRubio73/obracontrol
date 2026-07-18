@@ -62,6 +62,18 @@ Compras (botão)
    ↓ Query invalidation
 ```
 
+## Gerar relatório por obra
+```
+Relatorios (/obras/:id/relatorios)
+   ↓ Tabs: Gerencial | Materiais | Financeiro | Dossiê
+   ├─► Gerencial: vw_fases_previsao + vw_fase_eficiencia (por fase)
+   ├─► Materiais: fase_itens (planejado) + compras (registrado, join produtos/fornecedores)
+   ├─► Financeiro: vw_resumo_financeiro (resumo) + financeiro (transações)
+   └─► Dossiê: obra_dossie (CSV) + link para /obras/:id/dossie (timeline completa)
+   ↓ Export CSV → src/lib/csv.ts (downloadCsv)
+   ↓ Export PDF → src/lib/pdf.ts (generatePdfFromHtml + html2pdf.js) → download ou anexo
+```
+
 ## Chat assistente
 ```
 Chat (input)
