@@ -26,6 +26,8 @@ import {
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GenerateTemplateDialog } from "@/components/admin/GenerateTemplateDialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 type CrudItem = { id: string; nome: string; descricao?: string | null; etapa_padrao_id?: string | null };
 type CatalogItem = { id: string; nome: string; descricao?: string | null; ativo?: boolean; prioridade?: number | null; tempo_medio_dias?: number | null };
@@ -1621,6 +1623,61 @@ function CatalogServicosCollapsible() {
   );
 }
 
+function TemplatesCatalogCollapsible() {
+  const queryClient = useQueryClient();
+  const { data: items } = useQuery({
+    queryKey: ["catalogo_templates"],
+    queryFn: async () => {
+      const { data } = await supabase.from("catalogo_templates").select("id");
+      return data ?? [];
+    },
+  });
+
+  const handleTemplateGenerated = () => {
+    queryClient.invalidateQueries({ queryKey: ["catalogo_templates"] });
+  };
+
+  return (
+    <Card className="rounded-2xl overflow-hidden">
+      <Collapsible defaultOpen={false}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📋</span>
+              <h3 className="text-base font-semibold text-foreground">Templates (Catálogo)</h3>
+              {typeof items?.length === "number" && (
+                <Badge variant="secondary" className="ml-1">{items.length}</Badge>
+              )}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">Modelos de obras com serviços e ambientes pré-configurados. Apenas administradores podem editar.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 pt-1 border-t space-y-3">
+            <div className="flex gap-2">
+              <CatalogBody table="catalogo_templates" label="template" />
+              <GenerateTemplateDialog onSuccess={handleTemplateGenerated} />
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+
 const Configuracoes = () => {
   return (
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
@@ -1693,13 +1750,7 @@ const Configuracoes = () => {
             tooltip="Ambientes padrão (salas, cozinhas, etc). Apenas administradores podem editar."
           />
           <CatalogServicosCollapsible />
-          <CatalogCollapsible
-            table="catalogo_templates"
-            label="template"
-            title="Templates (Catálogo)"
-            icon="📋"
-            tooltip="Modelos de obras com serviços e ambientes pré-configurados. Apenas administradores podem editar."
-          />
+          <TemplatesCatalogCollapsible />
         </TabsContent>
       </Tabs>
     </div>
