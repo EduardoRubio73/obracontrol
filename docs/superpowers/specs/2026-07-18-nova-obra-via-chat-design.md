@@ -2,13 +2,21 @@
 
 ## Contexto
 
-O wizard `NovaObra.tsx` (`/nova-obra`, 7 passos) já orquestra toda a criação de
+O wizard `NovaObra.tsx` (`/nova-obra`, 6 passos) já orquestra toda a criação de
 obra: Nome/Tipo (`tipos_obra`), Complexidade, Descrição, geração de escopo por
-IA (Edge Function `gerar-escopo`, Gemini via Lovable AI Gateway), seleção de
-template (`catalogo_templates` → expandido na criação via Edge Function
-`expandir-template`) e seleção de até 3 fornecedores (sugeridos pela RPC
-`fn_sugerir_top3_fornecedores`, confirmados via RPC
-`fn_criar_cotacao_com_fornecedores`).
+IA (Edge Function `gerar-escopo`, Gemini via Lovable AI Gateway) e seleção de
+até 3 fornecedores (sugeridos pela RPC `fn_sugerir_top3_fornecedores`,
+confirmados via RPC `fn_criar_cotacao_com_fornecedores`).
+
+> **Atualização (18/07/2026, pós-aprovação inicial desta spec):** o wizard
+> tinha um passo opcional de "Template de Serviços" (`catalogo_templates`,
+> expandido via Edge Function `expandir-template`) que esta spec originalmente
+> incluía como passo 6 do fluxo de chat. Esse recurso foi removido do projeto
+> inteiro (banco, Edge Functions, wizard) no mesmo dia — ver `CHANGELOG.md`,
+> entrada "Catálogo Mestre eliminado por completo": as tabelas estavam vazias
+> em produção, a expansão de template tinha um bug real de perda de dados, e
+> não havia nenhum consumidor funcional ponta a ponta. O fluxo de chat desta
+> spec foi ajustado para não depender mais de template — ver seção 2.
 
 O chat "Assistente de Obra" (`Chat.tsx`, rota `/obras/:id/chat`) é hoje sempre
 escopado a uma obra existente — `RequireObra` bloqueia o acesso se o tenant
@@ -86,14 +94,12 @@ com pills de resposta rápida quando aplicável:
    `NovaObra.tsx:166-181`), mostra loading, depois cartão com Descrição
    Estruturada / Necessidades / Profissional Recomendado / Alertas de
    Segurança. Botões "Continuar" e "Editar descrição" (volta ao passo 4,
-   mantendo o texto já digitado).
-6. **Template de Serviços** — cartões de `catalogo_templates` (nome +
-   contagem de itens) + opção "Nenhum, criar manualmente". Seleção única.
-   Botão "Continuar".
-7. **Fornecedores** — sugestão via `fn_sugerir_top3_fornecedores`, cartões
+   mantendo o texto já digitado). "Continuar" segue direto para o passo 6
+   (não há mais passo de template — ver atualização no Contexto).
+6. **Fornecedores** — sugestão via `fn_sugerir_top3_fornecedores`, cartões
    com checkbox (mín. 1, máx. 3) + busca de outro fornecedor. Botão "Criar
    Obra".
-8. **Confirmação** — executa a criação (seção 3), cartão de sucesso com "Ver
+7. **Confirmação** — executa a criação (seção 3), cartão de sucesso com "Ver
    Dossiê da Obra"; chat troca automaticamente para a obra criada.
 
 Um botão **"Cancelar"**, visível em todos os passos, aborta o fluxo e volta
@@ -102,15 +108,13 @@ Um botão **"Cancelar"**, visível em todos os passos, aborta o fluxo e volta
 ### 3. Reaproveitamento de backend
 
 - **Hook compartilhado `useCriarObra`** (novo — extraído da mutation
-  `criarObra` em `NovaObra.tsx:195-283`): recebe nome, tipo, complexidade,
-  descrição, escopo, template selecionado (opcional) e fornecedores
-  selecionados (opcional), e executa: `insert` em `obras` → `insert` em
-  `obra_dossie` → `expandir-template` (Edge Function, se houver template) →
-  `fn_criar_cotacao_com_fornecedores` (RPC, se houver fornecedores).
-  `NovaObra.tsx` passa a usar esse hook em vez da lógica inline; `Chat.tsx`
-  usa o mesmo hook no passo 8. Comportamento idêntico ao atual, sem mudança
-  de schema ou de RPCs.
-- Tipo/Template/Fornecedores: mesmas queries e RPC que o wizard já usa, sem
+  `criarObra` em `NovaObra.tsx`): recebe nome, tipo, complexidade, descrição,
+  escopo e fornecedores selecionados (opcional), e executa: `insert` em
+  `obras` → `insert` em `obra_dossie` → `fn_criar_cotacao_com_fornecedores`
+  (RPC, se houver fornecedores). `NovaObra.tsx` passa a usar esse hook em vez
+  da lógica inline; `Chat.tsx` usa o mesmo hook no passo 7. Comportamento
+  idêntico ao atual, sem mudança de schema ou de RPCs.
+- Tipo/Fornecedores: mesmas queries e RPC que o wizard já usa, sem
   alterações — só chamadas a partir de `Chat.tsx`.
 - `gerar-escopo`: chamada idêntica à do wizard, sem mudanças na Edge
   Function.
@@ -125,16 +129,15 @@ por tenant. Sem RPC nova, sem IA. Roda uma vez, logo após o passo 1 (Nome).
 
 `Chat.tsx` passa a suportar, além de mensagens de texto simples, mensagens do
 tipo "cartão interativo" (pills de resposta rápida, cartão de duplicata,
-cartão de escopo, cartão de template, cartão de fornecedor, cartão de
-sucesso), renderizadas na mesma lista de mensagens, mantendo o visual de
-conversa contínua.
+cartão de escopo, cartão de fornecedor, cartão de sucesso), renderizadas na
+mesma lista de mensagens, mantendo o visual de conversa contínua.
 
 ### 6. Tratamento de erros
 
-Se `gerar-escopo`, `expandir-template` ou `fn_criar_cotacao_com_fornecedores`
-falharem, o cartão do passo correspondente mostra o erro de forma visível
-(nunca falha silenciosa, conforme padrão do projeto) com botão "Tentar
-novamente", preservando os dados já coletados nos passos anteriores.
+Se `gerar-escopo` ou `fn_criar_cotacao_com_fornecedores` falharem, o cartão do
+passo correspondente mostra o erro de forma visível (nunca falha silenciosa,
+conforme padrão do projeto) com botão "Tentar novamente", preservando os
+dados já coletados nos passos anteriores.
 
 ## Fora de escopo
 
