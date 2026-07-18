@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,11 @@ import { useVoiceLoop, VoiceLoopStatus } from "@/hooks/useVoiceLoop";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import {
+  criacaoObraReducer,
+  ESTADO_INICIAL,
+  type CriacaoObraCardData,
+} from "@/lib/criarObraChatFlow";
 
 interface ChatMessage {
   id: string;
@@ -18,6 +23,7 @@ interface ChatMessage {
   content: string;
   acoes?: { label: string; route: string }[];
   anexos?: { nome: string; url: string; tipo: string }[];
+  card?: CriacaoObraCardData;
   timestamp: Date;
 }
 
@@ -51,6 +57,22 @@ function ChatContent({ obraId }: { obraId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef(messages);
+
+  const [criacaoObraState, dispatchCriacao] = useReducer(criacaoObraReducer, ESTADO_INICIAL);
+
+  const pushMessage = useCallback((partial: Omit<ChatMessage, "id" | "timestamp">) => {
+    setMessages((prev) => [...prev, { ...partial, id: crypto.randomUUID(), timestamp: new Date() }]);
+  }, []);
+
+  const iniciarCriacaoObra = useCallback(() => {
+    dispatchCriacao({ type: "iniciar" });
+    pushMessage({ role: "assistant", content: "Vamos criar uma nova obra! Qual é o nome dela?" });
+  }, [pushMessage]);
+
+  const cancelarCriacaoObra = useCallback(() => {
+    dispatchCriacao({ type: "cancelar" });
+    pushMessage({ role: "assistant", content: "Ok, cancelei a criação da obra. Como posso ajudar?" });
+  }, [pushMessage]);
 
   // Keep messagesRef in sync
   useEffect(() => {
@@ -340,6 +362,12 @@ function ChatContent({ obraId }: { obraId: string }) {
 
         {messages.length <= 1 && !isTyping && (
           <div className="flex flex-wrap gap-2 pt-2">
+            <button
+              onClick={iniciarCriacaoObra}
+              className="rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Nova
+            </button>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s.label}
@@ -367,6 +395,15 @@ function ChatContent({ obraId }: { obraId: string }) {
           <VoiceWaveform status={voiceLoop.status === "idle" ? "listening" : voiceLoop.status} />
           <span>{voiceStatusLabel[voiceLoop.status]}</span>
           <VoiceWaveform status={voiceLoop.status === "idle" ? "listening" : voiceLoop.status} />
+        </div>
+      )}
+
+      {criacaoObraState.ativo && (
+        <div className="px-4 py-2 border-t bg-primary/5 flex items-center justify-between shrink-0">
+          <span className="text-xs text-muted-foreground">Criando nova obra...</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={cancelarCriacaoObra}>
+            Cancelar
+          </Button>
         </div>
       )}
 
