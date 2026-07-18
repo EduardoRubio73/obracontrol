@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       alertas_sistema: {
@@ -941,6 +966,71 @@ export type Database = {
           },
         ]
       }
+      importacoes_log: {
+        Row: {
+          arquivo_hash: string
+          arquivo_nome: string
+          confianca: number | null
+          created_at: string
+          id: string
+          itens_count: number
+          obra_id: string
+          tipo_documento: string | null
+          user_id: string
+        }
+        Insert: {
+          arquivo_hash: string
+          arquivo_nome: string
+          confianca?: number | null
+          created_at?: string
+          id?: string
+          itens_count?: number
+          obra_id: string
+          tipo_documento?: string | null
+          user_id?: string
+        }
+        Update: {
+          arquivo_hash?: string
+          arquivo_nome?: string
+          confianca?: number | null
+          created_at?: string
+          id?: string
+          itens_count?: number
+          obra_id?: string
+          tipo_documento?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacoes_log_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacoes_log_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alertas_inteligentes"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "importacoes_log_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_progresso_obra"
+            referencedColumns: ["obra_id"]
+          },
+          {
+            foreignKeyName: "importacoes_log_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_cotacao: {
         Row: {
           cotacao_id: string
@@ -1523,6 +1613,7 @@ export type Database = {
         Row: {
           created_at: string | null
           descricao: string | null
+          etapa_padrao_id: string | null
           id: string
           nome: string
           user_id: string
@@ -1530,6 +1621,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           descricao?: string | null
+          etapa_padrao_id?: string | null
           id?: string
           nome: string
           user_id?: string
@@ -1537,11 +1629,20 @@ export type Database = {
         Update: {
           created_at?: string | null
           descricao?: string | null
+          etapa_padrao_id?: string | null
           id?: string
           nome?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_padrao_etapa_padrao_id_fkey"
+            columns: ["etapa_padrao_id"]
+            isOneToOne: false
+            referencedRelation: "etapas_padrao"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenants: {
         Row: {
@@ -1892,6 +1993,7 @@ export type Database = {
         }
         Returns: string
       }
+      fn_sentence_case: { Args: { txt: string }; Returns: string }
       fn_sugerir_fornecedores: {
         Args: { p_complexidade: string }
         Returns: {
@@ -1908,6 +2010,7 @@ export type Database = {
           nome: string
         }[]
       }
+      fn_title_case: { Args: { txt: string }; Returns: string }
       gerar_alertas_fase:
         | {
             Args: never
@@ -1937,7 +2040,10 @@ export type Database = {
           obra_nome: string
         }[]
       }
-      get_public_fornecedor_nome: { Args: { p_id: string }; Returns: string }
+      get_public_fornecedor_nome: {
+        Args: { p_id: string; p_token: string }
+        Returns: string
+      }
       get_public_itens_cotacao_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -1966,6 +2072,7 @@ export type Database = {
         Args: { p_token: string }
         Returns: undefined
       }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       status_cotacao:
@@ -2108,6 +2215,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       status_cotacao: [

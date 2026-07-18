@@ -6,6 +6,75 @@
 
 ---
 
+## [18/07/2026 - 15:00:00] Catálogo Mestre eliminado por completo (redundante e quebrado)
+
+- **Tipo:** [REMOÇÃO] [DB] [FRONTEND] [EDGE-FUNCTION]
+- **Motivo:** a pedido de Eduardo, verificação geral no que havia sido implementado hoje
+  (entrada abaixo, 01:30:00) contra o estado real do banco `xsqnkptdbabnvjcrvaob` (não só os
+  docs — CLI `supabase migration list` + `db query --linked`). Achados:
+  1. **Redundância conceitual**: `catalogo_servicos → catalogo_servico_etapas →
+     catalogo_etapa_tarefas` reimplementa `etapas_padrao`/`tarefas_padrao` (mesmo conceito
+     "etapa contém tarefas"), só que amarrado a um "Serviço" extra e escopado como catálogo
+     compartilhado/admin em vez de por usuário. A própria migration `20260718090100` já
+     documentava a decisão consciente de manter os dois sistemas separados.
+  2. **Bug real, não hipotético**: a migration de seed (`20260718132000`) insere a coluna
+     `tempo_dias` em `catalogo_etapa_tarefas`, que não existe nessa tabela (só tem `ordem` e
+     `criterios_qualidade`). O INSERT falhava e tudo daí em diante no script nunca rodou.
+     Estado real confirmado no banco antes da remoção: `catalogo_servico_etapas`,
+     `catalogo_etapa_tarefas`, `catalogo_servico_insumos_padrao`, `catalogo_templates` e as 3
+     tabelas de junção `catalogo_template_*` — **0 linhas em todas**. Só os catálogos "flat"
+     (`catalogo_tipos_obra`=4, `catalogo_ambientes`=8, `catalogo_servicos`=10) foram semeados.
+     Os "2 templates criados com relacionamentos completos" que a entrada de 01:30:00 abaixo
+     descreve **nunca existiram em produção** — a documentação estava desalinhada do banco real.
+  3. **Segundo bug, independente, na feature que seria mantida**: a Edge Function
+     `gerar-template-ia` recebia do Gemini a estrutura completa (serviços→etapas→tarefas) mas
+     só salvava `nome`/`descricao` do template, descartando o resto — e não existia UI para
+     ligar serviços/etapas/tarefas/ambientes a um template manualmente. Mesmo corrigido o bug
+     de API key que estava sendo debugado hoje (commits `dd47c00`…`d1fd471`), o resultado seria
+     sempre um template vazio.
+  4. `catalogo_tipos_obra` duplicava o já existente `tipos_obra` (o que é de fato usado para
+     classificar uma obra). `catalogo_ambientes` era conceito novo, mas só alimentava o
+     dropdown do "Gerar com IA". Nada disso tinha consumidor real: `obra_servicos` e
+     `obra_servico_insumos` também estavam vazias (a expansão de template nunca rodou).
+- **Decisão:** eliminar tudo (opção "A" apresentada a Eduardo), já que não havia nenhum dado
+  real nem caminho de código funcional ponta a ponta dependendo disso. O sistema volta a usar
+  só `tipos_obra`/`etapas_padrao`/`tarefas_padrao`, que já funcionam (30 etapas / 25 tarefas
+  reais em 7 obras).
+- **Banco de dados**: nova migration `20260718150000_remove_catalogo_mestre.sql` — `DROP
+  TABLE` em `catalogo_tipos_obra`, `catalogo_ambientes`, `catalogo_servicos`,
+  `catalogo_servico_etapas`, `catalogo_etapa_tarefas`, `catalogo_servico_insumos_padrao`,
+  `catalogo_templates` + as 3 tabelas de junção, `obra_servicos`, `obra_servico_insumos`;
+  remove as colunas `obra_fases.obra_servico_id`/`catalogo_etapa_id` e
+  `fase_itens.catalogo_tarefa_id`; `DROP FUNCTION fn_is_admin()` e
+  `fn_normalize_catalogo_servico()`; remove `profiles.is_admin`. Aplicada via
+  `supabase db push` (as migrations `20260718090100`…`132000` estavam com `Remote` em branco
+  no ledger do CLI apesar de já aplicadas fisicamente — provavelmente aplicadas fora da CLI
+  local; foram reparadas com `supabase migration repair ... --status applied` antes do push
+  para o `db push` não tentar recriar tabelas já existentes).
+- **Frontend**: removida a aba "🎨 Catálogo Mestre" de `Configuracoes.tsx` (e os componentes
+  que só existiam para ela: `CatalogCollapsible`, `CatalogServicosCollapsible`,
+  `CatalogServicosBody`, `TemplatesCatalogCollapsible`, `CatalogBody`, `useCatalogCrud`).
+  Removido o Step 5 ("Template de Serviços", opcional) do wizard `NovaObra.tsx` — volta a ser
+  6 passos (era 7). Apagados `src/components/admin/GenerateTemplateDialog.tsx`,
+  `supabase/functions/expandir-template/`, `supabase/functions/gerar-template-ia/`,
+  `supabase/tests/catalogo-integration.test.sql`, `src/__tests__/catalogo-integration.test.ts`.
+- **Achado colateral**: `src/types/database.types.ts` (gerado por essa feature) nunca foi
+  importado por nenhum arquivo do projeto — órfão desde que foi criado. Apagado também.
+  `src/integrations/supabase/types.ts` (o de verdade, usado por `client.ts`) nunca teve as
+  tabelas do catálogo — regenerado agora via `supabase gen types --linked` e ficou mais
+  completo (trouxe `importacoes_log` e a FK `tarefas_padrao.etapa_padrao_id`, que faltavam
+  por estar desatualizado há um tempo, sem relação com o catálogo).
+- **Pendência para quem revisar depois**: `docs/superpowers/plans/2026-07-18-nova-obra-via-chat.md`
+  e o spec correspondente (criados hoje, ainda não implementados — nenhum arquivo
+  `criacaoObraChatFlow.ts`/`CriarObraCard`/`useCriarObra` existe no repo) assumem a existência
+  de `catalogo_templates` e da Edge Function `expandir-template` no Step de template do fluxo
+  de chat. Precisam ser revisados/atualizados antes de serem executados.
+- **Documentação**: removido `docs/ai-context/20-catalogo-mestre-phase4.md` (documentava a
+  feature agora removida); `docs/ai-context/24-ai-index.md` atualizado com a nota de remoção
+  (mesmo padrão já usado para `25-ia-classificacao-obras.md` em 16/07/2026).
+
+---
+
 ## [18/07/2026 - 01:30:00] Catálogo Mestre: Sistema centralizado de templates para obras (✅ Fase 1-4 Completo)
 - **Tipo:** [FEATURE] [DB] [FRONTEND] [EDGE-FUNCTION]
 - **Descrição:** Implementação completa de catálogo mestre com templates compartilhados.
