@@ -17,6 +17,7 @@ interface PropostaComItens {
   id: string;
   valor: number;
   prazo_dias: number | null;
+  observacoes: string | null;
   fornecedor: { nome: string } | null;
   itens: PropostaItem[];
 }
@@ -47,13 +48,27 @@ const Analise = () => {
       const { data, error } = await supabase
         .from("propostas")
         .select(`
-          id, valor, prazo_dias,
+          id, valor, prazo_dias, observacoes,
           fornecedor:fornecedor_id(nome),
           itens:proposta_itens(nome, quantidade, valor_unitario)
         `)
         .eq("cotacao_id", cotacaoId!);
       if (error) throw error;
       return data as unknown as PropostaComItens[];
+    },
+  });
+
+  const { data: hasLabor } = useQuery({
+    queryKey: ["analise-tem-mao-de-obra", cotacaoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("itens_cotacao")
+        .select("id")
+        .eq("cotacao_id", cotacaoId!)
+        .eq("tipo", "mao_de_obra")
+        .limit(1);
+      if (error) throw error;
+      return (data?.length ?? 0) > 0;
     },
   });
 
@@ -145,6 +160,18 @@ const Analise = () => {
       });
     }
   });
+
+  if (hasLabor) {
+    propostas.forEach((p) => {
+      const forn = (p.fornecedor as any)?.nome ?? "Sem nome";
+      if (!p.prazo_dias) {
+        alerts.push({ type: "warning", msg: `${forn}: prazo de execução não informado` });
+      }
+      if (!p.observacoes) {
+        alerts.push({ type: "warning", msg: `${forn}: garantia/observações do serviço não informadas` });
+      }
+    });
+  }
 
   const economia = scored[scored.length - 1].total - scored[0].total;
   const obraNome = (cotacao?.obras as { nome?: string } | null)?.nome;

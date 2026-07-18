@@ -17,8 +17,17 @@ interface PropostaItem {
 
 interface PropostaComItens {
   id: string;
+  valor: number;
+  prazo_dias: number | null;
+  observacoes: string | null;
   fornecedor: { nome: string } | null;
   itens: PropostaItem[];
+}
+
+interface ItemSolicitado {
+  nome: string;
+  tipo: string;
+  escopo: string | null;
 }
 
 const fmt = (v: number) =>
@@ -52,13 +61,25 @@ const Comparacao = () => {
       const { data, error } = await supabase
         .from("propostas")
         .select(`
-          id,
+          id, valor, prazo_dias, observacoes,
           fornecedor:fornecedor_id(nome),
           itens:proposta_itens(nome, quantidade, valor_unitario)
         `)
         .eq("cotacao_id", cotacaoId!);
       if (error) throw error;
       return data as unknown as PropostaComItens[];
+    },
+  });
+
+  const { data: itensSolicitados } = useQuery({
+    queryKey: ["comparacao-itens-solicitados", cotacaoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("itens_cotacao")
+        .select("nome, tipo, escopo")
+        .eq("cotacao_id", cotacaoId!);
+      if (error) throw error;
+      return data as ItemSolicitado[];
     },
   });
 
@@ -105,11 +126,11 @@ const Comparacao = () => {
       const payload = propostas.map((p) => ({
         fornecedor: (p.fornecedor as any)?.nome ?? "Sem nome",
         valor: (p.itens ?? []).reduce((a, i) => a + i.valor_unitario * i.quantidade, 0),
-        prazo_dias: null,
-        observacoes: null,
+        prazo_dias: p.prazo_dias ?? null,
+        observacoes: p.observacoes ?? null,
       }));
       const { data, error } = await supabase.functions.invoke("apoio-decisao", {
-        body: { propostas: payload, descricao_cotacao: cotacao?.descricao },
+        body: { propostas: payload, descricao_cotacao: cotacao?.descricao, itens_solicitados: itensSolicitados ?? [] },
       });
       if (error) throw error;
       return data;

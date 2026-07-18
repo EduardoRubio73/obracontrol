@@ -1035,28 +1035,34 @@ export type Database = {
         Row: {
           cotacao_id: string
           created_at: string | null
+          escopo: string | null
           id: string
           nome: string
           quantidade: number
           tenant_id: string | null
+          tipo: string
           unidade: string | null
         }
         Insert: {
           cotacao_id: string
           created_at?: string | null
+          escopo?: string | null
           id?: string
           nome: string
           quantidade?: number
           tenant_id?: string | null
+          tipo?: string
           unidade?: string | null
         }
         Update: {
           cotacao_id?: string
           created_at?: string | null
+          escopo?: string | null
           id?: string
           nome?: string
           quantidade?: number
           tenant_id?: string | null
+          tipo?: string
           unidade?: string | null
         }
         Relationships: [
@@ -2048,9 +2054,11 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           created_at: string
+          escopo: string
           id: string
           nome: string
           quantidade: number
+          tipo: string
           unidade: string
         }[]
       }
@@ -2059,15 +2067,26 @@ export type Database = {
       marcar_comprado: { Args: { p_compra_id: string }; Returns: undefined }
       mensagem_dia: { Args: { p_obra: string }; Returns: string }
       processar_alertas: { Args: never; Returns: undefined }
-      submit_public_proposta: {
-        Args: {
-          p_empresa: string
-          p_itens: Json
-          p_prazo_dias: number
-          p_token: string
-        }
-        Returns: string
-      }
+      submit_public_proposta:
+        | {
+            Args: {
+              p_empresa: string
+              p_itens: Json
+              p_prazo_dias: number
+              p_token: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_empresa: string
+              p_itens: Json
+              p_observacoes?: string
+              p_prazo_dias: number
+              p_token: string
+            }
+            Returns: string
+          }
       track_public_cotacao_view: {
         Args: { p_token: string }
         Returns: undefined

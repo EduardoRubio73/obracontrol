@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { propostas, descricao_cotacao } = await req.json();
+    const { propostas, descricao_cotacao, itens_solicitados } = await req.json();
     if (!propostas || !Array.isArray(propostas) || propostas.length < 2) {
       return new Response(JSON.stringify({ error: "Mínimo 2 propostas para comparar" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -19,13 +19,23 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    const itensMaoDeObra = Array.isArray(itens_solicitados)
+      ? itens_solicitados.filter((i: any) => i.tipo === "mao_de_obra")
+      : [];
+
+    const escopoText = itensMaoDeObra.length > 0
+      ? "\n\nItens de MÃO DE OBRA/SERVIÇO solicitados nesta cotação (exija prazo de execução, escopo e garantia — sinalize explicitamente quando alguma proposta não informar isso):\n"
+        + itensMaoDeObra.map((i: any) => `- ${i.nome}: ${i.escopo || "escopo não detalhado pelo solicitante"}`).join("\n")
+      : "";
+
     const propostasText = propostas.map((p: any, i: number) =>
-      `Proposta ${i + 1} - ${p.fornecedor}: Valor R$${p.valor}, Prazo ${p.prazo_dias || "não informado"} dias, Observações: ${p.observacoes || "nenhuma"}`
+      `Proposta ${i + 1} - ${p.fornecedor}: Valor R$${p.valor}, Prazo ${p.prazo_dias || "não informado"} dias, Observações/Garantia: ${p.observacoes || "nenhuma"}`
     ).join("\n");
 
     const systemPrompt = `Você é um consultor de obras especializado em análise de propostas no Brasil.
 Analise as propostas abaixo e recomende a melhor opção custo-benefício.
 Considere: valor, prazo, completude da proposta.
+Quando a cotação incluir item de mão de obra/serviço, trate valor baixo sem prazo/garantia definidos como risco, não como vantagem, e cite isso nos pontos de atenção.
 Use a função recomendar_proposta para retornar sua análise.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -38,7 +48,7 @@ Use a função recomendar_proposta para retornar sua análise.`;
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Cotação: ${descricao_cotacao || "Obra"}\n\n${propostasText}` },
+          { role: "user", content: `Cotação: ${descricao_cotacao || "Obra"}${escopoText}\n\n${propostasText}` },
         ],
         tools: [
           {

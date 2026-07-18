@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock, HardHat } from "lucide-react";
 
 const PortalFornecedor = () => {
   const { token } = useParams<{ token: string }>();
@@ -18,6 +19,7 @@ const PortalFornecedor = () => {
   const [empresa, setEmpresa] = useState("");
   const [empresaLocked, setEmpresaLocked] = useState(false);
   const [prazo, setPrazo] = useState("");
+  const [garantia, setGarantia] = useState("");
   const [valores, setValores] = useState<Record<string, string>>({});
 
   // Fetch fornecedor name if param present
@@ -85,6 +87,7 @@ const PortalFornecedor = () => {
         p_empresa: empresa.trim(),
         p_prazo_dias: Number(prazo) || null,
         p_itens: propostaItens,
+        p_observacoes: garantia.trim() || null,
       });
 
       if (error) throw error;
@@ -96,6 +99,8 @@ const PortalFornecedor = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const hasLabor = !!itens?.some((item: any) => item.tipo === "mao_de_obra");
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!empresa.trim()) return toast.error("Informe o nome da empresa");
@@ -105,6 +110,11 @@ const PortalFornecedor = () => {
       return v > 0;
     });
     if (!allFilled) return toast.error("Preencha todos os valores unitários");
+
+    if (hasLabor) {
+      if (!prazo.trim()) return toast.error("Informe o prazo de execução do serviço");
+      if (!garantia.trim()) return toast.error("Informe a garantia/observações do serviço");
+    }
 
     submitProposta.mutate();
   };
@@ -217,14 +227,26 @@ const PortalFornecedor = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Prazo de Entrega (dias)</Label>
+                <Label>{hasLabor ? "Prazo de Execução (dias) *" : "Prazo de Entrega (dias)"}</Label>
                 <Input
                   value={prazo}
                   onChange={(e) => setPrazo(e.target.value)}
                   type="number"
                   placeholder="Ex: 30"
+                  required={hasLabor}
                 />
               </div>
+              {hasLabor && (
+                <div className="space-y-2">
+                  <Label>Garantia / Observações do Serviço *</Label>
+                  <Textarea
+                    value={garantia}
+                    onChange={(e) => setGarantia(e.target.value)}
+                    placeholder="Ex: 12 meses de garantia sobre a impermeabilização"
+                    required={hasLabor}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -239,11 +261,17 @@ const PortalFornecedor = () => {
                   {itens.map((item: any) => (
                     <div key={item.id} className="rounded-lg border p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{item.nome}</span>
+                        <span className="font-medium flex items-center gap-1.5">
+                          {item.tipo === "mao_de_obra" && <HardHat className="h-4 w-4 text-amber-600 shrink-0" />}
+                          {item.nome}
+                        </span>
                         <span className="text-sm text-muted-foreground">
                           {item.quantidade} {item.unidade}
                         </span>
                       </div>
+                      {item.tipo === "mao_de_obra" && item.escopo && (
+                        <p className="text-sm text-muted-foreground bg-muted rounded-md p-2">{item.escopo}</p>
+                      )}
                       <div className="space-y-1">
                         <Label className="text-xs">Valor Unitário (R$) *</Label>
                         <Input

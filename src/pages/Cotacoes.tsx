@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,7 +21,7 @@ import html2pdf from "html2pdf.js";
 import {
   ChevronRight, Check, BarChart3, Plus, Trash2, Link2, Copy,
   PackagePlus, Brain, Mail, Send, Eye, Clock, CheckCircle2, AlertTriangle,
-  Search, Pencil, Printer, RefreshCw, Upload, Download,
+  Search, Pencil, Printer, RefreshCw, Upload, Download, HardHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,26 @@ const statusColors: Record<string, string> = {
   comparando: "bg-accent text-accent-foreground",
   finalizada: "bg-success/10 text-success",
   cancelada: "bg-destructive/10 text-destructive",
+};
+
+// Andamento real da cotação: `cotacoes.status` só transita rascunho→enviada no banco,
+// então o progresso (respostas de fornecedores, parada, etc.) é derivado aqui.
+const getAndamento = (
+  cotacao: { status: string | null; data_expiracao: string | null },
+  counts?: { total: number; respondeu: number }
+): { label: string; color: string } => {
+  if (cotacao.status === "cancelada") return { label: "Cancelada", color: statusColors.cancelada };
+  if (cotacao.status === "finalizada") return { label: "Finalizada", color: statusColors.finalizada };
+  if (cotacao.status === "rascunho") return { label: "Rascunho", color: statusColors.rascunho };
+
+  const total = counts?.total ?? 0;
+  const respondeu = counts?.respondeu ?? 0;
+  const expirada = !!cotacao.data_expiracao && new Date(cotacao.data_expiracao) < new Date();
+
+  if (total > 0 && respondeu === total) return { label: "Todas responderam", color: statusColors.finalizada };
+  if (respondeu > 0) return { label: `Recebendo propostas (${respondeu}/${total})`, color: statusColors.recebendo_propostas };
+  if (expirada) return { label: "Parada", color: "bg-orange-100 text-orange-700" };
+  return { label: "Aguardando respostas", color: statusColors.enviada };
 };
 
 // Helper to compute badge status from tracking row
@@ -141,7 +162,10 @@ async function generateEspelhoHtml(
           ${printItens.map((item: any, i: number) => `
             <tr>
               <td>${i + 1}</td>
-              <td>${item.nome}</td>
+              <td>
+                ${item.tipo === "mao_de_obra" ? "🔨 " : ""}${item.nome}
+                ${item.tipo === "mao_de_obra" && item.escopo ? `<br/><span style="font-size:11px;color:#666;">${item.escopo}</span>` : ""}
+              </td>
               <td>${item.quantidade}</td>
               <td>${item.unidade || "un"}</td>
               <td class="price-col"></td>
@@ -183,6 +207,10 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const [newItemName, setNewItemName] = useState("");
   const [newItemQtd, setNewItemQtd] = useState("1");
   const [newItemUnit, setNewItemUnit] = useState("un");
+  const [servicoNome, setServicoNome] = useState("");
+  const [servicoEscopo, setServicoEscopo] = useState("");
+  const [servicoQtd, setServicoQtd] = useState("1");
+  const [servicoUnit, setServicoUnit] = useState("serviço");
   const [prodSearch, setProdSearch] = useState("");
   const [selectedProds, setSelectedProds] = useState<Record<string, { nome: string; unidade: string; qtd: string }>>({});
   const [prazoDias, setPrazoDias] = useState("7");
@@ -245,6 +273,25 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       const counts: Record<string, number> = {};
       data.forEach((d: any) => {
         counts[d.cotacao_id] = (counts[d.cotacao_id] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+
+  const { data: allTrackingCounts } = useQuery({
+    queryKey: ["cotacao-tracking-count", cotacaoIds],
+    enabled: cotacaoIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cotacao_fornecedores")
+        .select("cotacao_id, status")
+        .in("cotacao_id", cotacaoIds);
+      if (error) throw error;
+      const counts: Record<string, { total: number; respondeu: number }> = {};
+      data.forEach((d: any) => {
+        const c = (counts[d.cotacao_id] ??= { total: 0, respondeu: 0 });
+        c.total += 1;
+        if (d.status === "respondeu") c.respondeu += 1;
       });
       return counts;
     },
@@ -435,6 +482,23 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const addServico = useMutation({
+    mutationFn: async (values: { cotacao_id: string; nome: string; escopo: string; quantidade: number; unidade: string }) => {
+      const { error } = await supabase.from("itens_cotacao").insert({ ...values, tipo: "mao_de_obra" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["itens-cotacao", manageDialog] });
+      queryClient.invalidateQueries({ queryKey: ["itens-cotacao-count"] });
+      setServicoNome("");
+      setServicoEscopo("");
+      setServicoQtd("1");
+      setServicoUnit("serviço");
+      toast.success("Serviço adicionado!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("itens_cotacao").delete().eq("id", id);
@@ -551,6 +615,17 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       nome: newItemName.trim(),
       quantidade: Number(newItemQtd) || 1,
       unidade: newItemUnit || "un",
+    });
+  };
+
+  const handleAddServico = () => {
+    if (!servicoNome.trim() || !manageDialog) return;
+    addServico.mutate({
+      cotacao_id: manageDialog,
+      nome: servicoNome.trim(),
+      escopo: servicoEscopo.trim(),
+      quantidade: Number(servicoQtd) || 1,
+      unidade: servicoUnit || "serviço",
     });
   };
 
@@ -759,23 +834,17 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
   const generateEspelhoPdf = async (cotacao: any, nomeObra: string, profileData?: any): Promise<Blob | null> => {
     try {
       const html = await generateEspelhoHtml(cotacao, nomeObra, printItens, user, profileData);
-      const element = document.createElement("div");
-      element.innerHTML = html;
-
       const numOrc = `#${cotacao.id.slice(0, 8)}`;
       const filename = `Espelho_Orcamento_${numOrc.replace("#", "")}_${new Date().toISOString().split("T")[0]}.pdf`;
 
-      return new Promise((resolve) => {
-        html2pdf().set({
-          margin: 10,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, logging: false },
-          jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-        }).from(html).outputPdf((pdf: Blob) => {
-          resolve(pdf);
-        });
-      });
+      const pdfBlob: Blob = await html2pdf().set({
+        margin: 10,
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, logging: false },
+        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+      }).from(html).outputPdf("blob");
+      return pdfBlob;
     } catch (e) {
       console.error("PDF generation error:", e);
       toast.error("Erro ao gerar PDF");
@@ -838,6 +907,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
         {cotacoes?.map((cotacao) => {
           const itemCount = allItensCount?.[cotacao.id] ?? 0;
           const numOrc = `#${cotacao.id.slice(0, 8)}`;
+          const andamento = getAndamento(cotacao, allTrackingCounts?.[cotacao.id]);
           return (
             <Card key={cotacao.id} className="hover:border-primary/30 transition-colors">
               <CardContent className="p-3 sm:p-4 space-y-2">
@@ -862,8 +932,8 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                       )}
                     </div>
                   </div>
-                  <Badge variant="secondary" className={cn("shrink-0 text-xs", statusColors[cotacao.status ?? ""] ?? "")}>
-                    {cotacao.status?.replace("_", " ")}
+                  <Badge variant="secondary" className={cn("shrink-0 text-xs whitespace-nowrap", andamento.color)}>
+                    {andamento.label}
                   </Badge>
                 </div>
                 {/* Row 2: action buttons */}
@@ -1011,7 +1081,15 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                   {printItens.map((item: any, i: number) => (
                     <TableRow key={item.id}>
                       <TableCell className="text-xs">{i + 1}</TableCell>
-                      <TableCell>{item.nome}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          {item.tipo === "mao_de_obra" && <HardHat className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                          {item.nome}
+                        </div>
+                        {item.tipo === "mao_de_obra" && item.escopo && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.escopo}</p>
+                        )}
+                      </TableCell>
                       <TableCell>{item.quantidade}</TableCell>
                       <TableCell>{item.unidade || "un"}</TableCell>
                     </TableRow>
@@ -1285,6 +1363,14 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                   <p className="text-lg font-bold">{viewPropostaData.prazo_dias ? `${viewPropostaData.prazo_dias} dias` : "—"}</p>
                 </div>
               </div>
+              {(viewPropostaData as any).observacoes && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
+                    <HardHat className="h-3.5 w-3.5" /> Garantia / Observações do Serviço
+                  </p>
+                  <p className="text-sm mt-1">{(viewPropostaData as any).observacoes}</p>
+                </div>
+              )}
               {(viewPropostaData as any).proposta_itens?.length > 0 && (
                 <Table>
                   <TableHeader>
@@ -1400,6 +1486,31 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                 </div>
               </div>
 
+              <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <HardHat className="h-4 w-4 text-amber-600" /> Mão de Obra / Serviço
+                </Label>
+                <Input
+                  placeholder="Nome do serviço (ex: Reforma da piscina)"
+                  value={servicoNome}
+                  onChange={(e) => setServicoNome(e.target.value)}
+                  autoComplete="off"
+                />
+                <Textarea
+                  placeholder="Escopo do serviço — o que precisa ser feito (ex: troca de vinil, azulejo, tubulação)"
+                  value={servicoEscopo}
+                  onChange={(e) => setServicoEscopo(e.target.value)}
+                  rows={2}
+                />
+                <div className="flex gap-2">
+                  <Input placeholder="Qtd" type="number" value={servicoQtd} onChange={(e) => setServicoQtd(e.target.value)} className="w-20" />
+                  <Input placeholder="Un" value={servicoUnit} onChange={(e) => setServicoUnit(e.target.value)} className="w-24" />
+                  <Button className="flex-1" onClick={handleAddServico} disabled={addServico.isPending || !servicoNome.trim()}>
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Serviço
+                  </Button>
+                </div>
+              </div>
+
               {itens?.length ? (
                 <Table>
                   <TableHeader>
@@ -1413,7 +1524,15 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
                   <TableBody>
                     {itens.map((item: any) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.nome}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {item.tipo === "mao_de_obra" && <HardHat className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                            {item.nome}
+                          </div>
+                          {item.tipo === "mao_de_obra" && item.escopo && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{item.escopo}</p>
+                          )}
+                        </TableCell>
                         <TableCell>{item.quantidade}</TableCell>
                         <TableCell>{item.unidade}</TableCell>
                         <TableCell>

@@ -36,12 +36,8 @@ const gestaoObraSections = [
   { title: "Galeria", segment: "galeria", emoji: "🖼️" },
   { title: "Documentos", segment: "documentos", emoji: "📁" },
   { title: "Status", segment: "status", emoji: "🚦" },
+  { title: "Relatórios", segment: "relatorios", emoji: "📈" },
   { title: "Assistente IA", segment: "chat", emoji: "🤖" },
-];
-
-const configItems = [
-  { title: "Relatórios", url: "/relatorios", emoji: "📈" },
-  { title: "Config. Sistema", url: "/configuracoes", emoji: "⚙️" },
 ];
 
 export function AppSidebar() {
@@ -175,22 +171,6 @@ export function AppSidebar() {
           </Collapsible>
         )}
 
-        {/* Configurações - collapsible, default closed */}
-        <Collapsible defaultOpen={isGroupActive(configItems)}>
-          <SidebarGroup>
-            <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded-md transition-colors">
-                {!collapsed && <span>⚙️ Gestão</span>}
-                {!collapsed && <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />}
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>{renderItems(configItems)}</SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
       </SidebarContent>
 
       <SidebarFooter>
@@ -210,6 +190,19 @@ export function AppSidebar() {
                   </AvatarFallback>
                 </Avatar>
                 {!collapsed && <span className="truncate text-sm">{profile?.nome || user?.email}</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink
+                to="/configuracoes"
+                className="flex items-center gap-3 hover:bg-accent"
+                activeClassName="bg-primary/10 text-primary font-medium"
+                onClick={handleNav}
+              >
+                <span className="w-6 text-center text-base shrink-0">⚙️</span>
+                {!collapsed && <span>Configurações</span>}
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>

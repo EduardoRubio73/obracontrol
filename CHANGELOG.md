@@ -14,6 +14,55 @@
 > conversa. Menos detalhadas que o padrão usual deste changelog; se precisar de
 > mais profundidade, ver os commits/specs referenciados em cada uma.
 
+## [19/07/2026 - 11:40:00] Mão de Obra vira tipo de item distinto de Produto nas Cotações (✅ Completo)
+- **Tipo:** [FEATURE] [DB]
+- **Motivo:** propostas de mão de obra (ex: reforma de piscina) eram cadastradas
+  como item de produto genérico (nome+qtd+unidade), sem espaço para escopo do
+  serviço, prazo de execução ou garantia — a "Recomendação IA" de Comparação
+  ficava vaga por falta desses dados estruturados, não por limitação do modelo.
+- **Descrição:**
+  - Migration `20260718222455_itens_cotacao_mao_de_obra.sql`: `itens_cotacao`
+    ganha `tipo` (`'produto' | 'mao_de_obra'`, default `'produto'`, CHECK) e
+    `escopo` (texto livre, descrição do serviço pedido). `propostas.prazo_dias`
+    e `propostas.observacoes` (colunas já existentes) passam a ser reaproveitadas
+    como "prazo de execução" e "garantia/observações do serviço" — decisão
+    deliberada de não criar `proposta_itens.garantia`/`prazo_execucao_dias`
+    novas, já que uma cotação de mão de obra tende a ter um serviço dominante
+    por proposta. `get_public_itens_cotacao_by_token` recriada (DROP+CREATE,
+    Postgres não permite `CREATE OR REPLACE` mudar `RETURNS TABLE`) para
+    expor `tipo`/`escopo`; `submit_public_proposta` ganhou parâmetro aditivo
+    `p_observacoes text DEFAULT NULL`.
+  - `Cotacoes.tsx`: nova seção "🔨 Mão de Obra / Serviço" na tab de itens
+    (nome + escopo + qtd/unidade), badges de tipo e escopo na listagem, no
+    Espelho do Orçamento (PDF) e no dialog de proposta do fornecedor.
+  - `PortalFornecedor.tsx`: item de mão de obra mostra o escopo pedido
+    read-only; quando a cotação tem item de mão de obra, "Prazo de Execução"
+    e um novo campo "Garantia / Observações do Serviço" passam a ser
+    obrigatórios antes do envio.
+  - `Comparacao.tsx`: corrigido bug preexistente que mandava
+    `prazo_dias`/`observacoes` sempre `null` para a IA (`apoio-decisao`)
+    mesmo quando o fornecedor preenchia — a IA nunca via esses dados, mesmo
+    para cotações só de produto. Agora envia os valores reais + os itens
+    solicitados (tipo/escopo) da cotação.
+  - `Analise.tsx`: alertas locais (sem custo de IA) quando falta prazo ou
+    garantia numa proposta de cotação com item de mão de obra.
+  - `apoio-decisao` (edge function): prompt passa a citar explicitamente
+    escopo/prazo/garantia de itens de mão de obra e tratar valor baixo sem
+    esses dados como risco, não vantagem. Contrato de request/response
+    inalterado (campo novo é opcional). Deploy feito via
+    `supabase functions deploy apoio-decisao`.
+  - `Compras.tsx`/`Financeiro.tsx` não foram tocados — aceitar proposta
+    continua não gerando `compra` automaticamente, mão de obra fica contida
+    no domínio Cotações/Propostas.
+- **Verificado:** `tsc --noEmit` e `vite build` limpos.
+- **Arquivos:** `supabase/migrations/20260718222455_itens_cotacao_mao_de_obra.sql`,
+  `src/pages/Cotacoes.tsx`, `src/pages/PortalFornecedor.tsx`,
+  `src/pages/Comparacao.tsx`, `src/pages/Analise.tsx`,
+  `supabase/functions/apoio-decisao/index.ts`, `src/integrations/supabase/types.ts`
+  (regenerado).
+
+---
+
 ## [18/07/2026 - 21:34:45] Reverificação dos 3 IDORs mapeados: confirmados corrigidos (✅ Completo)
 - **Tipo:** [SEGURANÇA] [DOCUMENTAÇÃO]
 - **Descrição:** `CLAUDE.md` ainda listava os 3 IDORs cross-tenant (`chat-assistente`,
@@ -38,6 +87,43 @@
     "Segurança — IDORs históricos (resolvidos)", registrando a reverificação em
     vez de repetir a pendência como se estivesse em aberto.
 - **Arquivos:** `CLAUDE.md` (nenhum código de produção alterado, só documentação).
+
+---
+
+## [18/07/2026 - 19:21:19] Relatórios migrado para por-obra, com 4 categorias (Gerencial/Materiais/Financeiro/Dossiê) (✅ Completo)
+- **Tipo:** [FEATURE] [REFATORAÇÃO]
+- **Descrição:** `/relatorios` era a única página relevante do app ainda no padrão
+  antigo (global, com `<Select>` de obra dentro da página) — todas as outras já
+  tinham migrado para `/obras/:id/...` com a URL como fonte da verdade. Replicado
+  o mesmo padrão já usado no Assistente de IA (`Chat.tsx`/`ChatContent` +
+  `RequireObra`): `Relatorios.tsx` virou `RelatoriosContent({ obraId })` + export
+  default com `RequireObra`. Também ampliado de 3 ações estáticas (Financeiro
+  CSV/PDF, Dossiê CSV) para 4 abas por obra:
+  - **Gerencial**: progresso/eficiência por fase, via `vw_fases_previsao` +
+    `vw_fase_eficiencia` (essa última sem `obra_id` — escopada via `.in("id", faseIds)`).
+  - **Materiais**: itens planejados (`fase_itens`) e compras registradas
+    (`compras` + join `produtos`/`fornecedores`) — duas seções independentes, já
+    que o schema não tem FK entre as duas tabelas.
+  - **Financeiro**: resumo via `vw_resumo_financeiro` (em vez de re-somar
+    client-side) + transações; PDF trocou o `window.print()` antigo pelo blob
+    real de `html2pdf.js` (mesmo padrão já usado em `Cotacoes.tsx`).
+  - **Dossiê**: mantido simples (mesma query `obra_dossie` de antes) + link para
+    `/obras/:id/dossie` (timeline completa de 5 fontes) em vez de duplicar aquele merge.
+  - Extraído `src/lib/csv.ts` e `src/lib/pdf.ts` (helpers de export CSV/PDF antes
+    duplicados entre `Relatorios.tsx` e `Cotacoes.tsx`) — `Cotacoes.tsx` não foi
+    tocado, fica como limpeza opcional futura.
+  - Sidebar: "Relatórios" saiu do grupo global "⚙️ Gestão" e entrou em
+    "🏗️ Gestão da Obra", ao lado de "Assistente IA".
+  - Nenhuma tabela/migration nova — só views e tabelas já existentes (as 7 views
+    de relatório, antes não documentadas, foram registradas em `08-database.md`).
+- **Arquivos:** `src/pages/Relatorios.tsx` (reescrito), `src/lib/csv.ts` (novo),
+  `src/lib/pdf.ts` (novo), `src/App.tsx` (rota `/obras/:id/relatorios` +
+  `/relatorios` virou `LegacyObraRedirect`), `src/components/AppSidebar.tsx`,
+  `docs/ai-context/03-routing.md`, `04-components.md`, `08-database.md`,
+  `14-workflows.md`, `02-project-structure.md`, `17-file-map.md`.
+- **Pendente:** verificação visual no navegador (autenticada) ainda não feita
+  nesta sessão — sem credenciais de teste disponíveis. Rodar `impeccable` para
+  polimento de UI é sugestão de follow-up, não feito ainda.
 
 ---
 
