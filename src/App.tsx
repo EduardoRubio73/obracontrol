@@ -127,6 +127,7 @@ const App = () => (
               <Route path="/nova-obra" element={<NovaObra />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/conf" element={<Navigate to="/configuracoes" replace />} />
               <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/chat" element={<LegacyObraRedirect section="chat" />} />
               <Route path="/perfil" element={<Perfil />} />
