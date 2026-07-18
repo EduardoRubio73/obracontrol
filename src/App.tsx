@@ -33,6 +33,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
 import Chat from "./pages/Chat";
 import Comparacao from "./pages/Comparacao";
+import Assistente from "./pages/Assistente";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -94,6 +95,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/obras" element={<Obras />} />
               <Route path="/hoje" element={<Hoje />} />
+              <Route path="/assistente" element={<Assistente />} />
 
               {/* Rotas por obra — fonte de verdade é a URL, não o context */}
               <Route path="/obras/:id" element={<ObraHomeRedirect />} />
@@ -129,7 +131,7 @@ const App = () => (
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/conf" element={<Navigate to="/configuracoes" replace />} />
               <Route path="/auditoria" element={<Auditoria />} />
-              <Route path="/chat" element={<LegacyObraRedirect section="chat" />} />
+              <Route path="/chat" element={<LegacyObraRedirect section="chat" emptyFallback="/assistente" />} />
               <Route path="/perfil" element={<Perfil />} />
             </Route>
             <Route path="*" element={<NotFound />} />
