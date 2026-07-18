@@ -32,47 +32,49 @@ interface TemplateResponse {
   }[];
 }
 
-async function callClaude(prompt: string): Promise<TemplateResponse | null> {
+async function callGemini(prompt: string): Promise<TemplateResponse | null> {
   try {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
-      console.error("ANTHROPIC_API_KEY not configured in Supabase secrets");
+      console.error("ANTHROPIC_API_KEY (Gemini) not configured in Supabase secrets");
       return null;
     }
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-opus-4-8",
-        max_tokens: 2048,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
 
     if (!response.ok) {
-      console.error("Claude API error:", response.status, await response.text());
+      console.error("Gemini API error:", response.status, await response.text());
       return null;
     }
 
     const data = await response.json();
-    const content = data.content[0]?.text;
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!content) {
-      console.error("No content from Claude");
+      console.error("No content from Gemini");
       return null;
     }
 
-    // Extract JSON from response (Claude might wrap it in markdown code blocks)
+    // Extract JSON from response (Gemini might wrap it in markdown code blocks)
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("No JSON found in response:", content);
@@ -81,7 +83,7 @@ async function callClaude(prompt: string): Promise<TemplateResponse | null> {
 
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error("Error calling Claude:", error);
+    console.error("Error calling Gemini:", error);
     return null;
   }
 }
@@ -185,8 +187,8 @@ Inclua:
 
 Responda APENAS com o JSON, sem markdown code blocks.`;
 
-    // Call Claude API
-    const templateData = await callClaude(prompt);
+    // Call Gemini API
+    const templateData = await callGemini(prompt);
 
     if (!templateData) {
       const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
