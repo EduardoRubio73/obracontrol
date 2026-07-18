@@ -191,16 +191,20 @@ Responda APENAS com o JSON, sem markdown code blocks.`;
     const templateData = await callGemini(prompt);
 
     if (!templateData) {
-      const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+      const apiKey = Deno.env.get("GEMINI_API_KEY");
       const errorMsg = !apiKey
-        ? "ANTHROPIC_API_KEY not configured in Supabase secrets"
-        : "Failed to generate template from Claude (API error or invalid response)";
+        ? "GEMINI_API_KEY not configured in Supabase secrets"
+        : "Failed to generate template from Gemini (API error or invalid response)";
 
-      console.error("Template generation failed:", errorMsg);
+      console.error("Template generation failed:", errorMsg, "API key status:", !!apiKey);
 
       return new Response(
         JSON.stringify({
           error: errorMsg,
+          debug: {
+            apiKeyConfigured: !!apiKey,
+            apiKeyLength: apiKey?.length || 0,
+          },
         }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
