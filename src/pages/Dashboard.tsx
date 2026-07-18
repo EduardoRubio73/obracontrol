@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileSearch } from "lucide-react";
+import { FileSearch, LayoutGrid } from "lucide-react";
 
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
 import { DashboardObrasRecentes } from "@/components/dashboard/DashboardObrasRecentes";
@@ -173,14 +173,17 @@ const Dashboard = () => {
   const dashTitleObraNome = obraAtual ? obraAtual.nome : "Todas as Obras";
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 pb-24 px-4">
+    <div className="w-full max-w-screen-xl mx-auto space-y-5 sm:space-y-7 pb-24 px-4">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">
-          Dashboard — <span className="text-blue-600 dark:text-blue-400">{dashTitleObraNome}</span>
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dashboard</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-foreground truncate mt-0.5">
+            {dashTitleObraNome}
+          </h1>
+        </div>
         {filtroId && (
-          <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full sm:w-auto" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
+          <Button className="rounded-xl gap-2 w-full sm:w-auto shrink-0" onClick={() => navigate(`/obras/${filtroId}/dossie`)}>
             <FileSearch className="h-4 w-4" /> Gerar Dossiê
           </Button>
         )}
@@ -196,16 +199,16 @@ const Dashboard = () => {
       />
 
       {/* Obras Recentes + Financeiro + Cotações */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-start">
         <DashboardObrasRecentes obras={obrasFiltradas ?? []} fases={fases ?? []} />
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5">
           <DashboardFinanceiroCard totalGasto={totalGasto} totalPrevisto={totalPrevisto} />
           <DashboardCotacoesCard abertas={cotacoesAbertas} aguardando={cotacoesAguardando} />
         </div>
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
         <DashboardTimeline fases={fases ?? []} />
         <DashboardChartPrevistoGasto chartData={chartData} />
       </div>
@@ -215,13 +218,13 @@ const Dashboard = () => {
 
       {/* Documentos + Alterações (when obra selected) */}
       {filtroId && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
           <DashboardDocumentos documentos={documentos ?? []} />
           <DashboardAlteracoes alteracoes={alteracoes ?? []} />
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
         <DashboardFornecedores fornecedores={fornecedores ?? []} />
         <DashboardCotacoesDetalhadas cotacoes={cotacoesDetalhadas} />
       </div>
@@ -230,7 +233,12 @@ const Dashboard = () => {
       {!filtroId && (obras ?? []).length > 0 && (
         <Card className="rounded-2xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Todas as Obras</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <LayoutGrid className="h-4 w-4" />
+              </span>
+              Todas as Obras
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {/* Mobile cards */}

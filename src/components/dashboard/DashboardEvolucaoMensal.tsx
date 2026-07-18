@@ -32,8 +32,11 @@ export const DashboardEvolucaoMensal = ({ financeiro }: { financeiro: Financeiro
   return (
     <Card className="rounded-2xl">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" /> Evolução Mensal
+        <CardTitle className="text-base flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <TrendingUp className="h-4 w-4" />
+          </span>
+          Evolução Mensal
         </CardTitle>
       </CardHeader>
       <CardContent>

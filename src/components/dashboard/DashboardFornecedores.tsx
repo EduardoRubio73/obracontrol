@@ -18,8 +18,11 @@ export const DashboardFornecedores = ({ fornecedores }: { fornecedores: Forneced
   return (
     <Card className="rounded-2xl">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Users className="h-4 w-4" /> Fornecedores
+        <CardTitle className="text-base flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-500/10 text-teal-500">
+            <Users className="h-4 w-4" />
+          </span>
+          Fornecedores
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">

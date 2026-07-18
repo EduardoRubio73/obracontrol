@@ -26,8 +26,11 @@ export const DashboardTimeline = ({ fases }: { fases: Fase[] }) => {
   return (
     <Card className="rounded-2xl">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Clock className="h-4 w-4" /> Linha do Tempo
+        <CardTitle className="text-base flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+            <Clock className="h-4 w-4" />
+          </span>
+          Linha do Tempo
         </CardTitle>
       </CardHeader>
       <CardContent>

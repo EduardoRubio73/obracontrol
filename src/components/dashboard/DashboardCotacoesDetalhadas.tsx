@@ -26,8 +26,11 @@ export const DashboardCotacoesDetalhadas = ({ cotacoes }: { cotacoes: Cotacao[] 
   return (
     <Card className="rounded-2xl">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <FileText className="h-4 w-4" /> Cotações Detalhadas
+        <CardTitle className="text-base flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+            <FileText className="h-4 w-4" />
+          </span>
+          Cotações Detalhadas
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">

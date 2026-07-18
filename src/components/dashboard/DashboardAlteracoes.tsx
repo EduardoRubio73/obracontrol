@@ -22,8 +22,11 @@ const tipoBadge: Record<string, string> = {
 export const DashboardAlteracoes = ({ alteracoes }: { alteracoes: Alteracao[] }) => (
   <Card className="rounded-2xl">
     <CardHeader className="pb-2">
-      <CardTitle className="text-base flex items-center gap-2">
-        <History className="h-4 w-4" /> Alterações
+      <CardTitle className="text-base flex items-center gap-2.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
+          <History className="h-4 w-4" />
+        </span>
+        Alterações
       </CardTitle>
     </CardHeader>
     <CardContent className="space-y-2">

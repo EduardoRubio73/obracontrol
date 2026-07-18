@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { BarChart3 } from "lucide-react";
 
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -13,7 +14,12 @@ interface Props {
 export const DashboardChartPrevistoGasto = ({ chartData }: Props) => (
   <Card className="rounded-2xl">
     <CardHeader className="pb-2">
-      <CardTitle className="text-base">Previsto vs Gasto</CardTitle>
+      <CardTitle className="text-base flex items-center gap-2.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+          <BarChart3 className="h-4 w-4" />
+        </span>
+        Previsto vs Gasto
+      </CardTitle>
     </CardHeader>
     <CardContent>
       {chartData.length === 0 ? (

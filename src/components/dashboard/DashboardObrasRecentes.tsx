@@ -2,10 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Building2, Eye } from "lucide-react";
+import { Building2, Eye, Plus, ChevronRight } from "lucide-react";
 
 const statusColor: Record<string, string> = {
   planejamento: "bg-muted text-muted-foreground",
@@ -57,15 +56,31 @@ export const DashboardObrasRecentes = ({ obras, fases }: Props) => {
   });
 
   return (
-    <Card className="md:col-span-2 rounded-2xl">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Building2 className="h-4 w-4" /> Obras Recentes
+    <Card className="lg:col-span-2 rounded-2xl">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Building2 className="h-4 w-4" />
+          </span>
+          Obras Recentes
         </CardTitle>
+        {obras.length > 5 && (
+          <button
+            onClick={() => navigate("/obras")}
+            className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-0.5"
+          >
+            Ver todas <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         {recentes.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma obra cadastrada.</p>
+          <div className="py-8 text-center space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">Nenhuma obra cadastrada ainda.</p>
+          </div>
         ) : (
           recentes.map((o) => {
             const obraFases = fases.filter((f) => f.obra_id === o.id);
@@ -74,33 +89,45 @@ export const DashboardObrasRecentes = ({ obras, fases }: Props) => {
               : 0;
             const thumb = fotoMap?.[o.id];
             return (
-              <div key={o.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors">
+              <div
+                key={o.id}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/60 active:bg-muted transition-colors cursor-pointer"
+                onClick={() => navigate(`/obras/${o.id}/dossie`)}
+              >
                 {thumb ? (
-                  <img src={thumb} alt="" className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
+                  <img src={thumb} alt="" className="h-11 w-11 rounded-xl object-cover flex-shrink-0" />
                 ) : (
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="h-5 w-5 text-primary" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{o.nome}</p>
+                  <p className="font-semibold text-sm text-foreground truncate">{o.nome}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge className={`text-xs border-0 ${statusColor[o.status ?? "planejamento"] ?? "bg-muted"}`}>
+                    <Badge className={`text-[10px] px-1.5 py-0 border-0 ${statusColor[o.status ?? "planejamento"] ?? "bg-muted"}`}>
                       {o.status ?? "planejamento"}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">{prog}%</span>
+                    <span className="text-xs text-muted-foreground">{prog}% concluído</span>
                   </div>
                 </div>
-                <div className="w-20 hidden sm:block">
-                  <Progress value={prog} className="h-2" />
+                <div className="w-16 hidden sm:block">
+                  <Progress value={prog} className="h-1.5" />
                 </div>
-                <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => navigate(`/obras/${o.id}/dossie`)}>
-                  <Eye className="h-4 w-4" />
-                </Button>
+                <Eye className="h-4 w-4 text-muted-foreground shrink-0" />
               </div>
             );
           })
         )}
+
+        <button
+          onClick={() => navigate("/nova-obra")}
+          className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors"
+        >
+          <div className="h-11 w-11 rounded-xl border border-dashed border-current/40 flex items-center justify-center flex-shrink-0">
+            <Plus className="h-4 w-4" />
+          </div>
+          <span className="text-sm font-medium">Adicionar nova obra</span>
+        </button>
       </CardContent>
     </Card>
   );
