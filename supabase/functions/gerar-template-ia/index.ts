@@ -34,9 +34,9 @@ interface TemplateResponse {
 
 async function callGemini(prompt: string): Promise<TemplateResponse | null> {
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      console.error("ANTHROPIC_API_KEY (Gemini) not configured in Supabase secrets");
+      console.error("GEMINI_API_KEY not configured in Supabase secrets");
       return null;
     }
 
@@ -95,7 +95,7 @@ serve(async (req) => {
 
   // DEBUG: Check if API key is available
   if (req.url.includes("debug")) {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     return new Response(
       JSON.stringify({
         debug: true,
