@@ -1,3 +1,4 @@
+// src/lib/criarObraChatFlow.test.ts
 import { describe, it, expect } from "vitest";
 import { criacaoObraReducer, ESTADO_INICIAL, CriacaoObraState } from "./criarObraChatFlow";
 
@@ -91,10 +92,8 @@ describe("criacaoObraReducer", () => {
     expect(s.escopo).toBeNull();
   });
 
-  it("confirmar_escopo avança para template; confirmar_template avança para fornecedores", () => {
-    let s = criacaoObraReducer({ ...ESTADO_INICIAL, ativo: true, step: "escopo" }, { type: "confirmar_escopo" });
-    expect(s.step).toBe("template");
-    s = criacaoObraReducer(s, { type: "confirmar_template" });
+  it("confirmar_escopo avança direto para fornecedores (não há mais passo de template)", () => {
+    const s = criacaoObraReducer({ ...ESTADO_INICIAL, ativo: true, step: "escopo" }, { type: "confirmar_escopo" });
     expect(s.step).toBe("fornecedores");
   });
 

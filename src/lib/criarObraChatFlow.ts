@@ -34,7 +34,6 @@ export type CriacaoObraStep =
   | "complexidade"
   | "descricao"
   | "escopo"
-  | "template"
   | "fornecedores"
   | "criando"
   | "sucesso";
@@ -48,7 +47,6 @@ export interface CriacaoObraState {
   classificacao: Complexidade;
   descricao: string;
   escopo: EscopoIA | null;
-  templateSelecionado: string | null;
   fornecedoresSelecionados: FornecedorSelecionado[];
   erro: string | null;
   carregando: boolean;
@@ -64,7 +62,6 @@ export const ESTADO_INICIAL: CriacaoObraState = {
   classificacao: "simples",
   descricao: "",
   escopo: null,
-  templateSelecionado: null,
   fornecedoresSelecionados: [],
   erro: null,
   carregando: false,
@@ -84,8 +81,6 @@ export type CriacaoObraAction =
   | { type: "escopo_gerado"; escopo: EscopoIA }
   | { type: "escopo_falhou"; erro: string }
   | { type: "confirmar_escopo" }
-  | { type: "selecionar_template"; templateId: string | null }
-  | { type: "confirmar_template" }
   | { type: "definir_fornecedores_sugeridos"; fornecedores: FornecedorSelecionado[] }
   | { type: "alternar_fornecedor"; fornecedor: FornecedorSelecionado }
   | { type: "criando_obra" }
@@ -123,10 +118,6 @@ export function criacaoObraReducer(state: CriacaoObraState, action: CriacaoObraA
     case "escopo_falhou":
       return { ...state, erro: action.erro, carregando: false };
     case "confirmar_escopo":
-      return { ...state, step: "template" };
-    case "selecionar_template":
-      return { ...state, templateSelecionado: action.templateId };
-    case "confirmar_template":
       return { ...state, step: "fornecedores" };
     case "definir_fornecedores_sugeridos":
       return { ...state, fornecedoresSelecionados: action.fornecedores };
@@ -158,6 +149,5 @@ export type CriacaoObraCardData =
   | { kind: "complexidade" }
   | { kind: "escopo"; escopo: EscopoIA }
   | { kind: "escopo_erro"; mensagem: string }
-  | { kind: "template" }
   | { kind: "fornecedores" }
   | { kind: "criacao_erro"; mensagem: string };
