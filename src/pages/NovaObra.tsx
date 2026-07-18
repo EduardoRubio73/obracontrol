@@ -35,35 +35,8 @@ import {
 } from "lucide-react";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { profissionaisRecomendados, profissionalLabel, isRecomendado, ALL_CATEGORIAS } from "@/lib/regras-decisao";
-
-/* ── Types ── */
-interface EscopoIA {
-  descricao_estruturada: string;
-  necessidades: string[];
-  profissional_recomendado: string;
-  alertas_seguranca: string[];
-}
-
-const classificacoes = [
-  {
-    value: "simples",
-    label: "Simples",
-    desc: profissionalLabel("simples"),
-    color: "from-emerald-400 to-emerald-500",
-  },
-  {
-    value: "media",
-    label: "Média",
-    desc: profissionalLabel("media"),
-    color: "from-amber-400 to-orange-500",
-  },
-  {
-    value: "complexa",
-    label: "Complexa",
-    desc: profissionalLabel("complexa"),
-    color: "from-red-400 to-rose-500",
-  },
-];
+import { useCriarObra } from "@/hooks/useCriarObra";
+import { classificacoes, type Complexidade, type EscopoIA } from "@/lib/criarObraChatFlow";
 
 const stagger = (step: number) => ({
   opacity: 0,
@@ -165,82 +138,7 @@ const NovaObra = () => {
     },
   });
 
-  // Create obra + cotação via RPC
-  const criarObra = useMutation({
-    mutationFn: async () => {
-      // 1. Create obra
-      const { data: obra, error: obraErr } = await (supabase
-        .from("obras") as any)
-        .insert({
-          nome,
-          tipo_obra: tipoObra,
-          classificacao,
-          descricao: escopo?.descricao_estruturada || descricao,
-          escopo_ia: escopo ? JSON.stringify(escopo) : null,
-          profissional_recomendado: escopo?.profissional_recomendado || null,
-          user_id: user!.id,
-          status: "planejamento",
-        })
-        .select("id")
-        .single();
-      if (obraErr) throw obraErr;
-
-      const newObraId = obra.id;
-      setObraId(newObraId);
-
-      // 2. Create dossie entry
-      await (supabase.from("obra_dossie" as any) as any).insert({
-        obra_id: newObraId,
-        tipo: "obra_criada",
-        titulo: "Obra criada",
-        descricao: `Obra "${nome}" criada com classificação ${classificacao}`,
-        dados: { tipo_obra: tipoObra, classificacao, escopo },
-      });
-
-      // 3. If fornecedores selected, create cotacao via RPC
-      if (selectedFornecedores.length > 0) {
-        const fornIds = selectedFornecedores.map((f) => f.id);
-        const { data: cotacaoId, error: cotErr } = await supabase.rpc(
-          "fn_criar_cotacao_com_fornecedores" as any,
-          {
-            p_obra_id: newObraId,
-            p_descricao: `Cotação inicial - ${nome}`,
-            p_fornecedores_ids: fornIds,
-          }
-        );
-        if (cotErr) throw cotErr;
-
-        // Add escopo items as cotacao items
-        if (escopo?.necessidades && cotacaoId) {
-          const itens = escopo.necessidades.map((n) => ({
-            cotacao_id: cotacaoId,
-            nome: n,
-            quantidade: 1,
-            unidade: "un",
-          }));
-          await supabase.from("itens_cotacao").insert(itens);
-        }
-
-        // Dossie entry
-        await (supabase.from("obra_dossie" as any) as any).insert({
-          obra_id: newObraId,
-          tipo: "solicitacao_enviada",
-          titulo: "Solicitação enviada para profissionais",
-          descricao: `Enviada para ${selectedFornecedores.length} profissional(is)`,
-          dados: { cotacao_id: cotacaoId, fornecedor_ids: fornIds },
-        });
-      }
-
-      return newObraId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obras"] });
-      setStep(6);
-    },
-    onError: (e) => {
-      toast.error("Erro ao criar obra: " + (e as Error).message);
-    },
-  });
+  const { criarObra, isPending: criandoObra } = useCriarObra();
 
   const handleVoiceInput = () => {
     if (voiceStatus === "listening") {
@@ -276,7 +174,24 @@ const NovaObra = () => {
         toast.error("Selecione pelo menos 1 fornecedor");
         return;
       }
-      criarObra.mutate();
+      criarObra.mutate(
+        {
+          nome,
+          tipoObra,
+          classificacao: classificacao as Complexidade,
+          descricao,
+          escopo,
+          fornecedores: selectedFornecedores,
+          userId: user!.id,
+        },
+        {
+          onSuccess: (novaObraId) => {
+            setObraId(novaObraId);
+            setStep(6);
+          },
+          onError: (e) => toast.error("Erro ao criar obra: " + (e as Error).message),
+        }
+      );
       return;
     }
     setStep((s) => s + 1);
@@ -686,7 +601,7 @@ const NovaObra = () => {
         <div className="fixed bottom-20 left-0 right-0 px-4 pb-4 md:relative md:bottom-auto md:px-0 md:pb-0 md:mt-8">
           <Button
             onClick={handleNext}
-            disabled={!canAdvance() || gerarEscopo.isPending || criarObra.isPending}
+            disabled={!canAdvance() || gerarEscopo.isPending || criandoObra}
             className="w-full h-14 rounded-2xl font-bold text-base shadow-lg active:scale-[0.97] transition-transform"
           >
             {gerarEscopo.isPending ? (
@@ -694,7 +609,7 @@ const NovaObra = () => {
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 Gerando escopo com IA...
               </>
-            ) : criarObra.isPending ? (
+            ) : criandoObra ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 Criando obra...
