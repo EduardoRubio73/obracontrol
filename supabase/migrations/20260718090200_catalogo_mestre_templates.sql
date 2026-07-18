@@ -30,7 +30,7 @@ CREATE TABLE public.catalogo_template_servicos (
   ambiente_id uuid REFERENCES public.catalogo_ambientes(id) ON DELETE SET NULL,
   ordem int,
   obrigatorio boolean NOT NULL DEFAULT false,
-  PRIMARY KEY (template_id, servico_id, ambiente_id)
+  PRIMARY KEY (template_id, servico_id)
 );
 
 ALTER TABLE public.catalogo_templates ENABLE ROW LEVEL SECURITY;
