@@ -68,8 +68,9 @@ const Materiais = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">Materiais</h1>
-          <p className="text-sm text-muted-foreground truncate">{obra?.nome}</p>
+          <h1 className="text-xl sm:text-2xl font-bold truncate">
+            Materiais {obra?.nome ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
+          </h1>
         </div>
       </div>
 

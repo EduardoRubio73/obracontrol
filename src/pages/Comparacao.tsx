@@ -146,6 +146,7 @@ const Comparacao = () => {
   }
 
   const hasData = itens.length > 0 && fornecedores.length > 0;
+  const obraNome = (cotacao?.obras as { nome?: string } | null)?.nome;
 
   return (
     <div className="space-y-6">
@@ -155,10 +156,10 @@ const Comparacao = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Comparação de Propostas</h1>
-          <p className="text-sm text-muted-foreground">
-            {cotacao?.descricao} — {(cotacao?.obras as any)?.nome ?? ""}
-          </p>
+          <h1 className="text-2xl font-bold">
+            Comparação de Propostas {obraNome ? <>— <span className="text-blue-600 dark:text-blue-400">{obraNome}</span></> : ""}
+          </h1>
+          <p className="text-sm text-muted-foreground">{cotacao?.descricao}</p>
         </div>
       </div>
 

@@ -788,7 +788,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold truncate">
-          Cotações {obra ? `— ${obra.nome}` : ""}
+          Cotações {obra ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
         <Button variant="outline" className="w-full sm:w-auto shrink-0" onClick={() => setImportOpen(true)}>
@@ -805,7 +805,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
             <form onSubmit={handleNewCotacao} className="space-y-4">
               <div className="space-y-2">
                 <Label>Obra</Label>
-                <p className="text-sm font-medium text-foreground bg-muted rounded-md px-3 py-2">
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 bg-muted rounded-md px-3 py-2">
                   {obra?.nome ?? "—"}
                 </p>
               </div>

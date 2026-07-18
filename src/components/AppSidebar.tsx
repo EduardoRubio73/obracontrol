@@ -34,6 +34,7 @@ const gestaoObraSections = [
   { title: "Cotações", segment: "cotacoes", emoji: "📝" },
   { title: "Galeria", segment: "galeria", emoji: "🖼️" },
   { title: "Documentos", segment: "documentos", emoji: "📁" },
+  { title: "Status", segment: "status", emoji: "🚦" },
   { title: "Assistente IA", segment: "chat", emoji: "🤖" },
 ];
 

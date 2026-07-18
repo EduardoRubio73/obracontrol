@@ -268,7 +268,7 @@ export function FasePhotos({ faseId, obraId, faseNome }: FasePhotosProps) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Building2 className="h-3.5 w-3.5" />
-                  <span className="font-medium text-foreground truncate">
+                  <span className="font-medium text-blue-600 dark:text-blue-400 truncate">
                     {obra?.nome ?? "—"}
                   </span>
                 </div>

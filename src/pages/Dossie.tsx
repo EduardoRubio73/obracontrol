@@ -237,8 +237,9 @@ const Dossie = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">Dossiê</h1>
-          <p className="text-sm text-muted-foreground">{obra?.nome || "Carregando..."}</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Dossiê {obra?.nome ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : <span className="text-muted-foreground text-base font-normal">Carregando...</span>}
+          </h1>
         </div>
       </div>
 
@@ -255,7 +256,7 @@ const Dossie = () => {
                 </div>
               )}
               <div>
-                <p className="font-bold text-lg text-foreground">{obra.nome}</p>
+                <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{obra.nome}</p>
                 <p className="text-sm text-muted-foreground capitalize">
                   {obra.tipo_obra} • {obra.classificacao} • {obra.status}
                 </p>

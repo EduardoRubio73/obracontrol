@@ -156,7 +156,7 @@ function FinanceiroContent({ obraId }: { obraId: string }) {
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
       <div className="pt-2 sm:pt-4">
         <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
-          Financeiro {obra ? `— ${obra.nome}` : ""}
+          Financeiro {obra ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
         </h1>
       </div>
 

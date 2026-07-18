@@ -33,6 +33,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Auditoria from "./pages/Auditoria";
 import Chat from "./pages/Chat";
 import Comparacao from "./pages/Comparacao";
+import Status from "./pages/Status";
 import Assistente from "./pages/Assistente";
 const queryClient = new QueryClient();
 
@@ -109,6 +110,7 @@ const App = () => (
               <Route path="/obras/:id/cotacoes/:cotId/comparar" element={<Comparacao />} />
               <Route path="/obras/:id/galeria" element={<Galeria />} />
               <Route path="/obras/:id/documentos" element={<Documentos />} />
+              <Route path="/obras/:id/status" element={<Status />} />
               <Route path="/obras/:id/chat" element={<Chat />} />
               <Route path="/obras/:id/dossie" element={<Dossie />} />
               <Route path="/obras/:id/materiais" element={<Materiais />} />
