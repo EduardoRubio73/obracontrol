@@ -16,6 +16,8 @@ import {
   ESTADO_INICIAL,
   type CriacaoObraCardData,
 } from "@/lib/criarObraChatFlow";
+import { buscarObraSimilar } from "@/lib/criarObraSimilaridade";
+import { CriacaoObraCard } from "@/components/chat/CriacaoObraCard";
 
 interface ChatMessage {
   id: string;
@@ -72,6 +74,41 @@ function ChatContent({ obraId }: { obraId: string }) {
   const cancelarCriacaoObra = useCallback(() => {
     dispatchCriacao({ type: "cancelar" });
     pushMessage({ role: "assistant", content: "Ok, cancelei a criação da obra. Como posso ajudar?" });
+  }, [pushMessage]);
+
+  const handleCriacaoObraTexto = useCallback((texto: string) => {
+    const trimmed = texto.trim();
+    if (!trimmed) return;
+
+    if (criacaoObraState.step === "nome") {
+      if (trimmed.length < 3) {
+        pushMessage({ role: "assistant", content: "O nome precisa ter pelo menos 3 letras. Como se chama a obra?" });
+        return;
+      }
+      pushMessage({ role: "user", content: trimmed });
+      setInput("");
+      const duplicata = buscarObraSimilar(trimmed, obras);
+      dispatchCriacao({ type: "informar_nome", nome: trimmed, duplicata });
+      if (duplicata) {
+        pushMessage({
+          role: "assistant",
+          content: `Encontrei uma obra parecida: **${duplicata.nome}**. Quer usar essa em vez de criar uma nova?`,
+          card: { kind: "duplicata", obra: duplicata },
+        });
+      } else {
+        pushMessage({ role: "assistant", content: "Qual o tipo da obra?", card: { kind: "tipo" } });
+      }
+    }
+  }, [criacaoObraState.step, obras, pushMessage]);
+
+  const onUsarDuplicata = useCallback((obra: { id: string; nome: string }) => {
+    dispatchCriacao({ type: "cancelar" });
+    navigate(`/obras/${obra.id}/chat`);
+  }, [navigate]);
+
+  const onIgnorarDuplicata = useCallback(() => {
+    dispatchCriacao({ type: "ignorar_duplicata" });
+    pushMessage({ role: "assistant", content: "Sem problema! Qual o tipo da obra?", card: { kind: "tipo" } });
   }, [pushMessage]);
 
   // Keep messagesRef in sync
@@ -221,15 +258,27 @@ function ChatContent({ obraId }: { obraId: string }) {
     }
   }, [obraId, user]);
 
+  const handleUserSubmit = useCallback((texto: string): Promise<string> => {
+    if (criacaoObraState.ativo && criacaoObraState.step === "nome") {
+      handleCriacaoObraTexto(texto);
+      return Promise.resolve("");
+    }
+    return sendMessage(texto);
+  }, [criacaoObraState.ativo, criacaoObraState.step, handleCriacaoObraTexto, sendMessage]);
+
   // Voice loop integration
   const voiceLoop = useVoiceLoop({
     onTranscript: async (text) => {
-      return await sendMessage(text);
+      return await handleUserSubmit(text);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (criacaoObraState.ativo && criacaoObraState.step === "nome") {
+      handleCriacaoObraTexto(input);
+      return;
+    }
     const files = pendingFiles.length > 0 ? [...pendingFiles] : undefined;
     setPendingFiles([]);
     sendMessage(input, files);
@@ -278,6 +327,8 @@ function ChatContent({ obraId }: { obraId: string }) {
     processing: "⏳ Processando...",
     speaking: "🔊 Respondendo...",
   };
+
+  const activeCardMessageId = [...messages].reverse().find((m) => m.card)?.id ?? null;
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem-4rem)] md:h-[calc(100vh-3.5rem)] max-w-2xl md:max-w-3xl mx-auto">
@@ -343,6 +394,15 @@ function ChatContent({ obraId }: { obraId: string }) {
                     </Button>
                   ))}
                 </div>
+              )}
+
+              {msg.card && (
+                <CriacaoObraCard
+                  card={msg.card}
+                  ativo={msg.id === activeCardMessageId}
+                  onUsarDuplicata={onUsarDuplicata}
+                  onIgnorarDuplicata={onIgnorarDuplicata}
+                />
               )}
             </div>
           </div>
