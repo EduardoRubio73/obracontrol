@@ -41,6 +41,12 @@
 - Projeto: **ObraControl** (izaobracontrol.lovable.app)
 - Stack: React 18 + Vite + TS + Supabase + Lovable AI
 - Idioma: PT-BR
+- Última atualização: 2026-07-18 (removido 20-catalogo-mestre-phase4.md — documentava o
+  "Catálogo Mestre" (catalogo_tipos_obra/ambientes/servicos/etapas/tarefas/insumos/templates,
+  compartilhado, admin-only), que foi eliminado por completo: reimplementava o conceito de
+  `etapas_padrao`/`tarefas_padrao` (que já existem, por usuário, com dados reais) e estava com
+  bug — a migration de seed quebrava a meio caminho, deixando templates/etapas/tarefas/insumos
+  com 0 linhas em produção. Ver `CHANGELOG.md` (18/07/2026) para o relato completo)
 - Última atualização: 2026-07-16 (removido 25-ia-classificacao-obras.md — descrevia um catálogo
   global de classificação de obras que nunca foi implementado; o sistema real de templates
   é `tipos_obra`/`etapas_padrao`/`tarefas_padrao`, por usuário, documentado em `08-database.md`)

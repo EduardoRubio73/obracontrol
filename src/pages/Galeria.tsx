@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Image as ImageIcon, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Image as ImageIcon, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 const tipos = ["todos", "antes", "durante", "depois"] as const;
 const tiposUpload = ["antes", "durante", "depois"] as const;
@@ -42,7 +42,6 @@ const getFotoFaseNome = (foto: Foto) => foto.obra_fases?.nome ?? "Sem fase";
 
 const Galeria = () => {
   const { id: obraId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -151,15 +150,9 @@ const Galeria = () => {
   return (
     <div className="w-full max-w-screen-xl mx-auto space-y-4 sm:space-y-6 px-4 pb-24">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">Galeria</h1>
-            <p className="text-sm text-muted-foreground truncate">{obra?.nome}</p>
-          </div>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-bold truncate">
+          Galeria {obra ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
+        </h1>
         <Button className="gap-2 rounded-xl w-full sm:w-auto" onClick={openCreate} disabled={!fases?.length}>
           <Plus className="h-4 w-4" /> Adicionar foto
         </Button>

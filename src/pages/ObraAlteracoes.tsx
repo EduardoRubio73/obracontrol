@@ -119,9 +119,8 @@ export default function ObraAlteracoes() {
         </Button>
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            Alterações
+            Alterações {obra?.nome ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
           </h1>
-          <p className="text-sm text-muted-foreground">{obra?.nome}</p>
         </div>
       </div>
 

@@ -805,7 +805,7 @@ const CotacoesContent = ({ obraId }: { obraId: string }) => {
             <form onSubmit={handleNewCotacao} className="space-y-4">
               <div className="space-y-2">
                 <Label>Obra</Label>
-                <p className="text-sm font-medium text-foreground bg-muted rounded-md px-3 py-2">
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 bg-muted rounded-md px-3 py-2">
                   {obra?.nome ?? "—"}
                 </p>
               </div>

@@ -35,35 +35,8 @@ import {
 } from "lucide-react";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { profissionaisRecomendados, profissionalLabel, isRecomendado, ALL_CATEGORIAS } from "@/lib/regras-decisao";
-
-/* ── Types ── */
-interface EscopoIA {
-  descricao_estruturada: string;
-  necessidades: string[];
-  profissional_recomendado: string;
-  alertas_seguranca: string[];
-}
-
-const classificacoes = [
-  {
-    value: "simples",
-    label: "Simples",
-    desc: profissionalLabel("simples"),
-    color: "from-emerald-400 to-emerald-500",
-  },
-  {
-    value: "media",
-    label: "Média",
-    desc: profissionalLabel("media"),
-    color: "from-amber-400 to-orange-500",
-  },
-  {
-    value: "complexa",
-    label: "Complexa",
-    desc: profissionalLabel("complexa"),
-    color: "from-red-400 to-rose-500",
-  },
-];
+import { useCriarObra } from "@/hooks/useCriarObra";
+import { classificacoes, type Complexidade, type EscopoIA } from "@/lib/criarObraChatFlow";
 
 const stagger = (step: number) => ({
   opacity: 0,
@@ -82,7 +55,6 @@ const NovaObra = () => {
   const [classificacao, setClassificacao] = useState("simples");
   const [descricao, setDescricao] = useState("");
   const [escopo, setEscopo] = useState<EscopoIA | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedFornecedores, setSelectedFornecedores] = useState<Array<{ id: string; nome: string; categoria: string | null; tipo?: string | null; score?: number | null; telefone?: string | null }>>([]);
   const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
   const [obraId, setObraId] = useState<string | null>(null);
@@ -106,20 +78,6 @@ const NovaObra = () => {
     queryKey: ["tipos_obra"],
     queryFn: async () => {
       const { data, error } = await supabase.from("tipos_obra").select("id, nome").order("nome");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  // Catálogo templates
-  const { data: templates } = useQuery({
-    queryKey: ["catalogo_templates"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("catalogo_templates")
-        .select("id, nome, descricao, catalogo_template_servicos(count)")
-        .eq("ativo", true)
-        .order("nome");
       if (error) throw error;
       return data ?? [];
     },
@@ -180,107 +138,7 @@ const NovaObra = () => {
     },
   });
 
-  // Expand template into obra
-  const expandirTemplate = useMutation({
-    mutationFn: async ({ obraId, templateId }: { obraId: string; templateId: string }) => {
-      const { data, error } = await supabase.functions.invoke("expandir-template", {
-        body: { obra_id: obraId, template_id: templateId },
-      });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Create obra + cotação via RPC
-  const criarObra = useMutation({
-    mutationFn: async () => {
-      // 1. Create obra
-      const { data: obra, error: obraErr } = await (supabase
-        .from("obras") as any)
-        .insert({
-          nome,
-          tipo_obra: tipoObra,
-          classificacao,
-          descricao: escopo?.descricao_estruturada || descricao,
-          escopo_ia: escopo ? JSON.stringify(escopo) : null,
-          profissional_recomendado: escopo?.profissional_recomendado || null,
-          user_id: user!.id,
-          status: "planejamento",
-        })
-        .select("id")
-        .single();
-      if (obraErr) throw obraErr;
-
-      const newObraId = obra.id;
-      setObraId(newObraId);
-
-      // 2. Create dossie entry
-      await (supabase.from("obra_dossie" as any) as any).insert({
-        obra_id: newObraId,
-        tipo: "obra_criada",
-        titulo: "Obra criada",
-        descricao: `Obra "${nome}" criada com classificação ${classificacao}`,
-        dados: { tipo_obra: tipoObra, classificacao, escopo, template_id: selectedTemplate },
-      });
-
-      // 2.5. If template selected, expand it
-      if (selectedTemplate) {
-        const result = await expandirTemplate.mutateAsync({ obraId: newObraId, templateId: selectedTemplate });
-        if (result) {
-          await (supabase.from("obra_dossie" as any) as any).insert({
-            obra_id: newObraId,
-            tipo: "template_expandido",
-            titulo: "Template de catálogo aplicado",
-            descricao: `${result.obraServicos} serviços, ${result.obraFases} fases, ${result.faseItens} tarefas criados`,
-            dados: { template_id: selectedTemplate, resultado: result },
-          });
-        }
-      }
-
-      // 3. If fornecedores selected, create cotacao via RPC
-      if (selectedFornecedores.length > 0) {
-        const fornIds = selectedFornecedores.map((f) => f.id);
-        const { data: cotacaoId, error: cotErr } = await supabase.rpc(
-          "fn_criar_cotacao_com_fornecedores" as any,
-          {
-            p_obra_id: newObraId,
-            p_descricao: `Cotação inicial - ${nome}`,
-            p_fornecedores_ids: fornIds,
-          }
-        );
-        if (cotErr) throw cotErr;
-
-        // Add escopo items as cotacao items
-        if (escopo?.necessidades && cotacaoId) {
-          const itens = escopo.necessidades.map((n) => ({
-            cotacao_id: cotacaoId,
-            nome: n,
-            quantidade: 1,
-            unidade: "un",
-          }));
-          await supabase.from("itens_cotacao").insert(itens);
-        }
-
-        // Dossie entry
-        await (supabase.from("obra_dossie" as any) as any).insert({
-          obra_id: newObraId,
-          tipo: "solicitacao_enviada",
-          titulo: "Solicitação enviada para profissionais",
-          descricao: `Enviada para ${selectedFornecedores.length} profissional(is)`,
-          dados: { cotacao_id: cotacaoId, fornecedor_ids: fornIds },
-        });
-      }
-
-      return newObraId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["obras"] });
-      setStep(7);
-    },
-    onError: (e) => {
-      toast.error("Erro ao criar obra: " + (e as Error).message);
-    },
-  });
+  const { criarObra, isPending: criandoObra } = useCriarObra();
 
   const handleVoiceInput = () => {
     if (voiceStatus === "listening") {
@@ -297,8 +155,7 @@ const NovaObra = () => {
     if (step === 1) return nome.trim().length >= 3 && tipoObra.trim().length > 0;
     if (step === 3) return descricao.trim().length >= 10;
     if (step === 4) return escopo !== null;
-    if (step === 5) return true; // Template selection is optional
-    if (step === 6) return selectedFornecedores.length >= 1;
+    if (step === 5) return selectedFornecedores.length >= 1;
     return true;
   };
 
@@ -309,19 +166,32 @@ const NovaObra = () => {
     }
     if (step === 4) {
       setStep(5);
-      return;
-    }
-    if (step === 5) {
-      setStep(6);
       loadSuggestions();
       return;
     }
-    if (step === 6) {
+    if (step === 5) {
       if (selectedFornecedores.length < 1) {
         toast.error("Selecione pelo menos 1 fornecedor");
         return;
       }
-      criarObra.mutate();
+      criarObra.mutate(
+        {
+          nome,
+          tipoObra,
+          classificacao: classificacao as Complexidade,
+          descricao,
+          escopo,
+          fornecedores: selectedFornecedores,
+          userId: user!.id,
+        },
+        {
+          onSuccess: (novaObraId) => {
+            setObraId(novaObraId);
+            setStep(6);
+          },
+          onError: (e) => toast.error("Erro ao criar obra: " + (e as Error).message),
+        }
+      );
       return;
     }
     setStep((s) => s + 1);
@@ -353,12 +223,12 @@ const NovaObra = () => {
 
       {/* Header */}
       <div className="flex items-center gap-3 pt-4 pb-2" style={stagger(0)}>
-        <Button variant="ghost" size="icon" onClick={() => step > 1 && step < 6 ? setStep(step - 1) : navigate("/")}>
+        <Button variant="ghost" size="icon" onClick={() => step > 1 && step < 5 ? setStep(step - 1) : navigate("/")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-foreground">Nova Obra</h1>
-          <p className="text-sm text-muted-foreground">Passo {step} de 7</p>
+          <p className="text-sm text-muted-foreground">Passo {step} de 6</p>
         </div>
       </div>
 
@@ -366,7 +236,7 @@ const NovaObra = () => {
       <div className="w-full h-1.5 bg-muted rounded-full mb-6" style={stagger(0)}>
         <div
           className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${(step / 7) * 100}%` }}
+          style={{ width: `${(step / 6) * 100}%` }}
         />
       </div>
 
@@ -545,69 +415,8 @@ const NovaObra = () => {
         </div>
       )}
 
-      {/* ── STEP 5: Template (opcional) ── */}
+      {/* ── STEP 5: Selecionar Fornecedores ── */}
       {step === 5 && (
-        <div className="space-y-5">
-          <div style={stagger(1)}>
-            <h3 className="text-lg font-bold text-foreground mb-1">Template de Serviços</h3>
-            <p className="text-sm text-muted-foreground">
-              Selecione um modelo pré-configurado ou pule para criar a obra manualmente
-            </p>
-          </div>
-
-          {templates && templates.length > 0 ? (
-            <div className="space-y-3">
-              {templates.map((t: any, i: number) => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTemplate(selectedTemplate === t.id ? null : t.id)}
-                  style={stagger(i + 2)}
-                  className={`
-                    w-full flex items-start gap-4 p-4 rounded-2xl border-2 transition-all duration-200
-                    active:scale-[0.97] text-left
-                    ${selectedTemplate === t.id
-                      ? "border-primary bg-primary/10 shadow-md"
-                      : "border-border bg-card hover:border-primary/40"
-                    }
-                  `}
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground">{t.nome}</p>
-                    {t.descricao && <p className="text-sm text-muted-foreground mt-1">{t.descricao}</p>}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline" className="text-xs">
-                        {(t.catalogo_template_servicos || []).length} serviço(s)
-                      </Badge>
-                    </div>
-                  </div>
-                  {selectedTemplate === t.id && (
-                    <div className="flex-shrink-0">
-                      <Check className="h-5 w-5 text-primary mt-1" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <Card className="rounded-2xl border-dashed" style={stagger(2)}>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">Nenhum template disponível.</p>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="rounded-2xl bg-muted/50" style={stagger(6)}>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">
-                {selectedTemplate ? "✓ Template selecionado" : "Nenhum template selecionado - criar obra manualmente"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* ── STEP 6: Selecionar Fornecedores ── */}
-      {step === 6 && (
         <div className="space-y-5">
           <div style={stagger(1)}>
             <h3 className="text-lg font-bold text-foreground mb-1">Selecionar Fornecedores</h3>
@@ -745,8 +554,8 @@ const NovaObra = () => {
         </div>
       )}
 
-      {/* ── STEP 7: Confirmação ── */}
-      {step === 7 && (
+      {/* ── STEP 6: Confirmação ── */}
+      {step === 6 && (
         <div className="space-y-6 text-center py-8">
           <div
             className="w-20 h-20 mx-auto rounded-full bg-primary/15 flex items-center justify-center"
@@ -788,11 +597,11 @@ const NovaObra = () => {
       )}
 
       {/* ── Bottom action bar ── */}
-      {step < 7 && (
+      {step < 6 && (
         <div className="fixed bottom-20 left-0 right-0 px-4 pb-4 md:relative md:bottom-auto md:px-0 md:pb-0 md:mt-8">
           <Button
             onClick={handleNext}
-            disabled={!canAdvance() || gerarEscopo.isPending || criarObra.isPending || expandirTemplate.isPending}
+            disabled={!canAdvance() || gerarEscopo.isPending || criandoObra}
             className="w-full h-14 rounded-2xl font-bold text-base shadow-lg active:scale-[0.97] transition-transform"
           >
             {gerarEscopo.isPending ? (
@@ -800,22 +609,17 @@ const NovaObra = () => {
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 Gerando escopo com IA...
               </>
-            ) : criarObra.isPending ? (
+            ) : criandoObra ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 Criando obra...
-              </>
-            ) : expandirTemplate.isPending ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Expandindo template...
               </>
             ) : step === 3 ? (
               <>
                 <Sparkles className="h-5 w-5 mr-2" />
                 Gerar Escopo com IA
               </>
-            ) : step === 6 ? (
+            ) : step === 5 ? (
               <>
                 <Send className="h-5 w-5 mr-2" />
                 {selectedFornecedores.length > 0 ? `Enviar Cotação (${selectedFornecedores.length})` : "Criar Obra"}

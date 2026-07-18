@@ -147,6 +147,7 @@ const Analise = () => {
   });
 
   const economia = scored[scored.length - 1].total - scored[0].total;
+  const obraNome = (cotacao?.obras as { nome?: string } | null)?.nome;
 
   return (
     <div className="space-y-6">
@@ -156,10 +157,10 @@ const Analise = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Análise Inteligente</h1>
-          <p className="text-sm text-muted-foreground">
-            {cotacao?.descricao} — {(cotacao?.obras as any)?.nome ?? ""}
-          </p>
+          <h1 className="text-2xl font-bold">
+            Análise Inteligente {obraNome ? <>— <span className="text-blue-600 dark:text-blue-400">{obraNome}</span></> : ""}
+          </h1>
+          <p className="text-sm text-muted-foreground">{cotacao?.descricao}</p>
         </div>
       </div>
 

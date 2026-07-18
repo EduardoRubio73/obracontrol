@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,12 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, FileText, Trash2, Eye, ExternalLink } from "lucide-react";
+import { Upload, FileText, Trash2, Eye, ExternalLink } from "lucide-react";
 
 const Documentos = () => {
   const { id: obraId } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
 
@@ -115,14 +114,10 @@ const Documentos = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto pb-28 px-1">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">Documentos</h1>
-          <p className="text-sm text-muted-foreground truncate">{obra?.nome}</p>
-        </div>
+      <div className="pt-2 sm:pt-4">
+        <h1 className="text-xl sm:text-2xl font-bold truncate">
+          Documentos {obra ? <>— <span className="text-blue-600 dark:text-blue-400">{obra.nome}</span></> : ""}
+        </h1>
       </div>
 
       {/* Upload */}

@@ -34,6 +34,7 @@ const gestaoObraSections = [
   { title: "Cotações", segment: "cotacoes", emoji: "📝" },
   { title: "Galeria", segment: "galeria", emoji: "🖼️" },
   { title: "Documentos", segment: "documentos", emoji: "📁" },
+  { title: "Status", segment: "status", emoji: "🚦" },
   { title: "Assistente IA", segment: "chat", emoji: "🤖" },
 ];
 
@@ -128,6 +129,21 @@ export function AppSidebar() {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {obras.length === 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/assistente"
+                      className="flex items-center gap-3 hover:bg-accent"
+                      activeClassName="bg-primary/10 text-primary font-medium"
+                      onClick={handleNav}
+                    >
+                      <span className="w-6 text-center text-base shrink-0">🤖</span>
+                      {!collapsed && <span>Assistente</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
