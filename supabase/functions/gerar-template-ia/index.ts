@@ -175,9 +175,16 @@ Responda APENAS com o JSON, sem markdown code blocks.`;
     const templateData = await callClaude(prompt);
 
     if (!templateData) {
+      const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+      const errorMsg = !apiKey
+        ? "ANTHROPIC_API_KEY not configured in Supabase secrets"
+        : "Failed to generate template from Claude (API error or invalid response)";
+
+      console.error("Template generation failed:", errorMsg);
+
       return new Response(
         JSON.stringify({
-          error: "Failed to generate template from Claude",
+          error: errorMsg,
         }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
