@@ -2,11 +2,35 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a blue "Nova" pill to the chat "Assistente de Obra" that runs the same step-by-step obra-creation flow as the `/nova-obra` wizard (nome → varredura de duplicata → tipo → complexidade → descrição → escopo IA → template → fornecedores → criação), reachable both from an existing obra's chat and from a new `/assistente` onboarding route for tenants with zero obras.
+**Goal:** Add a blue "Nova" pill to the chat "Assistente de Obra" that runs the same step-by-step obra-creation flow as the `/nova-obra` wizard (nome → varredura de duplicata → tipo → complexidade → descrição → escopo IA → fornecedores → criação), reachable both from an existing obra's chat and from a new `/assistente` onboarding route for tenants with zero obras.
 
 **Architecture:** A pure reducer (`criacaoObraChatFlow.ts`) drives a local state machine inside `Chat.tsx`, independent of the general-purpose `chat-assistente` LLM. Each step pushes a `ChatMessage` (existing model, extended with an optional `card` field) into the existing message list; a new `CriacaoObraCard` component renders the interactive control for the current step. All Supabase calls (Edge Functions, RPCs, table writes) reuse the exact contracts the `/nova-obra` wizard already uses — a new `useCriarObra` hook extracts the wizard's creation mutation so both surfaces share it.
 
 **Tech Stack:** React 18 + TypeScript, TanStack Query, Supabase JS client, Vitest for the two pure-logic modules.
+
+## Revisão de escopo (18/07/2026, após Tasks 1-2)
+
+Tasks 1 e 2 foram implementadas e commitadas (`986fb08`, `70112ac`) quando o
+fluxo ainda incluía um passo opcional de "Template de Serviços"
+(`catalogo_templates`, expandido via Edge Function `expandir-template`),
+espelhando o wizard `/nova-obra` de 7 passos que existia até então.
+
+No mesmo dia, o Catálogo Mestre inteiro foi removido do projeto — banco de
+dados (`DROP TABLE`, migration `20260718150000_remove_catalogo_mestre.sql`,
+já aplicada em produção via `supabase db push`), Edge Functions
+(`expandir-template`, `gerar-template-ia`) e o passo de template do wizard
+(`NovaObra.tsx` voltou a 6 passos) — ver `CHANGELOG.md`, entrada "Catálogo
+Mestre eliminado por completo". Motivo: tabelas vazias em produção, um bug
+real de perda de dados na expansão de template, e nenhum consumidor
+funcional ponta a ponta.
+
+Este plano foi revisado (com aprovação do usuário) para remover o passo de
+template do fluxo de chat também, alinhando com o wizard atual. A spec
+(`docs/superpowers/specs/2026-07-18-nova-obra-via-chat-design.md`) já foi
+atualizada. A Task 3 abaixo é nova — limpa o estado morto de template que a
+Task 2 introduziu antes dessa decisão. As tasks seguintes foram renumeradas
+e ajustadas de acordo (a antiga Task 3 "useCriarObra" virou Task 4, a antiga
+Task 8 "Template de Serviços" foi removida, etc.).
 
 ## Global Constraints
 
@@ -14,24 +38,27 @@
 - Nunca editar `src/integrations/supabase/types.ts` (auto-gerado) — usar os mesmos padrões de cast `as any` já existentes em `NovaObra.tsx` para tabelas/RPCs não tipadas (`obra_dossie`, `fn_criar_cotacao_com_fornecedores`).
 - Nunca editar arquivos em `supabase/migrations/` manualmente.
 - Nunca duplicar componente — reusar `SmartCombobox`, `Select`, `Card`, `Badge`, `Button` de `src/components/ui/*`.
-- Nunca quebrar o contrato existente das Edge Functions `gerar-escopo` e `expandir-template`, nem das RPCs `fn_sugerir_top3_fornecedores` e `fn_criar_cotacao_com_fornecedores`.
+- Nunca quebrar o contrato existente da Edge Function `gerar-escopo`, nem das RPCs `fn_sugerir_top3_fornecedores` e `fn_criar_cotacao_com_fornecedores`.
 - Sempre usar `sonner` (`toast.error`/`toast.success`) para erros visíveis ao usuário — nunca falha silenciosa.
 - Sempre invalidar queries relacionadas após mutação (`queryClient.invalidateQueries`).
 - Não introduzir a tool `criar_obra` do `chat-assistente` nesta feature — o fluxo guiado é local, não passa pela LLM.
 - Não persistir rascunho parcial do fluxo de criação (perder progresso ao sair no meio é aceitável, conforme spec).
+- Não reintroduzir `catalogo_templates`, `expandir-template`, ou qualquer mecanismo de template — foi removido deliberadamente do projeto (ver Revisão de escopo acima).
 
 ---
 
 ### Task 1: Função pura de detecção de obra similar
+
+**Status: implementada e commitada (986fb08). Texto abaixo mantido como registro histórico — não re-executar.**
 
 **Files:**
 - Create: `src/lib/criarObraSimilaridade.ts`
 - Test: `src/lib/criarObraSimilaridade.test.ts`
 
 **Interfaces:**
-- Produces: `normalizarNomeObra(nome: string): string`, `buscarObraSimilar(nome: string, obras: { id: string; nome: string }[]): { id: string; nome: string } | null` — usados por `Chat.tsx` (Task 5) para a varredura de duplicata.
+- Produces: `normalizarNomeObra(nome: string): string`, `buscarObraSimilar(nome: string, obras: { id: string; nome: string }[]): { id: string; nome: string } | null` — usados por `Chat.tsx` (Task 6) para a varredura de duplicata.
 
-- [ ] **Step 1: Escrever os testes (falhando)**
+- [x] **Step 1: Escrever os testes (falhando)**
 
 ```ts
 // src/lib/criarObraSimilaridade.test.ts
@@ -85,12 +112,12 @@ describe("buscarObraSimilar", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar os testes e confirmar que falham**
+- [x] **Step 2: Rodar os testes e confirmar que falham**
 
 Run: `npm run test -- --run src/lib/criarObraSimilaridade.test.ts`
 Expected: FAIL — `Cannot find module './criarObraSimilaridade'`
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 ```ts
 // src/lib/criarObraSimilaridade.ts
@@ -141,12 +168,12 @@ export function buscarObraSimilar<T extends { id: string; nome: string }>(
 }
 ```
 
-- [ ] **Step 4: Rodar os testes e confirmar que passam**
+- [x] **Step 4: Rodar os testes e confirmar que passam**
 
 Run: `npm run test -- --run src/lib/criarObraSimilaridade.test.ts`
 Expected: PASS (7 testes)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/criarObraSimilaridade.ts src/lib/criarObraSimilaridade.test.ts
@@ -157,15 +184,17 @@ git commit -m "feat: add pure obra-similarity matcher for chat duplicate detecti
 
 ### Task 2: Reducer puro do fluxo de criação (state machine)
 
+**Status: implementada e commitada (70112ac). Texto abaixo mantido como registro histórico do que foi de fato construído — inclui um passo "template" que a Task 3 seguinte remove. Não re-executar esta task.**
+
 **Files:**
 - Create: `src/lib/criarObraChatFlow.ts`
 - Test: `src/lib/criarObraChatFlow.test.ts`
 
 **Interfaces:**
 - Consumes: nenhuma (módulo puro, sem dependências externas).
-- Produces: tipos `Complexidade`, `EscopoIA`, `FornecedorSelecionado`, `ObraSimilar`, `CriacaoObraStep`, `CriacaoObraState`, `CriacaoObraAction`, `CriacaoObraCardData`, `ESTADO_INICIAL`, `criacaoObraReducer(state, action): CriacaoObraState`, `classificacoes` (array reaproveitado por `NovaObra.tsx` na Task 3 e por `CriacaoObraCard.tsx` na Task 6) — consumidos por `Chat.tsx` (Tasks 4-10) e `CriacaoObraCard.tsx` (Tasks 5-9).
+- Produces (na época): tipos `Complexidade`, `EscopoIA`, `FornecedorSelecionado`, `ObraSimilar`, `CriacaoObraStep`, `CriacaoObraState`, `CriacaoObraAction`, `CriacaoObraCardData`, `ESTADO_INICIAL`, `criacaoObraReducer(state, action): CriacaoObraState`, `classificacoes`.
 
-- [ ] **Step 1: Escrever os testes (falhando)**
+- [x] **Step 1: Escrever os testes (falhando)**
 
 ```ts
 // src/lib/criarObraChatFlow.test.ts
@@ -314,12 +343,194 @@ describe("criacaoObraReducer", () => {
 });
 ```
 
+- [x] **Step 2: Rodar os testes e confirmar que falham**
+
+- [x] **Step 3: Implementar** (código com passo "template" incluído — ver Task 3 para a versão sem template)
+
+- [x] **Step 4: Rodar os testes e confirmar que passam** (PASS, 14 testes)
+
+- [x] **Step 5: Commit**
+
+```bash
+git commit -m "feat: add pure state machine reducer for guided obra creation"
+```
+
+---
+
+### Task 3: Remover estado morto de template do reducer
+
+**Files:**
+- Modify: `src/lib/criarObraChatFlow.ts` (substituição completa do arquivo)
+- Modify: `src/lib/criarObraChatFlow.test.ts` (substituição completa do arquivo)
+
+**Interfaces:**
+- Consumes: nenhuma nova.
+- Produces: os mesmos símbolos da Task 2, MENOS `templateSelecionado` (removido de `CriacaoObraState`), `selecionar_template`/`confirmar_template` (removidos de `CriacaoObraAction`), `"template"` (removido de `CriacaoObraStep` e de `CriacaoObraCardData`). `confirmar_escopo` agora transiciona direto para `"fornecedores"` em vez de `"template"`. Consumido por `Chat.tsx`/`CriacaoObraCard.tsx` nas Tasks 5-9 (nenhuma delas jamais referenciou os símbolos de template, já que foram escritas depois desta decisão).
+
+- [ ] **Step 1: Atualizar o teste que cobria o passo de template (RED)**
+
+Substituir o teste `"confirmar_escopo avança para template; confirmar_template avança para fornecedores"` por este (mesmo arquivo, resto do arquivo idêntico):
+
+```ts
+  it("confirmar_escopo avança direto para fornecedores (não há mais passo de template)", () => {
+    const s = criacaoObraReducer({ ...ESTADO_INICIAL, ativo: true, step: "escopo" }, { type: "confirmar_escopo" });
+    expect(s.step).toBe("fornecedores");
+  });
+```
+
+Ou seja, o arquivo `src/lib/criarObraChatFlow.test.ts` completo passa a ser:
+
+```ts
+// src/lib/criarObraChatFlow.test.ts
+import { describe, it, expect } from "vitest";
+import { criacaoObraReducer, ESTADO_INICIAL, CriacaoObraState } from "./criarObraChatFlow";
+
+describe("criacaoObraReducer", () => {
+  it("iniciar ativa o fluxo e reseta para o estado inicial", () => {
+    const sujo: CriacaoObraState = { ...ESTADO_INICIAL, ativo: true, nome: "lixo", step: "fornecedores" };
+    const resultado = criacaoObraReducer(sujo, { type: "iniciar" });
+    expect(resultado).toEqual({ ...ESTADO_INICIAL, ativo: true });
+  });
+
+  it("cancelar desativa e reseta", () => {
+    const emAndamento: CriacaoObraState = { ...ESTADO_INICIAL, ativo: true, nome: "Reforma", step: "tipo" };
+    const resultado = criacaoObraReducer(emAndamento, { type: "cancelar" });
+    expect(resultado.ativo).toBe(false);
+    expect(resultado.nome).toBe("");
+  });
+
+  it("informar_nome sem duplicata avança direto para tipo", () => {
+    const resultado = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true },
+      { type: "informar_nome", nome: "Reforma da Garagem", duplicata: null }
+    );
+    expect(resultado.step).toBe("tipo");
+    expect(resultado.nome).toBe("Reforma da Garagem");
+    expect(resultado.duplicata).toBeNull();
+  });
+
+  it("informar_nome com duplicata pausa no passo duplicata", () => {
+    const duplicata = { id: "1", nome: "Reforma da Garagem" };
+    const resultado = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true },
+      { type: "informar_nome", nome: "reforma garagem", duplicata }
+    );
+    expect(resultado.step).toBe("duplicata");
+    expect(resultado.duplicata).toEqual(duplicata);
+  });
+
+  it("ignorar_duplicata segue para tipo e limpa a duplicata", () => {
+    const comDuplicata: CriacaoObraState = {
+      ...ESTADO_INICIAL, ativo: true, step: "duplicata", duplicata: { id: "1", nome: "X" },
+    };
+    const resultado = criacaoObraReducer(comDuplicata, { type: "ignorar_duplicata" });
+    expect(resultado.step).toBe("tipo");
+    expect(resultado.duplicata).toBeNull();
+  });
+
+  it("informar_tipo avança para complexidade", () => {
+    const resultado = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true, step: "tipo" },
+      { type: "informar_tipo", tipoObra: "Reforma" }
+    );
+    expect(resultado.step).toBe("complexidade");
+    expect(resultado.tipoObra).toBe("Reforma");
+  });
+
+  it("informar_classificacao avança para descricao", () => {
+    const resultado = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true, step: "complexidade" },
+      { type: "informar_classificacao", classificacao: "media" }
+    );
+    expect(resultado.step).toBe("descricao");
+    expect(resultado.classificacao).toBe("media");
+  });
+
+  it("gerando_escopo liga carregando e limpa erro; escopo_gerado avança para escopo", () => {
+    const escopo = { descricao_estruturada: "x", necessidades: [], profissional_recomendado: "técnico", alertas_seguranca: [] };
+    let s = criacaoObraReducer({ ...ESTADO_INICIAL, ativo: true, step: "descricao" }, { type: "gerando_escopo" });
+    expect(s.carregando).toBe(true);
+    s = criacaoObraReducer(s, { type: "escopo_gerado", escopo });
+    expect(s.step).toBe("escopo");
+    expect(s.carregando).toBe(false);
+    expect(s.escopo).toEqual(escopo);
+  });
+
+  it("escopo_falhou guarda o erro e desliga carregando sem mudar de passo", () => {
+    const s = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true, step: "descricao", carregando: true },
+      { type: "escopo_falhou", erro: "boom" }
+    );
+    expect(s.erro).toBe("boom");
+    expect(s.carregando).toBe(false);
+    expect(s.step).toBe("descricao");
+  });
+
+  it("voltar_para_descricao limpa o escopo e volta o passo", () => {
+    const s = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true, step: "escopo", escopo: { descricao_estruturada: "x", necessidades: [], profissional_recomendado: "y", alertas_seguranca: [] } },
+      { type: "voltar_para_descricao" }
+    );
+    expect(s.step).toBe("descricao");
+    expect(s.escopo).toBeNull();
+  });
+
+  it("confirmar_escopo avança direto para fornecedores (não há mais passo de template)", () => {
+    const s = criacaoObraReducer({ ...ESTADO_INICIAL, ativo: true, step: "escopo" }, { type: "confirmar_escopo" });
+    expect(s.step).toBe("fornecedores");
+  });
+
+  it("alternar_fornecedor adiciona, remove, e respeita o limite de 3", () => {
+    const f1 = { id: "1", nome: "A", categoria: null };
+    const f2 = { id: "2", nome: "B", categoria: null };
+    const f3 = { id: "3", nome: "C", categoria: null };
+    const f4 = { id: "4", nome: "D", categoria: null };
+
+    let s = { ...ESTADO_INICIAL, ativo: true, step: "fornecedores" as const };
+    s = criacaoObraReducer(s, { type: "alternar_fornecedor", fornecedor: f1 });
+    s = criacaoObraReducer(s, { type: "alternar_fornecedor", fornecedor: f2 });
+    s = criacaoObraReducer(s, { type: "alternar_fornecedor", fornecedor: f3 });
+    expect(s.fornecedoresSelecionados).toHaveLength(3);
+
+    // 4º é ignorado (limite atingido)
+    s = criacaoObraReducer(s, { type: "alternar_fornecedor", fornecedor: f4 });
+    expect(s.fornecedoresSelecionados).toHaveLength(3);
+    expect(s.fornecedoresSelecionados.find((f) => f.id === "4")).toBeUndefined();
+
+    // remove um já selecionado
+    s = criacaoObraReducer(s, { type: "alternar_fornecedor", fornecedor: f1 });
+    expect(s.fornecedoresSelecionados).toHaveLength(2);
+    expect(s.fornecedoresSelecionados.find((f) => f.id === "1")).toBeUndefined();
+  });
+
+  it("criando_obra -> obra_criada finaliza em sucesso com o id", () => {
+    let s = criacaoObraReducer({ ...ESTADO_INICIAL, ativo: true, step: "fornecedores" }, { type: "criando_obra" });
+    expect(s.step).toBe("criando");
+    expect(s.carregando).toBe(true);
+    s = criacaoObraReducer(s, { type: "obra_criada", obraId: "obra-1" });
+    expect(s.step).toBe("sucesso");
+    expect(s.novaObraId).toBe("obra-1");
+    expect(s.carregando).toBe(false);
+  });
+
+  it("criacao_falhou volta para fornecedores com o erro visível", () => {
+    const s = criacaoObraReducer(
+      { ...ESTADO_INICIAL, ativo: true, step: "criando", carregando: true },
+      { type: "criacao_falhou", erro: "falhou" }
+    );
+    expect(s.step).toBe("fornecedores");
+    expect(s.erro).toBe("falhou");
+    expect(s.carregando).toBe(false);
+  });
+});
+```
+
 - [ ] **Step 2: Rodar os testes e confirmar que falham**
 
 Run: `npm run test -- --run src/lib/criarObraChatFlow.test.ts`
-Expected: FAIL — `Cannot find module './criarObraChatFlow'`
+Expected: FAIL — o teste renomeado espera `s.step === "fornecedores"` mas a implementação atual (Task 2) ainda retorna `"template"` no case `confirmar_escopo`.
 
-- [ ] **Step 3: Implementar**
+- [ ] **Step 3: Implementar (arquivo completo, sem template)**
 
 ```ts
 // src/lib/criarObraChatFlow.ts
@@ -359,7 +570,6 @@ export type CriacaoObraStep =
   | "complexidade"
   | "descricao"
   | "escopo"
-  | "template"
   | "fornecedores"
   | "criando"
   | "sucesso";
@@ -373,7 +583,6 @@ export interface CriacaoObraState {
   classificacao: Complexidade;
   descricao: string;
   escopo: EscopoIA | null;
-  templateSelecionado: string | null;
   fornecedoresSelecionados: FornecedorSelecionado[];
   erro: string | null;
   carregando: boolean;
@@ -389,7 +598,6 @@ export const ESTADO_INICIAL: CriacaoObraState = {
   classificacao: "simples",
   descricao: "",
   escopo: null,
-  templateSelecionado: null,
   fornecedoresSelecionados: [],
   erro: null,
   carregando: false,
@@ -409,8 +617,6 @@ export type CriacaoObraAction =
   | { type: "escopo_gerado"; escopo: EscopoIA }
   | { type: "escopo_falhou"; erro: string }
   | { type: "confirmar_escopo" }
-  | { type: "selecionar_template"; templateId: string | null }
-  | { type: "confirmar_template" }
   | { type: "definir_fornecedores_sugeridos"; fornecedores: FornecedorSelecionado[] }
   | { type: "alternar_fornecedor"; fornecedor: FornecedorSelecionado }
   | { type: "criando_obra" }
@@ -448,10 +654,6 @@ export function criacaoObraReducer(state: CriacaoObraState, action: CriacaoObraA
     case "escopo_falhou":
       return { ...state, erro: action.erro, carregando: false };
     case "confirmar_escopo":
-      return { ...state, step: "template" };
-    case "selecionar_template":
-      return { ...state, templateSelecionado: action.templateId };
-    case "confirmar_template":
       return { ...state, step: "fornecedores" };
     case "definir_fornecedores_sugeridos":
       return { ...state, fornecedoresSelecionados: action.fornecedores };
@@ -483,7 +685,6 @@ export type CriacaoObraCardData =
   | { kind: "complexidade" }
   | { kind: "escopo"; escopo: EscopoIA }
   | { kind: "escopo_erro"; mensagem: string }
-  | { kind: "template" }
   | { kind: "fornecedores" }
   | { kind: "criacao_erro"; mensagem: string };
 ```
@@ -497,22 +698,24 @@ Expected: PASS (14 testes)
 
 ```bash
 git add src/lib/criarObraChatFlow.ts src/lib/criarObraChatFlow.test.ts
-git commit -m "feat: add pure state machine reducer for guided obra creation"
+git commit -m "refactor: drop dead template step from criacaoObra reducer"
 ```
 
 ---
 
-### Task 3: Extrair `useCriarObra` e migrar `NovaObra.tsx`
+### Task 4: Extrair `useCriarObra` e migrar `NovaObra.tsx`
 
 **Files:**
 - Create: `src/hooks/useCriarObra.ts`
-- Modify: `src/pages/NovaObra.tsx:1-283` (imports, remove local `classificacoes`/`EscopoIA`, trocar mutations locais pelo hook)
+- Modify: `src/pages/NovaObra.tsx` (726 linhas atuais, 6 passos — sem template)
 
 **Interfaces:**
-- Consumes: `Complexidade`, `EscopoIA`, `FornecedorSelecionado`, `classificacoes` de `src/lib/criarObraChatFlow.ts` (Task 2).
-- Produces: `CriarObraInput` (interface), `useCriarObra(): { criarObra: UseMutationResult<string, Error, CriarObraInput>; isPending: boolean }` — consumido por `NovaObra.tsx` (este task) e por `Chat.tsx` (Task 10).
+- Consumes: `Complexidade`, `EscopoIA`, `FornecedorSelecionado`, `classificacoes` de `src/lib/criarObraChatFlow.ts` (Tasks 2-3).
+- Produces: `CriarObraInput` (interface, sem campo de template), `useCriarObra(): { criarObra: UseMutationResult<string, Error, CriarObraInput>; isPending: boolean }` — consumido por `NovaObra.tsx` (este task) e por `Chat.tsx` (Task 9).
 
-Esta task corrige também um bug latente: a mutation original invalida a query key `["obras"]`, mas `useObraAtiva` (`src/hooks/useObraAtiva.tsx:48`) usa a key `["obras-lista", user?.id]` — ou seja, a lista de obras usada por `RequireObra` e pela sidebar nunca era de fato invalidada após criar uma obra. Corrigido para `["obras-lista"]` (React Query invalida por prefixo, então cobre `["obras-lista", user.id]`). Necessário para a Task 10 funcionar (navegação para `/obras/:id/chat` logo após a criação depende de `RequireObra` enxergar a obra nova).
+Esta task corrige também um bug latente: a mutation original invalida a query key `["obras"]`, mas `useObraAtiva` (`src/hooks/useObraAtiva.tsx:48`) usa a key `["obras-lista", user?.id]` — ou seja, a lista de obras usada por `RequireObra` e pela sidebar nunca era de fato invalidada após criar uma obra. Corrigido para `["obras-lista"]` (React Query invalida por prefixo, então cobre `["obras-lista", user.id]`). Necessário para a Task 9 funcionar (navegação para `/obras/:id/chat` logo após a criação depende de `RequireObra` enxergar a obra nova).
+
+`NovaObra.tsx` já não tem nenhum código de template (removido no mesmo dia, ver "Revisão de escopo" no topo do plano) — esta task só extrai a mutation de criação, sem tocar em template.
 
 - [ ] **Step 1: Criar o hook**
 
@@ -528,23 +731,12 @@ export interface CriarObraInput {
   classificacao: Complexidade;
   descricao: string;
   escopo: EscopoIA | null;
-  templateId: string | null;
   fornecedores: FornecedorSelecionado[];
   userId: string;
 }
 
 export function useCriarObra() {
   const queryClient = useQueryClient();
-
-  const expandirTemplate = useMutation({
-    mutationFn: async ({ obraId, templateId }: { obraId: string; templateId: string }) => {
-      const { data, error } = await supabase.functions.invoke("expandir-template", {
-        body: { obra_id: obraId, template_id: templateId },
-      });
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const criarObra = useMutation({
     mutationFn: async (input: CriarObraInput) => {
@@ -570,21 +762,8 @@ export function useCriarObra() {
         tipo: "obra_criada",
         titulo: "Obra criada",
         descricao: `Obra "${input.nome}" criada com classificação ${input.classificacao}`,
-        dados: { tipo_obra: input.tipoObra, classificacao: input.classificacao, escopo: input.escopo, template_id: input.templateId },
+        dados: { tipo_obra: input.tipoObra, classificacao: input.classificacao, escopo: input.escopo },
       });
-
-      if (input.templateId) {
-        const result = await expandirTemplate.mutateAsync({ obraId: novaObraId, templateId: input.templateId });
-        if (result) {
-          await (supabase.from("obra_dossie" as any) as any).insert({
-            obra_id: novaObraId,
-            tipo: "template_expandido",
-            titulo: "Template de catálogo aplicado",
-            descricao: `${result.obraServicos} serviços, ${result.obraFases} fases, ${result.faseItens} tarefas criados`,
-            dados: { template_id: input.templateId, resultado: result },
-          });
-        }
-      }
 
       if (input.fornecedores.length > 0) {
         const fornIds = input.fornecedores.map((f) => f.id);
@@ -626,7 +805,7 @@ export function useCriarObra() {
 
   return {
     criarObra,
-    isPending: criarObra.isPending || expandirTemplate.isPending,
+    isPending: criarObra.isPending,
   };
 }
 ```
@@ -635,23 +814,23 @@ export function useCriarObra() {
 
 Em `src/pages/NovaObra.tsx`:
 
-1. Remover a interface local `EscopoIA` (linhas 40-45) e o array local `classificacoes` (linhas 47-66); importar de `@/lib/criarObraChatFlow`:
+1. Remover a interface local `EscopoIA` (linhas 40-45) e o array local `classificacoes` (linhas 47-66); importar de `@/lib/criarObraChatFlow` e do novo hook:
 
 ```ts
 import { useCriarObra } from "@/hooks/useCriarObra";
-import { classificacoes, type EscopoIA } from "@/lib/criarObraChatFlow";
+import { classificacoes, type Complexidade, type EscopoIA } from "@/lib/criarObraChatFlow";
 ```
 
-2. Remover as mutations `expandirTemplate` (linhas 184-192) e `criarObra` (linhas 195-283) e substituir por:
+2. Remover a mutation `criarObra` (linhas 169-243) e substituir por:
 
 ```ts
 const { criarObra, isPending: criandoObra } = useCriarObra();
 ```
 
-3. Atualizar o `handleNext` (case `step === 6`) para chamar o hook com o input tipado, guardando o `obraId` retornado em `setObraId`:
+3. Atualizar o `handleNext` (case `step === 5`, linhas 274-281) para chamar o hook com o input tipado, guardando o `obraId` retornado em `setObraId`:
 
 ```ts
-if (step === 6) {
+if (step === 5) {
   if (selectedFornecedores.length < 1) {
     toast.error("Selecione pelo menos 1 fornecedor");
     return;
@@ -663,14 +842,13 @@ if (step === 6) {
       classificacao: classificacao as Complexidade,
       descricao,
       escopo,
-      templateId: selectedTemplate,
       fornecedores: selectedFornecedores,
       userId: user!.id,
     },
     {
       onSuccess: (novaObraId) => {
         setObraId(novaObraId);
-        setStep(7);
+        setStep(6);
       },
       onError: (e) => toast.error("Erro ao criar obra: " + (e as Error).message),
     }
@@ -679,9 +857,7 @@ if (step === 6) {
 }
 ```
 
-(Importar `type { Complexidade }` junto de `classificacoes`/`EscopoIA` no passo 1.)
-
-4. Atualizar a barra de ação inferior (linha ~795 e ~803-812) para usar `criandoObra` no lugar de `criarObra.isPending`/`expandirTemplate.isPending`:
+4. Atualizar a barra de ação inferior (linhas 689 e 697-701) para usar `criandoObra` no lugar de `criarObra.isPending`:
 
 ```tsx
 disabled={!canAdvance() || gerarEscopo.isPending || criandoObra}
@@ -696,12 +872,10 @@ disabled={!canAdvance() || gerarEscopo.isPending || criandoObra}
 ) : (
 ```
 
-(Remove o ramo `expandirTemplate.isPending` — o hook já reporta esse tempo dentro de `isPending`.)
-
 - [ ] **Step 3: Verificação manual do wizard**
 
-Run: `npm run dev`, navegar para `/nova-obra`, preencher os 7 passos com um template e 1 fornecedor, confirmar criação.
-Expected: obra criada normalmente, tela de sucesso (passo 7) aparece, "Ver Dossiê da Obra" navega sem erro — comportamento idêntico ao anterior à refatoração.
+Run: `npm run dev`, navegar para `/nova-obra`, preencher os 6 passos (nome/tipo, complexidade, descrição, escopo IA, fornecedores) selecionando 1 fornecedor, confirmar criação.
+Expected: obra criada normalmente, tela de sucesso (passo 6) aparece, "Ver Dossiê da Obra" navega sem erro — comportamento idêntico ao anterior à refatoração.
 
 - [ ] **Step 4: Rodar typecheck e testes**
 
@@ -720,14 +894,14 @@ git commit -m "refactor: extract useCriarObra hook shared by wizard and chat flo
 
 ---
 
-### Task 4: Pill "Nova" (azul) + esqueleto do fluxo no chat
+### Task 5: Pill "Nova" (azul) + esqueleto do fluxo no chat
 
 **Files:**
-- Modify: `src/pages/Chat.tsx:1-478`
+- Modify: `src/pages/Chat.tsx`
 
 **Interfaces:**
-- Consumes: `criacaoObraReducer`, `ESTADO_INICIAL`, `CriacaoObraAction` de `src/lib/criarObraChatFlow.ts` (Task 2).
-- Produces: `ChatMessage.card?: CriacaoObraCardData` (novo campo, usado pelas Tasks 5-9), `pushMessage(partial)`, `dispatchCriacao`, `criacaoObraState` — usados pelas próximas tasks dentro do mesmo arquivo.
+- Consumes: `criacaoObraReducer`, `ESTADO_INICIAL`, `CriacaoObraAction` de `src/lib/criarObraChatFlow.ts` (Tasks 2-3).
+- Produces: `ChatMessage.card?: CriacaoObraCardData` (novo campo, usado pelas Tasks 6-9), `pushMessage(partial)`, `dispatchCriacao`, `criacaoObraState` — usados pelas próximas tasks dentro do mesmo arquivo.
 
 - [ ] **Step 1: Estender `ChatMessage` e importar o reducer**
 
@@ -831,15 +1005,15 @@ git commit -m "feat: add blue Nova pill and creation-flow skeleton to chat"
 
 ---
 
-### Task 5: Passo Nome + varredura de duplicata
+### Task 6: Passo Nome + varredura de duplicata
 
 **Files:**
 - Modify: `src/pages/Chat.tsx`
 - Create: `src/components/chat/CriacaoObraCard.tsx`
 
 **Interfaces:**
-- Consumes: `buscarObraSimilar` (Task 1), `CriacaoObraCardData`, `CriacaoObraState` (Task 2).
-- Produces: `CriacaoObraCard` component (props definidos abaixo; será estendido pelas Tasks 6-9 no mesmo arquivo, sempre com o switch completo já existente).
+- Consumes: `buscarObraSimilar` (Task 1), `CriacaoObraCardData`, `CriacaoObraState` (Tasks 2-3).
+- Produces: `CriacaoObraCard` component (props definidos abaixo; será estendido pelas Tasks 7-9 no mesmo arquivo, sempre com o switch completo já existente).
 
 - [ ] **Step 1: Criar `CriacaoObraCard.tsx` com o caso "duplicata"**
 
@@ -999,14 +1173,14 @@ git commit -m "feat: guided flow step 1 - nome + duplicate detection card"
 
 ---
 
-### Task 6: Passos Tipo e Complexidade
+### Task 7: Passos Tipo e Complexidade
 
 **Files:**
 - Modify: `src/components/chat/CriacaoObraCard.tsx`
 - Modify: `src/pages/Chat.tsx`
 
 **Interfaces:**
-- Consumes: `classificacoes` (Task 2), `SmartCombobox` (`src/components/ui/smart-combobox.tsx`, já existente).
+- Consumes: `classificacoes` (Tasks 2-3), `SmartCombobox` (`src/components/ui/smart-combobox.tsx`, já existente).
 - Produces: nada novo além do already-declared `CriacaoObraCard` (estende o switch).
 
 - [ ] **Step 1: Estender `CriacaoObraCardProps` e o switch**
@@ -1116,7 +1290,7 @@ const onSelecionarClassificacao = useCallback((c: Complexidade) => {
 }, [pushMessage]);
 ```
 
-(Importar `classificacoes, type Complexidade` de `@/lib/criarObraChatFlow` no topo, junto dos outros imports desse módulo já feitos na Task 4.)
+(Importar `classificacoes, type Complexidade` de `@/lib/criarObraChatFlow` no topo, junto dos outros imports desse módulo já feitos na Task 5.)
 
 Passar as novas props ao `<CriacaoObraCard>` renderizado no passo anterior:
 
@@ -1147,14 +1321,15 @@ git commit -m "feat: guided flow steps 2-3 - tipo and complexidade"
 
 ---
 
-### Task 7: Passo Descrição + Gerar Escopo com IA
+### Task 8: Passo Descrição + Gerar Escopo com IA
 
 **Files:**
 - Modify: `src/components/chat/CriacaoObraCard.tsx`
 - Modify: `src/pages/Chat.tsx`
 
 **Interfaces:**
-- Consumes: Edge Function `gerar-escopo` (contrato existente, `supabase/functions/gerar-escopo/index.ts`), `EscopoIA` (Task 2).
+- Consumes: Edge Function `gerar-escopo` (contrato existente, `supabase/functions/gerar-escopo/index.ts`), `EscopoIA` (Tasks 2-3).
+- Produces: `carregarSugestoesFornecedores` é chamada por este task, mas definida na Task 9 (forward-reference — resolvido lá).
 
 - [ ] **Step 1: Estender o card com "escopo" e "escopo_erro"**
 
@@ -1260,8 +1435,8 @@ const gerarEscopoGuiado = useCallback(async (descricaoAtual: string) => {
 
 const onConfirmarEscopo = useCallback(() => {
   dispatchCriacao({ type: "confirmar_escopo" });
-  pushMessage({ role: "assistant", content: "Selecione um template de serviços ou pule para criar manualmente.", card: { kind: "template" } });
-}, [pushMessage]);
+  void carregarSugestoesFornecedores();
+}, [carregarSugestoesFornecedores]);
 
 const onEditarDescricao = useCallback(() => {
   dispatchCriacao({ type: "voltar_para_descricao" });
@@ -1273,9 +1448,9 @@ const onRetryEscopo = useCallback(() => {
 }, [gerarEscopoGuiado, criacaoObraState.descricao]);
 ```
 
-(Importar `type { EscopoIA }` de `@/lib/criarObraChatFlow` junto dos demais tipos.)
+(Importar `type { EscopoIA }` de `@/lib/criarObraChatFlow` junto dos demais tipos. `carregarSugestoesFornecedores` ainda não existe neste ponto do arquivo — é definida na Task 9, que também move `onConfirmarEscopo` para depois dela, resolvendo o forward-reference.)
 
-Atualizar `handleCriacaoObraTexto` (Task 5) adicionando o branch de `descricao` antes do fechamento da função:
+Atualizar `handleCriacaoObraTexto` (Task 6) adicionando o branch de `descricao` antes do fechamento da função:
 
 ```ts
 if (criacaoObraState.step === "descricao") {
@@ -1291,7 +1466,7 @@ if (criacaoObraState.step === "descricao") {
 }
 ```
 
-Atualizar `handleUserSubmit`/`handleSubmit` (Task 5) para também rotear o passo `"descricao"`, não só `"nome"` — substituir os dois corpos por completo:
+Atualizar `handleUserSubmit`/`handleSubmit` (Task 6) para também rotear o passo `"descricao"`, não só `"nome"` — substituir os dois corpos por completo:
 
 ```ts
 const emPassoDeTexto = (step: typeof criacaoObraState.step) => step === "nome" || step === "descricao";
@@ -1329,9 +1504,7 @@ onRetryEscopo={onRetryEscopo}
 - [ ] **Step 3: Verificação manual**
 
 Run: `npm run dev`. Passar até a descrição, digitar um texto com pelo menos 10 caracteres.
-Expected: mensagem "Gerando escopo com IA... ✨", depois o cartão com as 4 seções (igual ao wizard). Clicar "Editar descrição" volta para o campo de texto preservando o valor anterior na mensagem; digitar de novo gera escopo outra vez. Clicar "Continuar" avança para o cartão de template.
-
-Para testar o erro: temporariamente derrubar a rede (DevTools offline) e confirmar que aparece o cartão de erro com "Tentar novamente" sem perder nome/tipo/complexidade já coletados.
+Expected: mensagem "Gerando escopo com IA... ✨", depois o cartão com as 4 seções (igual ao wizard). Clicar "Editar descrição" volta para o campo de texto preservando o valor anterior na mensagem; digitar de novo gera escopo outra vez. Clicar "Continuar" avança direto para o cartão de fornecedores (implementado na Task 9 — até lá, "Continuar" vai chamar uma função ainda não definida; é esperado que o build/dev falhe até a Task 9 resolver o forward-reference — não faça esta verificação manual isoladamente, faça-a junto da Task 9).
 
 - [ ] **Step 4: Commit**
 
@@ -1342,122 +1515,14 @@ git commit -m "feat: guided flow steps 4-5 - descricao and escopo IA"
 
 ---
 
-### Task 8: Passo Template de Serviços
+### Task 9: Passo Fornecedores + criação final
 
 **Files:**
 - Modify: `src/components/chat/CriacaoObraCard.tsx`
 - Modify: `src/pages/Chat.tsx`
 
 **Interfaces:**
-- Consumes: query `catalogo_templates` (mesmo contrato de `NovaObra.tsx:115-126`).
-
-- [ ] **Step 1: Estender o card com "template"**
-
-Adicionar props:
-
-```tsx
-templates: { id: string; nome: string; descricao: string | null; catalogo_template_servicos: { count: number }[] }[] | undefined;
-templateSelecionado: string | null;
-onSelecionarTemplate: (id: string | null) => void;
-onConfirmarTemplate: () => void;
-```
-
-```tsx
-{card.kind === "template" && (
-  <div className="space-y-2 mt-2">
-    {templates && templates.length > 0 ? (
-      templates.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onSelecionarTemplate(templateSelecionado === t.id ? null : t.id)}
-          className={`w-full flex items-start gap-3 p-3 rounded-2xl border-2 text-left transition-all ${
-            templateSelecionado === t.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
-          }`}
-        >
-          <div className="flex-1">
-            <p className="font-semibold text-foreground text-sm">{t.nome}</p>
-            {t.descricao && <p className="text-xs text-muted-foreground mt-0.5">{t.descricao}</p>}
-            <Badge variant="outline" className="text-xs mt-1.5">
-              {(t.catalogo_template_servicos || []).length} serviço(s)
-            </Badge>
-          </div>
-          {templateSelecionado === t.id && <Check className="h-4 w-4 text-primary mt-1 shrink-0" />}
-        </button>
-      ))
-    ) : (
-      <p className="text-sm text-muted-foreground">Nenhum template disponível.</p>
-    )}
-    <p className="text-xs text-muted-foreground">
-      {templateSelecionado ? "✓ Template selecionado" : "Nenhum template selecionado - criar obra manualmente"}
-    </p>
-    <Button size="sm" className="rounded-xl w-full" onClick={onConfirmarTemplate}>
-      Continuar
-    </Button>
-  </div>
-)}
-```
-
-- [ ] **Step 2: `Chat.tsx` — query de templates + handlers**
-
-```ts
-const { data: templates } = useQuery({
-  queryKey: ["catalogo_templates"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("catalogo_templates")
-      .select("id, nome, descricao, catalogo_template_servicos(count)")
-      .eq("ativo", true)
-      .order("nome");
-    if (error) throw error;
-    return data ?? [];
-  },
-});
-
-const onSelecionarTemplate = useCallback((id: string | null) => {
-  dispatchCriacao({ type: "selecionar_template", templateId: id });
-}, []);
-
-const onConfirmarTemplate = useCallback(() => {
-  dispatchCriacao({ type: "confirmar_template" });
-  const nomeTemplate = templates?.find((t) => t.id === criacaoObraState.templateSelecionado)?.nome;
-  pushMessage({ role: "user", content: nomeTemplate ?? "Nenhum template" });
-  void carregarSugestoesFornecedores();
-}, [pushMessage, templates, criacaoObraState.templateSelecionado]);
-```
-
-(`carregarSugestoesFornecedores` é definida na Task 9 — declare esta função depois dela no arquivo real, ou adicione um `// eslint-disable-next-line @typescript-eslint/no-use-before-define` temporário; a ordem final de declaração é resolvida na Task 9.)
-
-Passar as novas props:
-
-```tsx
-templates={templates}
-templateSelecionado={criacaoObraState.templateSelecionado}
-onSelecionarTemplate={onSelecionarTemplate}
-onConfirmarTemplate={onConfirmarTemplate}
-```
-
-- [ ] **Step 3: Verificação manual**
-
-Run: `npm run dev`. No cartão de template, selecionar um (fica destacado, some ao clicar de novo — toggle), depois "Continuar".
-Expected: bolha do usuário com o nome do template escolhido (ou "Nenhum template"), avança para a etapa seguinte (implementada na Task 9 — até lá, o "Continuar" pode ficar sem próxima pergunta visível; isso é esperado nesta task).
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add src/pages/Chat.tsx src/components/chat/CriacaoObraCard.tsx
-git commit -m "feat: guided flow step 6 - template de servicos"
-```
-
----
-
-### Task 9: Passo Fornecedores
-
-**Files:**
-- Modify: `src/components/chat/CriacaoObraCard.tsx`
-- Modify: `src/pages/Chat.tsx`
-
-**Interfaces:**
-- Consumes: RPC `fn_sugerir_top3_fornecedores` e query `fornecedores` (mesmo contrato de `NovaObra.tsx:95-102, 145-163`).
+- Consumes: RPC `fn_sugerir_top3_fornecedores` e query `fornecedores` (mesmo contrato de `NovaObra.tsx`), `useCriarObra` (Task 4).
 
 - [ ] **Step 1: Estender o card com "fornecedores"**
 
@@ -1585,7 +1650,7 @@ const { data: allFornecedores } = useQuery({
   },
 });
 const [addFornecedorId, setAddFornecedorId] = useState("");
-const { criarObra, isPending: criandoObraGuiada } = useCriarObra();
+const { criarObra } = useCriarObra();
 
 const carregarSugestoesFornecedores = useCallback(async () => {
   const { data } = await supabase.rpc("fn_sugerir_top3_fornecedores", { p_complexidade: criacaoObraState.classificacao });
@@ -1629,7 +1694,6 @@ const executarCriacaoObra = useCallback(async () => {
       classificacao: criacaoObraState.classificacao,
       descricao: criacaoObraState.descricao,
       escopo: criacaoObraState.escopo,
-      templateId: criacaoObraState.templateSelecionado,
       fornecedores: criacaoObraState.fornecedoresSelecionados,
       userId: user.id,
     });
@@ -1647,7 +1711,7 @@ const executarCriacaoObra = useCallback(async () => {
 }, [criacaoObraState, user, criarObra, navigate, pushMessage]);
 ```
 
-Mover a definição de `onConfirmarTemplate` (Task 8) para depois de `carregarSugestoesFornecedores` neste arquivo (resolve o forward-reference deixado pendente na Task 8), sem alterar seu corpo.
+Mover a definição de `onConfirmarEscopo` (Task 8) para depois de `carregarSugestoesFornecedores` neste arquivo (resolve o forward-reference deixado pendente na Task 8), sem alterar seu corpo.
 
 Passar as novas props ao `<CriacaoObraCard>`:
 
@@ -1664,8 +1728,8 @@ onConfirmarCriacao={executarCriacaoObra}
 
 - [ ] **Step 3: Verificação manual — fluxo completo ponta a ponta**
 
-Run: `npm run dev`. Repetir o fluxo inteiro desde "Nova" até o fim: nome novo (sem duplicata) → tipo → complexidade → descrição → escopo → template → selecionar 1-2 fornecedores sugeridos (ou adicionar outro pela busca) → "Criar Obra".
-Expected: mensagem "Criando obra... 🏗️", depois navegação automática para `/obras/{novaObraId}/chat`, cuja mensagem de boas-vindas mostra "Obra criada com sucesso! 🎉" com o nome correto e, se houver fornecedores, "Enviado para N profissional(is)". Conferir em `/obras` que a nova obra aparece na lista (confirma o fix da query key da Task 3) e que a cotação foi criada (tela Cotações) quando havia fornecedores.
+Run: `npm run dev`. Repetir o fluxo inteiro desde "Nova" até o fim: nome novo (sem duplicata) → tipo → complexidade → descrição → escopo → selecionar 1-2 fornecedores sugeridos (ou adicionar outro pela busca) → "Criar Obra".
+Expected: mensagem "Criando obra... 🏗️", depois navegação automática para `/obras/{novaObraId}/chat`, cuja mensagem de boas-vindas mostra "Obra criada com sucesso! 🎉" com o nome correto e, se houver fornecedores, "Enviado para N profissional(is)". Conferir em `/obras` que a nova obra aparece na lista (confirma o fix da query key da Task 4) e que a cotação foi criada (tela Cotações) quando havia fornecedores.
 
 Testar também o caminho de erro: com 1 fornecedor selecionado, forçar falha (ex.: interceptar a RPC no DevTools Network e abortá-la) e confirmar que aparece o cartão de erro com "Tentar novamente", sem perder a seleção de fornecedores.
 
@@ -1673,7 +1737,7 @@ Testar também o caminho de erro: com 1 fornecedor selecionado, forçar falha (e
 
 ```bash
 git add src/pages/Chat.tsx src/components/chat/CriacaoObraCard.tsx
-git commit -m "feat: guided flow steps 7-8 - fornecedores and criacao final"
+git commit -m "feat: guided flow - fornecedores and criacao final"
 ```
 
 ---
@@ -1683,12 +1747,12 @@ git commit -m "feat: guided flow steps 7-8 - fornecedores and criacao final"
 **Files:**
 - Modify: `src/pages/Chat.tsx` (exportar `ChatContent`, aceitar `obraId: string | null`)
 - Create: `src/pages/Assistente.tsx`
-- Modify: `src/App.tsx:34, 110-134`
+- Modify: `src/App.tsx`
 - Modify: `src/components/LegacyObraRedirect.tsx`
 - Modify: `src/components/AppSidebar.tsx`
 
 **Interfaces:**
-- Consumes: `ChatContent` (Task 4-9, agora exportado com `obraId` opcional).
+- Consumes: `ChatContent` (Tasks 5-9, agora exportado com `obraId` opcional).
 - Produces: rota `/assistente`, item de sidebar condicional.
 
 - [ ] **Step 1: `Chat.tsx` — `obraId` aceita `null` e exporta `ChatContent`**
@@ -1807,7 +1871,7 @@ No botão de enviar (linha 453-464), somar `semObraEFluxoInativo` ao `disabled`:
 disabled={(!input.trim() && pendingFiles.length === 0) || isTyping || voiceLoop.isActive || semObraEFluxoInativo}
 ```
 
-No bloco de sugestões (Task 4, Step 3), quando `obraId === null` mostrar só a pill "Nova" (sem `SUGGESTIONS`):
+No bloco de sugestões (Task 5, Step 3), quando `obraId === null` mostrar só a pill "Nova" (sem `SUGGESTIONS`):
 
 ```tsx
 {messages.length <= 1 && !isTyping && (
@@ -1948,7 +2012,7 @@ Este passo exige um usuário/tenant sem nenhuma obra para testar de ponta a pont
 2. Temporariamente comentar o `.order("created_at desc")`/filtrar a query em `useObraAtiva` para simular lista vazia — reverter depois do teste.
 
 Run: `npm run dev`, acessar `/assistente` diretamente (ou pelo item "🤖 Assistente" na sidebar, que só aparece com 0 obras).
-Expected: saudação "Ainda não vejo nenhuma obra sua. Quer começar uma agora?", só a pill "Nova" visível, input desabilitado com placeholder "Clique em \"Nova\" para começar", sem botão de anexo/voz. Clicar "Nova" habilita o input normalmente e roda o fluxo completo (Tasks 5-9). Ao concluir a criação, navega para `/obras/{novaObraId}/chat` mostrando a mensagem de sucesso.
+Expected: saudação "Ainda não vejo nenhuma obra sua. Quer começar uma agora?", só a pill "Nova" visível, input desabilitado com placeholder "Clique em \"Nova\" para começar", sem botão de anexo/voz. Clicar "Nova" habilita o input normalmente e roda o fluxo completo (Tasks 6-9). Ao concluir a criação, navega para `/obras/{novaObraId}/chat` mostrando a mensagem de sucesso.
 
 Também verificar: `/chat` (rota legada) sem nenhuma obra redireciona para `/assistente` (não mais para `/obras`); com pelo menos 1 obra, `/assistente` redireciona direto para `/obras/{primeira}/chat`.
 
@@ -1968,8 +2032,8 @@ git commit -m "feat: add /assistente onboarding entry point for tenants with zer
 
 ## Self-Review
 
-**Cobertura da spec:** nome+varredura (Task 5), tipo+complexidade (Task 6), descrição+escopo IA com editar/retry (Task 7), template (Task 8), fornecedores+criação (Task 9), pill azul e cancelar (Task 4), onboarding `/assistente` + sidebar + legacy redirect (Task 10), hook compartilhado + fix de invalidação (Task 3), varredura pura e reducer puro testados (Tasks 1-2). Todas as seções do spec `docs/superpowers/specs/2026-07-18-nova-obra-via-chat-design.md` têm task correspondente.
+**Cobertura da spec:** nome+varredura (Task 6), tipo+complexidade (Task 7), descrição+escopo IA com editar/retry (Task 8), fornecedores+criação (Task 9), pill azul e cancelar (Task 5), onboarding `/assistente` + sidebar + legacy redirect (Task 10), hook compartilhado + fix de invalidação (Task 4), varredura pura e reducer puro testados (Tasks 1-3). Todas as seções do spec `docs/superpowers/specs/2026-07-18-nova-obra-via-chat-design.md` (já revisado, sem passo de template) têm task correspondente. Nenhuma task restante referencia `catalogo_templates`/`expandir-template`.
 
-**Placeholders:** nenhum "TBD"/"implement later" — todo passo de código tem implementação completa. A única referência textual a "task pendente" é o forward-reference documentado entre Task 8 e Task 9 (`carregarSugestoesFornecedores`), resolvido explicitamente no Step 2 da Task 9.
+**Placeholders:** nenhum "TBD"/"implement later" — todo passo de código tem implementação completa. A única referência textual a "task pendente" é o forward-reference documentado entre Task 8 e Task 9 (`carregarSugestoesFornecedores`/`onConfirmarEscopo`), resolvido explicitamente no Step 2 da Task 9 — mesmo padrão que já existia no plano original entre as antigas Tasks 8 e 9, só que agora entre Tasks 8 e 9 renumeradas.
 
-**Consistência de tipos:** `CriacaoObraCardData`, `CriacaoObraState`, `EscopoIA`, `FornecedorSelecionado`, `Complexidade`, `ObraSimilar` e `classificacoes` são definidos uma única vez (Task 2) e importados (nunca redefinidos) nas Tasks 3, 5-10. `ChatMessage.card` (Task 4) é o único novo campo no modelo de mensagem, usado de forma consistente em todas as tasks seguintes.
+**Consistência de tipos:** `CriacaoObraCardData`, `CriacaoObraState`, `EscopoIA`, `FornecedorSelecionado`, `Complexidade`, `ObraSimilar` e `classificacoes` são definidos na Task 2, corrigidos na Task 3 (sem template) e importados (nunca redefinidos) nas Tasks 4, 6-10. `ChatMessage.card` (Task 5) é o único novo campo no modelo de mensagem, usado de forma consistente em todas as tasks seguintes. `CriarObraInput` (Task 4) não tem campo de template, e nenhuma task posterior tenta passá-lo.
