@@ -91,6 +91,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // DEBUG: Check if API key is available
+  if (req.url.includes("debug")) {
+    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    return new Response(
+      JSON.stringify({
+        debug: true,
+        apiKeyConfigured: !!apiKey,
+        apiKeyLength: apiKey?.length || 0,
+        apiKeyPrefix: apiKey?.substring(0, 10) + "..." || "NOT_SET",
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   try {
     // Get auth header
     const authHeader = req.headers.get("Authorization");
