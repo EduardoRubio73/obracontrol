@@ -29,11 +29,19 @@ Contexto local deste projeto. As instruções gerais de `C:\Users\ACER\CLAUDE.md
 - Migrations: sempre via `supabase db push` (Supabase CLI), nunca editar SQL à mão
   (regra de `docs/ai-context/16-coding-rules.md`).
 
-## Pendências de segurança conhecidas (ver CHANGELOG.md para detalhes)
+## Segurança — IDORs históricos (resolvidos)
 
-Antes de expandir features em `chat-assistente`, `commitar-importacao` ou no portal
-público de fornecedores, resolver os IDORs já mapeados no changelog — são
-falhas de autorização cross-tenant reais, não hipotéticas.
+Os 3 IDORs cross-tenant mapeados no changelog (`chat-assistente`,
+`commitar-importacao`, portal público de fornecedores) foram corrigidos em
+16/07/2026 (entrada "15:05 - Correção de todos os achados do sweep") e
+reverificados em 18/07/2026: `chat-assistente` valida posse da obra via
+`TOOLS_NEEDING_OBRA_ID` + `userOwnsObra()` antes de qualquer tool-call (cobertura
+conferida linha a linha, sem lacunas); `commitar-importacao` valida
+`fornecedor_id`/`produto_id` de `link:<uuid>` contra `user_id`; a migration
+`20260716132938_fix_portal_publico_seguranca.sql` está aplicada em produção
+(confirmado via `supabase migration list`). Sem pendência bloqueante — ao mexer
+nessas áreas, manter o mesmo padrão (nunca confiar em `obra_id`/ids vindos do
+LLM ou do cliente sem checar `user_id`).
 
 ## Supabase CLI — Fluxo de desenvolvimento
 

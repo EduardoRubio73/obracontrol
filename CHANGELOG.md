@@ -14,6 +14,33 @@
 > conversa. Menos detalhadas que o padrão usual deste changelog; se precisar de
 > mais profundidade, ver os commits/specs referenciados em cada uma.
 
+## [18/07/2026 - 21:34:45] Reverificação dos 3 IDORs mapeados: confirmados corrigidos (✅ Completo)
+- **Tipo:** [SEGURANÇA] [DOCUMENTAÇÃO]
+- **Descrição:** `CLAUDE.md` ainda listava os 3 IDORs cross-tenant (`chat-assistente`,
+  `commitar-importacao`, portal público de fornecedores) como pendência bloqueante
+  antes de expandir essas áreas — mas a correção já tinha sido feita e deployada em
+  16/07/2026 ("15:05 - Correção de todos os achados do sweep"). Reverificado o
+  código atual linha a linha, não só a entrada do changelog:
+  1. `chat-assistente/index.ts`: `TOOLS_NEEDING_OBRA_ID` (linhas 321-327) +
+     `userOwnsObra()` (979-994) cobrem as 13 tool-calls que usam `obra_id`
+     (`criar_gasto`, `criar_etapa`, `criar_compra`, `status_obra`,
+     `consultar_financeiro`, `consultar_compras`, `consultar_cotacoes`,
+     `consultar_documentos`, `atualizar_etapa`, `atualizar_obra`,
+     `atualizar_compra`, `excluir_gasto`, `excluir_etapa`) — conferido case a case
+     no switch, sem lacuna.
+  2. `commitar-importacao/index.ts`: `fornecedor_id`/`produto_id` recebidos como
+     `link:<uuid>` continuam validados contra `user_id` (linhas 61, 134); `obra_id`
+     validado contra `user_id` na linha 54.
+  3. Migration `20260716132938_fix_portal_publico_seguranca.sql` confirmada
+     aplicada tanto local quanto remoto via `supabase migration list`
+     (`xsqnkptdbabnvjcrvaob`) — ativa em produção, não só commitada.
+  - **Correção:** `CLAUDE.md`, seção "Pendências de segurança conhecidas" virou
+    "Segurança — IDORs históricos (resolvidos)", registrando a reverificação em
+    vez de repetir a pendência como se estivesse em aberto.
+- **Arquivos:** `CLAUDE.md` (nenhum código de produção alterado, só documentação).
+
+---
+
 ## [18/07/2026 - 17:52:08] Hoje.tsx por obra + Dossiê detalha criação guiada + redesign do Dashboard (⏳ Não commitado)
 - **Tipo:** [FEATURE] [UX] [REFATORAÇÃO]
 - **Descrição:** Mudanças presentes só no working tree local (17 arquivos, não
