@@ -9,9 +9,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2 } from "lucide-react";
@@ -26,9 +26,10 @@ export function GenerateTemplateDialog({ onSuccess }: GenerateTemplateDialogProp
   const [ambientes, setAmbientes] = useState<string[]>([]);
   const [descricao, setDescricao] = useState("");
 
-  // Fetch available tipos_obra and ambientes
+  // Fetch available tipos_obra and ambientes (only while the dialog is open)
   const { data: tiposObraData } = useQuery({
     queryKey: ["catalogo_tipos_obra"],
+    enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogo_tipos_obra")
@@ -43,6 +44,7 @@ export function GenerateTemplateDialog({ onSuccess }: GenerateTemplateDialogProp
 
   const { data: ambientesData } = useQuery({
     queryKey: ["catalogo_ambientes"],
+    enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogo_ambientes")
@@ -73,31 +75,28 @@ export function GenerateTemplateDialog({ onSuccess }: GenerateTemplateDialogProp
       return data;
     },
     onSuccess: (data) => {
-      toast({
-        title: "✨ Template Gerado!",
-        description: `"${data.template_data.nome}" foi criado como draft. Revise em Templates (Draft).`,
-      });
+      toast.success(`✨ "${data.template_data.nome}" foi criado como draft. Revise em Templates (Draft).`);
       setOpen(false);
-      setTipoObra("");
-      setAmbientes([]);
-      setDescricao("");
+      resetForm();
       onSuccess?.();
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao gerar template",
-        description: error.message || "Algo deu errado",
-        variant: "destructive",
-      });
+      console.error("Erro ao gerar template:", error);
+      const errorMessage = typeof error === "string" ? error : error?.message || "Erro ao gerar template";
+      toast.error(errorMessage);
     },
   });
 
+  const resetForm = () => {
+    setTipoObra("");
+    setAmbientes([]);
+    setDescricao("");
+  };
+
   const handleAmbienteToggle = (ambiente: string) => {
-    if (ambientes.includes(ambiente)) {
-      setAmbientes(ambientes.filter((a) => a !== ambiente));
-    } else {
-      setAmbientes([...ambientes, ambiente]);
-    }
+    setAmbientes((prev) =>
+      prev.includes(ambiente) ? prev.filter((a) => a !== ambiente) : [...prev, ambiente]
+    );
   };
 
   const isValid =
@@ -124,18 +123,18 @@ export function GenerateTemplateDialog({ onSuccess }: GenerateTemplateDialogProp
           {/* Tipo de Obra */}
           <div>
             <label className="text-sm font-medium">Tipo de Obra *</label>
-            <select
-              value={tipoObra}
-              onChange={(e) => setTipoObra(e.target.value)}
-              className="mt-2 w-full rounded border p-2"
-            >
-              <option value="">Selecione um tipo de obra</option>
-              {tiposObraData?.map((tipo) => (
-                <option key={tipo.id} value={tipo.nome}>
-                  {tipo.nome}
-                </option>
-              ))}
-            </select>
+            <Select value={tipoObra} onValueChange={setTipoObra}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Selecione um tipo de obra" />
+              </SelectTrigger>
+              <SelectContent>
+                {tiposObraData?.map((tipo) => (
+                  <SelectItem key={tipo.id} value={tipo.nome}>
+                    {tipo.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Ambientes */}
