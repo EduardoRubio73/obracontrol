@@ -27,7 +27,6 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GenerateTemplateDialog } from "@/components/admin/GenerateTemplateDialog";
-import { useQueryClient } from "@tanstack/react-query";
 
 type CrudItem = { id: string; nome: string; descricao?: string | null; etapa_padrao_id?: string | null };
 type CatalogItem = { id: string; nome: string; descricao?: string | null; ativo?: boolean; prioridade?: number | null; tempo_medio_dias?: number | null };
@@ -1633,48 +1632,20 @@ function TemplatesCatalogCollapsible() {
     },
   });
 
-  const handleTemplateGenerated = () => {
-    queryClient.invalidateQueries({ queryKey: ["catalogo_templates"] });
-  };
-
   return (
-    <Card className="rounded-2xl overflow-hidden">
-      <Collapsible defaultOpen={false}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📋</span>
-              <h3 className="text-base font-semibold text-foreground">Templates (Catálogo)</h3>
-              {typeof items?.length === "number" && (
-                <Badge variant="secondary" className="ml-1">{items.length}</Badge>
-              )}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-xs">Modelos de obras com serviços e ambientes pré-configurados. Apenas administradores podem editar.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="px-4 pb-4 pt-1 border-t space-y-3">
-            <div className="flex gap-2">
-              <CatalogBody table="catalogo_templates" label="template" />
-              <GenerateTemplateDialog onSuccess={handleTemplateGenerated} />
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+    <CollapsibleCard
+      title="Templates (Catálogo)"
+      icon="📋"
+      tooltip="Modelos de obras com serviços e ambientes pré-configurados. Apenas administradores podem editar."
+      count={items?.length}
+    >
+      <div className="flex gap-2">
+        <CatalogBody table="catalogo_templates" label="template" />
+        <GenerateTemplateDialog
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ["catalogo_templates"] })}
+        />
+      </div>
+    </CollapsibleCard>
   );
 }
 
