@@ -14,7 +14,7 @@
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
 CREATE TABLE public.catalogo_tipos_obra (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   nome text NOT NULL UNIQUE,
   descricao text,
   ativo boolean NOT NULL DEFAULT true,
@@ -22,7 +22,7 @@ CREATE TABLE public.catalogo_tipos_obra (
 );
 
 CREATE TABLE public.catalogo_ambientes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   nome text NOT NULL UNIQUE,
   descricao text,
   ativo boolean NOT NULL DEFAULT true,
@@ -30,7 +30,7 @@ CREATE TABLE public.catalogo_ambientes (
 );
 
 CREATE TABLE public.catalogo_servicos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   nome text NOT NULL,
   nome_normalizado text NOT NULL,
   descricao text,

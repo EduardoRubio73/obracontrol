@@ -7,7 +7,7 @@
 -- ============================================================================
 
 CREATE TABLE public.obra_servicos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   obra_id uuid NOT NULL REFERENCES public.obras(id) ON DELETE CASCADE,
   catalogo_servico_id uuid REFERENCES public.catalogo_servicos(id) ON DELETE SET NULL,
   ambiente_id uuid REFERENCES public.catalogo_ambientes(id) ON DELETE SET NULL,
@@ -30,7 +30,7 @@ ALTER TABLE public.fase_itens
 -- vinculados ao produto real do usuário (resolvido via match_produto na
 -- expansão) para alimentar Compras/Cotações/Financeiro automaticamente.
 CREATE TABLE public.obra_servico_insumos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   obra_servico_id uuid NOT NULL REFERENCES public.obra_servicos(id) ON DELETE CASCADE,
   produto_id uuid REFERENCES public.produtos(id) ON DELETE SET NULL,
   nome_insumo text NOT NULL,

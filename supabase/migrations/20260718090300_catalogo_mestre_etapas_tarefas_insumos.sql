@@ -3,7 +3,7 @@
 -- ============================================================================
 
 CREATE TABLE public.catalogo_servico_etapas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   servico_id uuid NOT NULL REFERENCES public.catalogo_servicos(id) ON DELETE CASCADE,
   nome text NOT NULL,
   ordem int NOT NULL DEFAULT 0,
@@ -13,7 +13,7 @@ CREATE TABLE public.catalogo_servico_etapas (
 CREATE INDEX idx_catalogo_servico_etapas_servico ON public.catalogo_servico_etapas (servico_id);
 
 CREATE TABLE public.catalogo_etapa_tarefas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   etapa_id uuid NOT NULL REFERENCES public.catalogo_servico_etapas(id) ON DELETE CASCADE,
   nome text NOT NULL,
   descricao text,
@@ -27,7 +27,7 @@ CREATE INDEX idx_catalogo_etapa_tarefas_etapa ON public.catalogo_etapa_tarefas (
 -- "produtos", que é catálogo privado por usuário) — na expansão para a obra,
 -- match_produto() resolve/cria o produto dentro do catálogo do usuário.
 CREATE TABLE public.catalogo_servico_insumos_padrao (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   servico_id uuid NOT NULL REFERENCES public.catalogo_servicos(id) ON DELETE CASCADE,
   nome_insumo text NOT NULL,
   unidade text NOT NULL,

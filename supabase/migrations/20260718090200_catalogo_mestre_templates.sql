@@ -4,7 +4,7 @@
 -- ============================================================================
 
 CREATE TABLE public.catalogo_templates (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   nome text NOT NULL,
   descricao text,
   ativo boolean NOT NULL DEFAULT true,
