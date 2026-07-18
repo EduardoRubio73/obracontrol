@@ -2,14 +2,16 @@ import { useCallback, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { useVoiceCommand, VoiceCommand } from "@/hooks/useVoiceCommand";
+import { RequireObra } from "@/components/RequireObra";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, Mic, MicOff, Loader2, Volume2, ShoppingCart } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, LayoutDashboard, Mic, MicOff, Loader2, Volume2, ShoppingCart } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
 function limparTextoParaVoz(texto: string): string {
   return texto
@@ -24,8 +26,9 @@ function limparTextoParaVoz(texto: string): string {
     .trim();
 }
 
-const Hoje = () => {
+function HojeContent({ obraId }: { obraId?: string }) {
   const { user } = useAuth();
+  const { obras } = useObraAtiva();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [falando, setFalando] = useState(false);
@@ -78,37 +81,41 @@ const Hoje = () => {
   });
 
   const { data: tarefas } = useQuery({
-    queryKey: ["tarefas-pendentes"],
+    queryKey: ["tarefas-pendentes", obraId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("fase_itens")
-        .select("id, nome, status, fase_id, obra_fases(nome)")
+        .select("id, nome, status, fase_id, obra_fases!inner(nome, obra_id)")
         .neq("status", "concluido")
         .limit(5);
+      if (obraId) q = q.eq("obra_fases.obra_id", obraId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
 
   const { data: comprasPendentes } = useQuery({
-    queryKey: ["compras-pendentes"],
+    queryKey: ["compras-pendentes", obraId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("compras")
         .select("id, descricao, status, valor_total, fornecedor_id, fornecedores(nome)")
         .eq("status", "pendente")
         .limit(5);
+      if (obraId) q = q.eq("obra_id", obraId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
 
   const { data: progresso } = useQuery({
-    queryKey: ["progresso-geral"],
+    queryKey: ["progresso-geral", obraId],
     queryFn: async () => {
-      const { data, error } = (await supabase
-        .from("vw_progresso_obra" as any)
-        .select("*")) as any;
+      let query = supabase.from("vw_progresso_obra" as any).select("*");
+      if (obraId) query = query.eq("obra_id", obraId);
+      const { data, error } = (await query) as any;
       if (error) throw error;
       const rows = data as { progresso_geral: number }[];
       if (!rows?.length) return 0;
@@ -149,6 +156,7 @@ const Hoje = () => {
   const greeting =
     hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const firstName = profile?.nome?.split(" ")[0] ?? "";
+  const obraAtual = obraId ? obras.find((o) => o.id === obraId) : null;
   const hasAlerts = (alertas?.length ?? 0) > 0;
   const hasTasks = (tarefas?.length ?? 0) > 0;
   const hasCompras = (comprasPendentes?.length ?? 0) > 0;
@@ -230,16 +238,32 @@ const Hoje = () => {
   return (
     <div className="space-y-8 max-w-lg mx-auto pb-32 px-1">
       {/* Header */}
-      <div className="pt-4">
+      <div className="pt-4 space-y-3">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             {greeting}
             {firstName ? `, ${firstName}` : ""} 👋
           </h1>
           <p className="text-lg text-muted-foreground mt-1">
-            {hasAlerts ? "Existem pendências que precisam de atenção." : "Sem pendências. Obra no caminho certo."}
+            {obraAtual ? (
+              <>Obra: <span className="font-medium text-foreground">{obraAtual.nome}</span></>
+            ) : hasAlerts ? (
+              "Existem pendências que precisam de atenção."
+            ) : (
+              "Sem pendências. Obra no caminho certo."
+            )}
           </p>
         </div>
+        {obraId && (
+          <Button
+            variant="outline"
+            className="w-full h-12 rounded-2xl font-semibold gap-2"
+            onClick={() => navigate(`/obras/${obraId}/dashboard`)}
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            Abrir Dashboard completo
+          </Button>
+        )}
       </div>
 
       {/* Alert */}
@@ -403,6 +427,16 @@ const Hoje = () => {
       )}
     </div>
   );
-};
+}
 
-export default Hoje;
+export default function Hoje() {
+  const { id: obraId } = useParams<{ id: string }>();
+  if (obraId) {
+    return (
+      <RequireObra obraId={obraId} pageName="Hoje">
+        <HojeContent obraId={obraId} />
+      </RequireObra>
+    );
+  }
+  return <HojeContent />;
+}

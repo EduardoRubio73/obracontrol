@@ -17,11 +17,15 @@ import {
   ShoppingCart,
   Layers,
   ChevronRight,
+  ChevronDown,
   Image as ImageIcon,
+  Users,
+  ShieldAlert,
+  Paperclip,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 /* ── helpers ── */
 interface TimelineEvent {
@@ -130,7 +134,7 @@ const Dossie = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financeiro")
-        .select("id, descricao, valor, tipo, data_transacao, created_at")
+        .select("id, descricao, valor, tipo, data_transacao, comprovante_url, created_at")
         .eq("obra_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -143,7 +147,7 @@ const Dossie = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("compras")
-        .select("id, descricao, status, valor_total, created_at, fornecedores(nome)")
+        .select("id, descricao, status, valor_total, quantidade, valor_unitario, observacao, created_at, fornecedores(nome)")
         .eq("obra_id", id!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -160,6 +164,29 @@ const Dossie = () => {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as any[];
+    },
+  });
+
+  const fornecedorIdsContatados = useMemo(() => {
+    const ids = new Set<string>();
+    dossieEntries?.forEach((d) => {
+      if (d.tipo === "solicitacao_enviada" && Array.isArray(d.dados?.fornecedor_ids)) {
+        d.dados.fornecedor_ids.forEach((fid: string) => ids.add(fid));
+      }
+    });
+    return Array.from(ids);
+  }, [dossieEntries]);
+
+  const { data: fornecedoresContatados } = useQuery({
+    queryKey: ["dossie-fornecedores-contatados", fornecedorIdsContatados],
+    enabled: fornecedorIdsContatados.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fornecedores")
+        .select("id, nome, categoria")
+        .in("id", fornecedorIdsContatados);
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -195,7 +222,7 @@ const Dossie = () => {
       titulo: f.descricao || `${f.tipo === "despesa" ? "Despesa" : "Receita"} registrada`,
       descricao: `R$ ${Number(f.valor).toFixed(2)} · ${f.tipo}`,
       data: f.created_at,
-      meta: { valor: f.valor, tipo_fin: f.tipo },
+      meta: { valor: f.valor, tipo_fin: f.tipo, data_transacao: f.data_transacao, comprovante_url: f.comprovante_url },
     })
   );
 
@@ -206,7 +233,12 @@ const Dossie = () => {
       titulo: c.descricao || "Compra registrada",
       descricao: `${(c.fornecedores as any)?.nome || "Sem fornecedor"} · R$ ${Number(c.valor_total || 0).toFixed(2)}`,
       data: c.created_at!,
-      meta: { status: c.status },
+      meta: {
+        status: c.status,
+        quantidade: c.quantidade,
+        valor_unitario: c.valor_unitario,
+        observacao: c.observacao,
+      },
     })
   );
 
@@ -217,6 +249,7 @@ const Dossie = () => {
       titulo: d.titulo,
       descricao: d.descricao,
       data: d.created_at,
+      meta: { subtipo: d.tipo, dados: d.dados },
     })
   );
 
@@ -348,27 +381,7 @@ const Dossie = () => {
                 const config = tipoConfig[evento.tipo] || tipoConfig.default;
                 const Icon = config.icon;
                 const isExpanded = expandedId === evento.id;
-
-                // Cards with expandable content stay expandable
-                const hasExpandableContent =
-                  (evento.tipo === "foto" && evento.meta?.url) ||
-                  (evento.tipo === "alteracao" && (evento.meta?.justificativa || evento.meta?.valor_impacto));
-
-                // Route map for non-expandable cards
-                const routeMap: Record<string, string> = {
-                  financeiro: `/obras/${id}/financeiro`,
-                  compra: `/obras/${id}/compras`,
-                  dossie: `/obras/${id}/dossie`,
-                  fase: `/obras/${id}/etapas`,
-                };
-
-                const handleClick = () => {
-                  if (hasExpandableContent) {
-                    setExpandedId(isExpanded ? null : evento.id);
-                  } else if (routeMap[evento.tipo]) {
-                    navigate(routeMap[evento.tipo]);
-                  }
-                };
+                const handleClick = () => setExpandedId(isExpanded ? null : evento.id);
 
                 return (
                   <div
@@ -413,11 +426,118 @@ const Dossie = () => {
                             Impacto: R$ {Number(evento.meta.valor_impacto).toFixed(2)}
                           </p>
                         )}
-                        {!hasExpandableContent && (
-                          <div className="flex justify-end mt-1">
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        {isExpanded && evento.tipo === "compra" && (
+                          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                            {evento.meta?.quantidade != null && evento.meta?.valor_unitario != null && (
+                              <p>
+                                {evento.meta.quantidade} × R$ {Number(evento.meta.valor_unitario).toFixed(2)}
+                              </p>
+                            )}
+                            {evento.meta?.observacao && <p className="italic">Obs: {evento.meta.observacao}</p>}
                           </div>
                         )}
+                        {isExpanded && evento.tipo === "financeiro" && (
+                          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                            {evento.meta?.data_transacao && (
+                              <p>
+                                Data da transação:{" "}
+                                {format(new Date(evento.meta.data_transacao), "dd/MM/yyyy", { locale: ptBR })}
+                              </p>
+                            )}
+                            {evento.meta?.comprovante_url && (
+                              <a
+                                href={evento.meta.comprovante_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-primary underline"
+                              >
+                                <Paperclip className="h-3.5 w-3.5" /> Ver comprovante
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {isExpanded && evento.tipo === "dossie" && evento.meta?.subtipo === "obra_criada" && (
+                          <div className="mt-3 space-y-3 text-sm">
+                            <div className="flex flex-wrap gap-2">
+                              {evento.meta.dados?.tipo_obra && (
+                                <Badge variant="secondary" className="capitalize">{evento.meta.dados.tipo_obra}</Badge>
+                              )}
+                              {evento.meta.dados?.classificacao && (
+                                <Badge variant="secondary" className="capitalize">{evento.meta.dados.classificacao}</Badge>
+                              )}
+                            </div>
+                            {evento.meta.dados?.escopo ? (
+                              <>
+                                {evento.meta.dados.escopo.descricao_estruturada && (
+                                  <p className="text-muted-foreground">{evento.meta.dados.escopo.descricao_estruturada}</p>
+                                )}
+                                {evento.meta.dados.escopo.necessidades?.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium uppercase tracking-wide text-foreground mb-1">
+                                      Necessidades
+                                    </p>
+                                    <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                                      {evento.meta.dados.escopo.necessidades.map((n: string, i: number) => (
+                                        <li key={i}>{n}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {evento.meta.dados.escopo.profissional_recomendado && (
+                                  <p>
+                                    <span className="font-medium text-foreground">Profissional recomendado: </span>
+                                    <span className="text-muted-foreground">{evento.meta.dados.escopo.profissional_recomendado}</span>
+                                  </p>
+                                )}
+                                {evento.meta.dados.escopo.alertas_seguranca?.length > 0 && (
+                                  <div className="rounded-lg bg-amber-500/10 p-3">
+                                    <p className="mb-1 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-amber-600">
+                                      <ShieldAlert className="h-3.5 w-3.5" /> Alertas de segurança
+                                    </p>
+                                    <ul className="list-disc list-inside space-y-0.5 text-amber-700 dark:text-amber-500">
+                                      {evento.meta.dados.escopo.alertas_seguranca.map((a: string, i: number) => (
+                                        <li key={i}>{a}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <p className="italic text-muted-foreground">Escopo por IA não gerado para esta obra.</p>
+                            )}
+                          </div>
+                        )}
+                        {isExpanded && evento.tipo === "dossie" && evento.meta?.subtipo === "solicitacao_enviada" && (
+                          <div className="mt-3 space-y-2 text-sm">
+                            <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-foreground">
+                              <Users className="h-3.5 w-3.5" /> Profissionais contatados
+                            </p>
+                            {evento.meta.dados?.fornecedor_ids?.length > 0 ? (
+                              fornecedoresContatados ? (
+                                <ul className="space-y-1">
+                                  {evento.meta.dados.fornecedor_ids.map((fid: string) => {
+                                    const forn = fornecedoresContatados.find((f) => f.id === fid);
+                                    return (
+                                      <li key={fid} className="text-muted-foreground">
+                                        {forn ? `${forn.nome}${forn.categoria ? " · " + forn.categoria : ""}` : "Fornecedor removido"}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              ) : (
+                                <p className="italic text-muted-foreground">Carregando...</p>
+                              )
+                            ) : (
+                              <p className="italic text-muted-foreground">Nenhum profissional registrado.</p>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex justify-end mt-1">
+                          <ChevronDown
+                            className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
                   </div>

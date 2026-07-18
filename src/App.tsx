@@ -51,7 +51,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function ObraHomeRedirect() {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/obras/${id}/dashboard`} replace />;
+  return <Navigate to={`/obras/${id}/hoje`} replace />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -100,6 +100,7 @@ const App = () => (
 
               {/* Rotas por obra — fonte de verdade é a URL, não o context */}
               <Route path="/obras/:id" element={<ObraHomeRedirect />} />
+              <Route path="/obras/:id/hoje" element={<Hoje />} />
               <Route path="/obras/:id/dashboard" element={<Dashboard />} />
               <Route path="/obras/:id/etapas" element={<Etapas />} />
               <Route path="/obras/:id/etapas/:faseId" element={<EtapaDetalhe />} />

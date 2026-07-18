@@ -57,7 +57,7 @@ export function ObraSwitcherCarousel({ obras }: { obras: Obra[] }) {
           return (
             <button
               key={obra.id}
-              onClick={() => navigate(`/obras/${obra.id}/dashboard`)}
+              onClick={() => navigate(`/obras/${obra.id}/hoje`)}
               className="flex-shrink-0 snap-start w-36 rounded-2xl border bg-card overflow-hidden text-left hover:shadow-md hover:-translate-y-0.5 active:scale-[0.97] transition-all"
             >
               {img ? (

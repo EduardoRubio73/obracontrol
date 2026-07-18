@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const gestaoObraSections = [
+  { title: "Início", segment: "hoje", emoji: "👋" },
   { title: "Dashboard", segment: "dashboard", emoji: "📊" },
   { title: "Etapas", segment: "etapas", emoji: "📋" },
   { title: "Fornecedores", segment: "fornecedores", emoji: "👥" },

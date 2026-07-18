@@ -6,6 +6,111 @@
 
 ---
 
+> **Nota de manutenção (18/07/2026 - 17:52:08):** as 3 entradas abaixo (até a
+> anterior a "01:30:00 Catálogo Mestre") foram registradas de uma vez, de forma
+> retroativa e resumida, a pedido do usuário — várias mudanças reais tinham sido
+> feitas na sessão sem passar por `/edu-log-alteracao`. Reconstruídas via
+> `git log`/`git diff`/specs em `docs/superpowers/`, não a partir de memória de
+> conversa. Menos detalhadas que o padrão usual deste changelog; se precisar de
+> mais profundidade, ver os commits/specs referenciados em cada uma.
+
+## [18/07/2026 - 17:52:08] Hoje.tsx por obra + Dossiê detalha criação guiada + redesign do Dashboard (⏳ Não commitado)
+- **Tipo:** [FEATURE] [UX] [REFATORAÇÃO]
+- **Descrição:** Mudanças presentes só no working tree local (17 arquivos, não
+  commitadas nem enviadas ao remoto até o momento deste registro).
+  - Nova rota `/obras/:id/hoje`: `Hoje.tsx` aceita `obraId` opcional via
+    `useParams`, filtrando as queries (`tarefas-pendentes`, `compras-pendentes`,
+    `progresso-geral`) pela obra quando presente. Sidebar ganhou item "Início"
+    (👋) no topo da seção "Gestão da Obra"; `ObraHomeRedirect` (`/obras/:id`)
+    passou a apontar para `hoje` em vez de `dashboard`.
+  - `Dossie.tsx`: cards da timeline agora expandem no clique (chevron), em vez
+    de navegar para outra página. Passaram a mostrar detalhe rico por tipo:
+    despesas exibem data da transação + link do comprovante; compras exibem
+    quantidade/valor unitário/observação; e as entradas novas geradas pelo
+    fluxo guiado de criação de obra (ver entrada abaixo) — `obra_criada` e
+    `solicitacao_enviada` — mostram tipo/classificação/escopo por IA/alertas
+    de segurança e lista de fornecedores contatados (nova query
+    `dossie-fornecedores-contatados`).
+  - Redesign visual dos cards do Dashboard (`DashboardSummaryCards`,
+    `DashboardObrasRecentes`, `DashboardFinanceiroCard`, `DashboardCotacoesCard`
+    e ajustes menores nos demais componentes de `src/components/dashboard/`):
+    ícones em badges coloridos, formatação compacta de moeda (mil/mi), barra de
+    progresso de orçamento, estado vazio com CTA "Adicionar nova obra", linha
+    de obra recente clicável (navega para o dossiê).
+- **Pendente:** revisar, rodar `tsc`/`build`/lint e commitar — nada disso foi
+  verificado neste registro (só documentação do estado atual do working tree).
+- **Arquivos:** `src/App.tsx`, `src/components/AppSidebar.tsx`,
+  `src/components/ObraSwitcherCarousel.tsx`,
+  `src/components/dashboard/DashboardAlteracoes.tsx`,
+  `src/components/dashboard/DashboardChartPrevistoGasto.tsx`,
+  `src/components/dashboard/DashboardCotacoesCard.tsx`,
+  `src/components/dashboard/DashboardCotacoesDetalhadas.tsx`,
+  `src/components/dashboard/DashboardDocumentos.tsx`,
+  `src/components/dashboard/DashboardEvolucaoMensal.tsx`,
+  `src/components/dashboard/DashboardFinanceiroCard.tsx`,
+  `src/components/dashboard/DashboardFornecedores.tsx`,
+  `src/components/dashboard/DashboardObrasRecentes.tsx`,
+  `src/components/dashboard/DashboardSummaryCards.tsx`,
+  `src/components/dashboard/DashboardTimeline.tsx`, `src/pages/Dashboard.tsx`,
+  `src/pages/Dossie.tsx`, `src/pages/Hoje.tsx`
+
+## [18/07/2026 - 13:37:13] Status da obra extraído para página dedicada /obras/:id/status (✅ Completo)
+- **Tipo:** [FEATURE] [REFATORAÇÃO]
+- **Descrição:** Nova seção "Status" (rota `/obras/:id/status`, item na
+  sidebar) concentra a troca de status da obra e o histórico de mudanças,
+  removidos do Dashboard (`Dashboard.tsx` caiu ~195 linhas, fica mais enxuto).
+  Unificado o cabeçalho das páginas por obra: removido o botão de voltar
+  redundante (já existe navegação pela sidebar), nome da obra passa a aparecer
+  em azul junto ao título em vez de numa linha separada.
+- **Arquivos:** `src/pages/Status.tsx` (novo), `src/pages/Dashboard.tsx`,
+  `src/App.tsx`, `src/components/AppSidebar.tsx`, `src/pages/Analise.tsx`,
+  `src/pages/Chat.tsx`, `src/pages/Comparacao.tsx`, `src/pages/Compras.tsx`,
+  `src/pages/Cotacoes.tsx`, `src/pages/Documentos.tsx`, `src/pages/Dossie.tsx`,
+  `src/pages/Etapas.tsx`, `src/pages/Financeiro.tsx`,
+  `src/pages/Fornecedores.tsx`, `src/pages/Galeria.tsx`,
+  `src/pages/Materiais.tsx`, `src/pages/ObraAlteracoes.tsx`,
+  `src/components/FasePhotos.tsx`
+- **Commit:** `6f0e9dd`
+
+## [18/07/2026 - 13:31:17] Criação de obra via chat "Assistente" — fluxo guiado completo, pill "Nova" (✅ Completo)
+- **Tipo:** [FEATURE]
+- **Descrição:** Reintroduz a criação de obra de dentro do chat "Assistente de
+  Obra" (uma pill "Criar obra" tinha sido removida antes por não fazer sentido
+  dentro de uma obra já existente) — desta vez resolvendo o motivo da remoção:
+  permite trocar para uma obra existente detectada por varredura de duplicata
+  em vez de forçar a criação de uma cópia, e cobre também o caso de tenant sem
+  nenhuma obra ainda. Desenhado via spec
+  `docs/superpowers/specs/2026-07-18-nova-obra-via-chat-design.md` + plano
+  `docs/superpowers/plans/2026-07-18-nova-obra-via-chat.md`. Sequência de
+  commits da mesma feature, do mais antigo ao mais novo:
+  1. `3e8242b` — pill azul "Nova" nas sugestões do chat + skeleton do fluxo.
+  2. `c5ad830` — passo 1 (nome) + card de detecção de obra duplicada/parecida
+     (`CriacaoObraCard.tsx`), com opção de usar a obra existente.
+  3. `6a2c227` — passos 2-8: tipo (`tipos_obra`), complexidade,
+     descrição/escopo gerado por IA (mesma Edge Function `gerar-escopo` do
+     wizard `/nova-obra`), seleção de até 3 fornecedores sugeridos,
+     confirmação e criação. Reducer local `criacaoObraState` em `Chat.tsx`,
+     independente do histórico normal de mensagens/tool `criar_obra` do
+     `chat-assistente`. Nova rota `/assistente` (`Assistente.tsx`) para
+     onboarding sem nenhuma obra ainda (item sempre visível na sidebar);
+     `LegacyObraRedirect` de `/chat` passa a ir para `/assistente` quando não
+     há obra em vez de `/obras`.
+  4. `87ec41d` — hook `useCriarObra` extraído para compartilhar a lógica de
+     criação de obra entre o wizard `NovaObra.tsx` e o fluxo de chat.
+  5. `868ab55` — removido o passo de template (Catálogo Mestre) do reducer
+     `criacaoObraChatFlow`, já eliminado do projeto mais cedo no mesmo dia
+     (ver entrada "Catálogo Mestre eliminado" abaixo).
+  6. `5987c6b` — plano de implementação revisado para refletir a remoção do
+     passo de template.
+- **Arquivos:** `src/pages/Chat.tsx`, `src/pages/Assistente.tsx` (novo),
+  `src/components/chat/CriacaoObraCard.tsx`, `src/hooks/useCriarObra.ts`
+  (novo), `src/pages/NovaObra.tsx`, `src/lib/criarObraChatFlow.ts`,
+  `src/lib/criarObraChatFlow.test.ts`, `src/App.tsx`,
+  `src/components/AppSidebar.tsx`, `src/components/LegacyObraRedirect.tsx`
+- **Commits:** `3e8242b`, `c5ad830`, `6a2c227`, `87ec41d`, `868ab55`, `5987c6b`
+
+---
+
 ## [18/07/2026 - 15:00:00] Catálogo Mestre eliminado por completo (redundante e quebrado)
 
 - **Tipo:** [REMOÇÃO] [DB] [FRONTEND] [EDGE-FUNCTION]
