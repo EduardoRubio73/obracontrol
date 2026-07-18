@@ -71,7 +71,18 @@ export function GenerateTemplateDialog({ onSuccess }: GenerateTemplateDialogProp
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        // FunctionsHttpError hides the real response body in error.context
+        if (error.context && typeof error.context.json === "function") {
+          try {
+            const body = await error.context.json();
+            throw new Error(body?.error || error.message);
+          } catch {
+            throw error;
+          }
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -81,7 +92,7 @@ export function GenerateTemplateDialog({ onSuccess }: GenerateTemplateDialogProp
       onSuccess?.();
     },
     onError: (error: any) => {
-      console.error("Erro ao gerar template:", error);
+      console.error("Erro ao gerar template (detalhado):", error);
       const errorMessage = typeof error === "string" ? error : error?.message || "Erro ao gerar template";
       toast.error(errorMessage);
     },
