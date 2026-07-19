@@ -14,6 +14,53 @@
 > conversa. Menos detalhadas que o padrão usual deste changelog; se precisar de
 > mais profundidade, ver os commits/specs referenciados em cada uma.
 
+## [19/07/2026 - 13:02:01] Escopo IA completo no wizard Nova Obra: materiais + mão de obra + etapas/cronograma (✅ Completo)
+- **Tipo:** [FEATURE] [AI]
+- **Motivo:** o "Gerar Escopo com IA" retornava só descrição + `necessidades` (strings
+  soltas) — não fechava o ciclo: sem etapas/tarefas, sem mão de obra estruturada,
+  sem datas nem orçamento. Faltavam inputs (data de início, previsão de término,
+  orçamento, localização) para a IA planejar de verdade.
+- **Descrição:**
+  - `gerar-escopo` (edge function, deployada): schema da tool ampliado — retorna
+    `materiais` (nome/qtd/unidade), `mao_de_obra` (servico+escopo detalhado),
+    `etapas` (com `duracao_dias` e tarefas, clima da região considerado nas
+    durações) e `alerta_prazo`/`alerta_clima`/`alerta_orcamento`. Inputs novos
+    opcionais: `data_inicio`, `data_prevista_conclusao`, `valor_previsto`,
+    `localizacao`. **A IA nunca retorna datas** — só durações; o cliente calcula
+    o cronograma (determinístico, sem risco de fuso). Retrocompat com o fluxo de
+    chat: `necessidades` continua na resposta, derivada de `materiais`.
+  - `NovaObra.tsx`: wizard passou de 6 para 7 passos — novo passo 3 "Planejamento"
+    (data de início obrigatória; término, orçamento e cidade/região opcionais);
+    passo 5 de revisão mostra cronograma calculado, etapas+tarefas, materiais,
+    mão de obra e os novos alertas; passo 6 de fornecedores virou duas seções
+    (profissionais via `fn_sugerir_top3_fornecedores` filtrado por
+    `tipo='profissional'`; lojas top-3 client-side por score, `tipo != 'profissional'`
+    — cobre valores legados/null).
+  - `useCriarObra.ts`: grava `obras` com datas/orçamento/localização
+    (`data_prevista_conclusao` = informada ou soma das durações); cria
+    `obra_fases` sequenciais (fase N começa no dia seguinte ao fim da N-1) e
+    `fase_itens` com `executar_em` = início da fase; cria **duas cotações**
+    via `fn_criar_cotacao_com_fornecedores` — materiais→lojas (itens
+    `tipo='produto'`) e mão de obra→profissionais (itens `tipo='mao_de_obra'`
+    com escopo); um evento de dossiê por cotação. Decisão: orçamento só total
+    em `valor_previsto` (sem distribuição por etapa); IA apenas alerta.
+  - `Chat.tsx`: só o call site (`fornecedoresLojas: []`,
+    `fornecedoresProfissionais: selecionados`); sem datas no chat → sem fases
+    automáticas; escopo antigo cai no fallback de cotação única (comportamento
+    anterior preservado).
+  - **Zero migration** — todas as colunas já existiam (`obras.data_inicio`/
+    `data_prevista_conclusao`/`valor_previsto`/`localizacao`, `itens_cotacao.tipo`/
+    `escopo`, `obra_fases`, `fase_itens`).
+- **Verificado:** `tsc --noEmit` e `vite build` limpos; `supabase functions deploy
+  gerar-escopo` feito (projeto `xsqnkptdbabnvjcrvaob`). Teste manual do wizard no
+  navegador ainda pendente.
+- **Arquivos:** `supabase/functions/gerar-escopo/index.ts`, `src/pages/NovaObra.tsx`,
+  `src/hooks/useCriarObra.ts`, `src/lib/criarObraChatFlow.ts`, `src/pages/Chat.tsx`,
+  `docs/ai-context/06-services.md`, `07-api.md`, `09-business-rules.md`,
+  `14-workflows.md`.
+
+---
+
 ## [19/07/2026 - 11:40:00] Mão de Obra vira tipo de item distinto de Produto nas Cotações (✅ Completo)
 - **Tipo:** [FEATURE] [DB]
 - **Motivo:** propostas de mão de obra (ex: reforma de piscina) eram cadastradas

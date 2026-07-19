@@ -1,18 +1,33 @@
 # 14 - Workflows
 
-## Criar obra (wizard)
+## Criar obra (wizard — 7 passos)
 ```
-NovaObra (formulário)
-   ↓ fn_criar_obra_inteligente(nome, tipo, classificacao, descricao)
-   ├─► INSERT obras
-   ├─► INSERT obra_fases (4 fases padrão conforme tipo)
-   ├─► fn_criar_cotacao_automatica → INSERT cotacoes + cotacao_fornecedores (top3)
-   └─► INSERT voz_comandos_log
-   ↓
-setObraAtivaId(novaObra.id)
-   ↓
-navigate("/etapas")
+NovaObra (/nova-obra)
+   1. Nome + Tipo (tipos_obra, SmartCombobox)
+   2. Classificação (simples/media/complexa)
+   3. Planejamento: data_inicio (obrig.), data_prevista_conclusao (opc.),
+      valor_previsto (opc.), localizacao (opc., p/ clima)
+   4. Descrição livre → invoke('gerar-escopo', { descricao, tipo_obra,
+      classificacao, data_inicio, data_prevista_conclusao, valor_previsto, localizacao })
+   5. Revisão do escopo IA: cronograma calculado no cliente (date-fns, durações
+      sequenciais), etapas+tarefas, materiais, mão de obra, alertas (prazo/clima/orçamento/segurança)
+   6. Fornecedores em 2 seções: profissionais (fn_sugerir_top3_fornecedores,
+      filtro tipo='profissional') e lojas (top3 client-side por score, tipo != 'profissional')
+   7. Confirmação
+   ↓ useCriarObra.mutate
+   ├─► INSERT obras (com data_inicio, data_prevista_conclusao — informada ou
+   │    calculada da soma das durações —, valor_previsto, localizacao, escopo_ia)
+   ├─► INSERT obra_fases (sequenciais: fase N começa no dia seguinte ao fim da N-1)
+   │    └─► INSERT fase_itens (executar_em = data_inicio da fase)
+   ├─► INSERT obra_dossie 'obra_criada'
+   ├─► se lojas: fn_criar_cotacao_com_fornecedores → itens_cotacao tipo='produto'
+   │    (de escopo.materiais; fallback necessidades) + dossiê 'solicitacao_enviada'
+   └─► se profissionais: fn_criar_cotacao_com_fornecedores → itens_cotacao
+        tipo='mao_de_obra' (servico+escopo) + dossiê 'solicitacao_enviada'
 ```
+O fluxo de chat (Chat.tsx) usa o mesmo hook com `fornecedoresLojas: []` e sem datas
+(→ sem fases automáticas); escopos antigos sem `mao_de_obra` caem no fallback de
+cotação única com `necessidades` como produto.
 
 ## Concluir item de fase
 ```

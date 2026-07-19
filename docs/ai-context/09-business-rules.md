@@ -4,6 +4,8 @@
 - Status: `planejamento` → `execução` (automático via trigger na primeira fase iniciada) → `concluida` / `cancelada`.
 - `valor_previsto` é a base de orçamento. Alertas de orçamento disparam a >90% de gasto.
 - `classificacao ∈ {simples, media, complexa}` determina sugestão de fornecedores (`fn_sugerir_fornecedores`).
+- **Escopo IA completo (wizard)**: `gerar-escopo` retorna materiais, mão de obra, etapas com durações e alertas (prazo/clima/orçamento). A IA nunca retorna datas — o cliente (`useCriarObra`) calcula o cronograma sequencial a partir de `data_inicio` e grava `obra_fases`/`fase_itens` (`executar_em` = início da fase). `data_prevista_conclusao` = informada pelo usuário, ou soma das durações. Orçamento fica só no total (`valor_previsto`), sem distribuição por etapa.
+- **Cotações separadas na criação**: materiais → fornecedores `tipo != 'profissional'` (itens `tipo='produto'`); mão de obra → `tipo='profissional'` (itens `tipo='mao_de_obra'` com `escopo`). Uma cotação por grupo com ≥1 selecionado.
 
 ## Fases (`obra_fases` + `fase_itens`)
 - Progresso da fase = `count(itens.status='concluido') / count(itens) * 100` (recalculado por trigger).

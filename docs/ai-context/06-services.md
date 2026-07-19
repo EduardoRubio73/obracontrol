@@ -25,7 +25,7 @@ Via `supabase.functions.invoke("<nome>", { body })`:
 |--------|---------|---------|
 | `chat-assistente` | `{ messages, obraId? }` | `{ reply }` streaming/JSON |
 | `apoio-decisao` | `{ obraId, contexto }` | `{ sugestoes }` |
-| `gerar-escopo` | `{ nome, tipo, classificacao }` | `{ fases, itens }` |
+| `gerar-escopo` | `{ descricao, tipo_obra?, classificacao?, data_inicio?, data_prevista_conclusao?, valor_previsto?, localizacao? }` | `EscopoIA` (ver `07-api.md`) |
 | `importar-documento` | `{ storage_path }` | `{ meta, tipo_documento, confianca, fornecedor_match, items[] }` |
 | `commitar-importacao` | `{ preview, decisions, obra_id }` | `{ ok, ids }` |
 

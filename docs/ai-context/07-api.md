@@ -17,9 +17,25 @@ Sugestão de fornecedores/decisões com base em `regras-decisao.ts`.
 - Retorno: `{ sugestoes: [...] }`
 
 ## `POST /gerar-escopo`
-Gera fases/itens padrão via IA para uma nova obra.
-- Body: `{ nome: string, tipo: string, classificacao: 'simples'|'media'|'complexa' }`
-- Retorno: `{ fases: [{ nome, itens: [...] }] }`
+Gera o escopo completo da obra via IA (Lovable AI Gateway, tool-calling forçado).
+- Body: `{ descricao: string (obrigatório), tipo_obra?, classificacao?, data_inicio?, data_prevista_conclusao?, valor_previsto?, localizacao? }`
+- Retorno:
+```ts
+{
+  descricao_estruturada: string,
+  profissional_recomendado: 'empreiteiro'|'técnico'|'engenheiro'|'arquiteto',
+  alertas_seguranca: string[],
+  materiais: [{ nome, quantidade, unidade }],       // cotação para lojas
+  mao_de_obra: [{ servico, escopo }],               // cotação para profissionais
+  etapas: [{ nome, duracao_dias, tarefas: string[] }], // ordem de execução; clima já considerado
+  alerta_prazo: string | null,     // viabilidade da pretensão de término do usuário
+  alerta_clima: string | null,     // clima da região no período (se localizacao informada)
+  alerta_orcamento: string | null, // compatibilidade do valor_previsto com o escopo
+  necessidades: string[]           // derivado de materiais (retrocompat com fluxo de chat)
+}
+```
+- A IA **nunca retorna datas** — só durações; o cliente calcula o cronograma (`useCriarObra`).
+- Erros: 400 (sem descricao), 429 (rate), 402 (créditos), 500.
 
 ## `POST /importar-documento`
 Parse + classificação + matching fuzzy.

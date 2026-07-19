@@ -1,10 +1,34 @@
 export type Complexidade = "simples" | "media" | "complexa";
 
+export interface MaterialIA {
+  nome: string;
+  quantidade: number;
+  unidade: string;
+}
+
+export interface MaoDeObraIA {
+  servico: string;
+  escopo: string;
+}
+
+export interface EtapaIA {
+  nome: string;
+  duracao_dias: number;
+  tarefas: string[];
+}
+
 export interface EscopoIA {
   descricao_estruturada: string;
   necessidades: string[];
   profissional_recomendado: string;
   alertas_seguranca: string[];
+  // Campos do escopo completo (opcionais — escopos antigos não os têm)
+  materiais?: MaterialIA[];
+  mao_de_obra?: MaoDeObraIA[];
+  etapas?: EtapaIA[];
+  alerta_prazo?: string | null;
+  alerta_clima?: string | null;
+  alerta_orcamento?: string | null;
 }
 
 export interface FornecedorSelecionado {

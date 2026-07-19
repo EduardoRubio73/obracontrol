@@ -3,7 +3,10 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Loader2, Bot, Paperclip, X, FileText, Image as ImageIcon, Mic, Volume2, MicOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Send, Loader2, Bot, Paperclip, X, FileText, Image as ImageIcon, Mic, Volume2, MicOff, AlertTriangle } from "lucide-react";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { useObraAtiva } from "@/hooks/useObraAtiva";
 import { RequireObra } from "@/components/RequireObra";
@@ -62,6 +65,7 @@ export function ChatContent({ obraId }: { obraId: string | null }) {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [escopoModalAberto, setEscopoModalAberto] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +108,16 @@ export function ChatContent({ obraId }: { obraId: string | null }) {
     },
   });
   const tiposObraOptions = (tiposObra ?? []).map((t) => ({ value: t.nome, label: t.nome }));
+
+  const { data: escopoObra, isLoading: escopoLoading } = useQuery({
+    queryKey: ["obra-escopo-ia", obraId],
+    enabled: !!obraId && escopoModalAberto,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("escopo_ia").eq("id", obraId as string).single();
+      if (error) throw error;
+      return data.escopo_ia ? (JSON.parse(data.escopo_ia) as EscopoIA) : null;
+    },
+  });
 
   const criarTipoObra = useMutation({
     mutationFn: async (nome: string) => {
@@ -217,7 +231,8 @@ export function ChatContent({ obraId }: { obraId: string | null }) {
         classificacao: criacaoObraState.classificacao,
         descricao: criacaoObraState.descricao,
         escopo: criacaoObraState.escopo,
-        fornecedores: criacaoObraState.fornecedoresSelecionados,
+        fornecedoresLojas: [],
+        fornecedoresProfissionais: criacaoObraState.fornecedoresSelecionados,
         userId: user.id,
       });
       dispatchCriacao({ type: "obra_criada", obraId: novaObraId });
@@ -538,7 +553,70 @@ export function ChatContent({ obraId }: { obraId: string | null }) {
             </p>
           </div>
         </div>
+        {obraAtiva && (
+          <button
+            onClick={() => setEscopoModalAberto(true)}
+            className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            Escopo
+          </button>
+        )}
       </div>
+
+      <Dialog open={escopoModalAberto} onOpenChange={setEscopoModalAberto}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Escopo gerado pela IA</DialogTitle>
+          </DialogHeader>
+          {escopoLoading && (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          )}
+          {!escopoLoading && !escopoObra && (
+            <p className="text-sm text-muted-foreground">Nenhum escopo gerado por IA para esta obra.</p>
+          )}
+          {!escopoLoading && escopoObra && (
+            <div className="space-y-2">
+              <Card className="rounded-2xl">
+                <CardContent className="p-4">
+                  <h4 className="font-bold text-foreground text-sm mb-1">Descrição Estruturada</h4>
+                  <p className="text-xs text-muted-foreground whitespace-pre-line">{escopoObra.descricao_estruturada}</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl">
+                <CardContent className="p-4">
+                  <h4 className="font-bold text-foreground text-sm mb-2">Necessidades / Materiais</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {escopoObra.necessidades.map((n, i) => (
+                      <Badge key={i} variant="secondary" className="rounded-full text-xs">{n}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl">
+                <CardContent className="p-4">
+                  <h4 className="font-bold text-foreground text-sm mb-1">Profissional Recomendado</h4>
+                  <p className="text-sm font-semibold text-primary capitalize">{escopoObra.profissional_recomendado}</p>
+                </CardContent>
+              </Card>
+              {escopoObra.alertas_seguranca.length > 0 && (
+                <Card className="rounded-2xl border-destructive/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                      <h4 className="font-bold text-destructive text-sm">Alertas de Segurança</h4>
+                    </div>
+                    <ul className="space-y-0.5">
+                      {escopoObra.alertas_seguranca.map((a, i) => (
+                        <li key={i} className="text-xs text-destructive/80">• {a}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto max-h-[70vh] px-4 py-4 space-y-3 bg-background">
